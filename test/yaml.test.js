@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { parse, stringify, YamlError } from '../lib/yaml.js';
 
 describe('supported subset', () => {
-  test('scalars', { todo: true }, () => {
+  test('scalars',() => {
     assert.deepEqual(parse('a: hello\nb: 12\nc: true\nd: false\ne: null'), {
       a: 'hello',
       b: 12,
@@ -24,34 +24,34 @@ describe('supported subset', () => {
     });
   });
 
-  test('quoted strings keep characters that would otherwise be syntax', { todo: true }, () => {
+  test('quoted strings keep characters that would otherwise be syntax',() => {
     assert.deepEqual(parse('a: "x: y"\nb: \'# not a comment\''), {
       a: 'x: y',
       b: '# not a comment',
     });
   });
 
-  test('nested maps', { todo: true }, () => {
+  test('nested maps',() => {
     assert.deepEqual(parse('slicing:\n  strategy: prefer-independent\n  max_files_per_slice: 12'), {
       slicing: { strategy: 'prefer-independent', max_files_per_slice: 12 },
     });
   });
 
-  test('block sequences', { todo: true }, () => {
+  test('block sequences',() => {
     assert.deepEqual(parse('layers:\n  - main\n  - renderer'), {
       layers: ['main', 'renderer'],
     });
   });
 
-  test('inline sequences', { todo: true }, () => {
+  test('inline sequences',() => {
     assert.deepEqual(parse('layers: [main, renderer]'), { layers: ['main', 'renderer'] });
   });
 
-  test('comments and blank lines are ignored', { todo: true }, () => {
+  test('comments and blank lines are ignored',() => {
     assert.deepEqual(parse('# header\n\na: 1  # trailing\n'), { a: 1 });
   });
 
-  test('parses the shipped default config', { todo: true }, async () => {
+  test('parses the shipped default config',async () => {
     const { readFile } = await import('node:fs/promises');
     const source = await readFile(new URL('../defaults/config.yaml', import.meta.url), 'utf8');
     const config = parse(source);
@@ -62,27 +62,64 @@ describe('supported subset', () => {
     // source of truth for model selection.
     assert.equal(config.routing, undefined);
   });
+
+  // The second real input the subset has to cover. Copied from the fork rather
+  // than read from disk: the test has to pass on a machine that has no clone.
+  test("parses podman-desktop's pnpm-workspace.yaml", () => {
+    const source = [
+      'engineStrict: true',
+      'packages:',
+      "  - 'packages/*'",
+      "  - 'extensions/*/packages/*'",
+      "  - 'tests/*'",
+      'onlyBuiltDependencies:',
+      "  - '@biomejs/biome'",
+      '  - core-js',
+      '  - electron',
+    ].join('\n');
+
+    assert.deepEqual(parse(source), {
+      engineStrict: true,
+      packages: ['packages/*', 'extensions/*/packages/*', 'tests/*'],
+      onlyBuiltDependencies: ['@biomejs/biome', 'core-js', 'electron'],
+    });
+  });
+
+  // Written under its key rather than beside it. The shipped config uses this
+  // shape for tools.rtk.never_rewrite, so it is not a hypothetical.
+  test('an inline sequence indented under its key', () => {
+    assert.deepEqual(parse('tools:\n  never_rewrite:\n    [git push, gh pr]\n  enabled: auto'), {
+      tools: { never_rewrite: ['git push', 'gh pr'], enabled: 'auto' },
+    });
+  });
+
+  // YAML 1.1 would make these booleans. The config uses them as enum members
+  // beside `auto`, and a field that is sometimes a string and sometimes a
+  // boolean is a bug waiting for the first consumer that trusts one of them.
+  test('on and off stay strings', () => {
+    assert.deepEqual(parse('a: on\nb: off\nc: auto'), { a: 'on', b: 'off', c: 'auto' });
+  });
 });
 
 describe('outside the subset — must throw, never degrade', () => {
-  test('anchors', { todo: true }, () => {
+  test('anchors',() => {
     assert.throws(() => parse('a: &anchor 1\nb: *anchor'), YamlError);
   });
 
-  test('block scalars', { todo: true }, () => {
+  test('block scalars',() => {
     assert.throws(() => parse('a: |\n  line one\n  line two'), YamlError);
     assert.throws(() => parse('a: >\n  folded'), YamlError);
   });
 
-  test('multiple documents', { todo: true }, () => {
+  test('multiple documents',() => {
     assert.throws(() => parse('a: 1\n---\nb: 2'), YamlError);
   });
 
-  test('tags', { todo: true }, () => {
+  test('tags',() => {
     assert.throws(() => parse('a: !!str 1'), YamlError);
   });
 
-  test('the error names the line', { todo: true }, () => {
+  test('the error names the line',() => {
     try {
       parse('a: 1\nb: |\n  x');
       assert.fail('expected a throw');
@@ -94,7 +131,7 @@ describe('outside the subset — must throw, never degrade', () => {
 });
 
 describe('stringify', () => {
-  test('round-trips through parse', { todo: true }, () => {
+  test('round-trips through parse',() => {
     const value = { slicing: { strategy: 'stack', layers: ['main', 'ui'] } };
     assert.deepEqual(parse(stringify(value)), value);
   });
