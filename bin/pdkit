@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+
+// Entry point for the pdkit CLI.
+//
+// This file is deliberately thin. It resolves lib/ relative to its own
+// location via import.meta.url — not the working directory, and not
+// ${CLAUDE_PLUGIN_ROOT}, which changes on every plugin update. The Bash tool
+// puts this directory on PATH, so `pdkit` is callable as a bare command from
+// any working directory, including a worktree.
+//
+// Keep bin/ to this one file: everything here becomes a bare command.
+
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const { main } = await import(join(here, '..', 'lib', 'cli.js'));
+
+process.exitCode = await main(process.argv.slice(2));

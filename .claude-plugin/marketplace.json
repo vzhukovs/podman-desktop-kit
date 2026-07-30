@@ -1,0 +1,13 @@
+{
+  "name": "podman-desktop-kit",
+  "owner": {
+    "name": "Vladyslav Zhukovskyi"
+  },
+  "plugins": [
+    {
+      "name": "pd",
+      "source": "./",
+      "description": "Workflow kit for working upstream issues in podman-desktop: triage, plan, slice into atomic PRs, review."
+    }
+  ]
+}

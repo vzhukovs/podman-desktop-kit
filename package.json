@@ -1,0 +1,15 @@
+{
+  "name": "podman-desktop-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Workflow kit for working upstream issues in podman-desktop.",
+  "license": "Apache-2.0",
+  "author": "Vladyslav Zhukovskyi",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  }
+}
