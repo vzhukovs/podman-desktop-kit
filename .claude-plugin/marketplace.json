@@ -1,5 +1,6 @@
 {
   "name": "podman-desktop-kit",
+  "description": "Tooling for contributing to podman-desktop from a fork: issue triage, planning, slicing work into atomic pull requests, and review.",
   "owner": {
     "name": "Vladyslav Zhukovskyi"
   },
