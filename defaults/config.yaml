@@ -1,0 +1,104 @@
+# Default configuration shipped with the plugin.
+#
+# Three layers, later overriding earlier per key:
+#   1. this file
+#   2. $PDKIT_HOME/config.yaml
+#   3. <repo>/.pdkit.yaml
+#
+# In the podman-desktop fork, .pdkit.yaml belongs in .git/info/exclude rather
+# than .gitignore: the fork's .gitignore is upstream's file, and editing it puts
+# a stray line in every pull request.
+#
+# Parsed by lib/yaml.js, which supports a deliberate subset: nested maps,
+# sequences, scalars, comments. No anchors, no multiline scalars, no tags.
+
+version: 1
+
+repo:
+  upstream: podman-desktop/podman-desktop
+  fork: vzhukovs/podman-desktop
+  upstream_remote: upstream
+  fork_remote: origin
+  base_branch: main
+  package_manager: pnpm
+
+state:
+  root: ~/.pdkit/podman-desktop
+
+branches:
+  single: "DESKTOP-{issue}/{slug}"
+  sliced: "DESKTOP-{issue}/{index}-{slug}"
+
+languages:
+  plan: en
+  reports: en
+  pr_body: en
+  commits: en
+  review_replies: en
+  review_report: en
+
+# There is no `routing:` block here, and its absence is deliberate. Model
+# selection lives in the `model:` frontmatter of skills and agents — see
+# section 5 of the architecture spec. A skill's own model can only be set
+# there, so a second copy in this file would be a lever that moves nothing
+# half the time and disagrees with the frontmatter the rest of it.
+
+slicing:
+  strategy: prefer-independent   # prefer-independent | stack | single
+  max_files_per_slice: 12
+  require_standalone_verify: true
+  layer_order: [extension-api, main, preload, renderer, ui, extensions, tests, website]
+
+quickfix:
+  max_changed_lines: 20
+  max_files: 3
+  forbid_paths: ["packages/extension-api/**", "**/*.schema.*"]
+  allocate_r_ids: false        # tracing goes by issue number
+  e2e: off
+
+validation:
+  e2e: prefer                  # prefer | required | off
+  e2e_stability_runs: 3
+  ship_with_feature: true
+  require_evidence: true       # PASS without artefacts is refused
+
+tools:
+  rtk:
+    enabled: auto              # auto | on | off
+    readonly_only: true
+    never_rewrite:
+      [git push, git commit, git reset, git rebase, git cherry-pick, gh pr, gh issue, gh api]
+    bypass_for_receipts: true  # evidence is captured with rtk disabled
+  ponytail:
+    enabled: auto
+    mode: full                 # never ultra
+    scope: [pd-plan-critic, pd-review-architecture]
+    warn_if_global_hooks: true
+
+journal:
+  path: journal/
+  reanchor_scope: issue        # SessionStart injects the active issue only
+
+review:
+  bots_collapsed: [coderabbitai]
+  bot_escalate: [security, data-loss, correctness]
+
+gates:
+  push_ttl: 10m
+  require_states: [preflight-green, slices-approved]
+
+worktrees:
+  enabled: true
+  root: ../pd-worktrees
+  copy_files: [".env", ".env.local"]
+
+# Expected MCP servers. The plugin ships no .mcp.json and does not start these:
+# a plugin-level declaration loads for everyone, which would make them mandatory
+# rather than optional. /pd:doctor checks what is present and degrades
+# gracefully. Which agents can see a server's tools is set by the `tools:` field
+# in agents/*.md, not here.
+mcp:
+  playwright: auto             # auto | on | off
+  context7: off
+  basic_memory: off
+  github: off
