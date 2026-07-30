@@ -49,6 +49,21 @@ slicing:
   require_standalone_verify: true
   layer_order: [extension-api, main, preload, renderer, ui, extensions, tests, website]
 
+# Script name overrides for preflight (section 7). Empty by default: names are
+# resolved from the repository's own package.json through a candidate chain,
+# which is the right source — podman-desktop has no `pnpm lint`, its `pnpm test`
+# drags in e2e, and upstream renames scripts without warning. A hardcoded name
+# that no longer exists becomes a check that silently never runs.
+#
+# Filling this in means the resolver got it wrong, which is a reason to fix the
+# resolver rather than to live with an override.
+preflight:
+  scripts:
+    tests: []                  # e.g. [test:main, test:unit]
+    lint: []
+    typecheck: []
+    schemas: []
+
 quickfix:
   max_changed_lines: 20
   max_files: 3
@@ -85,7 +100,12 @@ review:
 
 gates:
   push_ttl: 10m
-  require_states: [preflight-green, slices-approved]
+  # Exactly one state, and a one-element list here is not redundancy.
+  # slices-approved comes BEFORE preflight; a gate that opens from there lets a
+  # push past preflight entirely. Both routes — quickfix and slices-approved —
+  # converge on preflight-green anyway (section 1), so the second entry added
+  # nothing and opened a way around the one check that matters.
+  require_states: [preflight-green]
 
 worktrees:
   enabled: true
