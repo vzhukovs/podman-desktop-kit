@@ -17,7 +17,18 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createPullRequest, fetchIssue, headRef, linkedPullRequests, upstreamSlug } from '../lib/gh.js';
+import {
+  checkRunsForCommit,
+  createPullRequest,
+  discussion,
+  fetchIssue,
+  headRef,
+  linkedPullRequests,
+  peerCheckFailures,
+  pullRequest,
+  reviewThreads,
+  upstreamSlug,
+} from '../lib/gh.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
 
@@ -165,6 +176,184 @@ describe('reads', () => {
       () => fetchIssue(1, { config: CONFIG, exec: (f, a, o, cb) => queueMicrotask(() => cb(missing, '', '')) }),
       /gh is not installed/,
     );
+  });
+});
+
+describe('reading a pull request', () => {
+  /** A rollup entry as `pr view --json statusCheckRollup` returns it. */
+  const checkRun = (name, conclusion) => ({
+    name,
+    status: 'COMPLETED',
+    conclusion,
+    workflowName: 'pr-check',
+    detailsUrl: `https://example/${name}`,
+  });
+
+  test('the CI rollup is flattened, statuses and check runs alike', async () => {
+    const pr = await pullRequest(17577, {
+      config: CONFIG,
+      exec: fakeGh(
+        JSON.stringify({
+          number: 17577,
+          author: { login: 'vzhukovs' },
+          statusCheckRollup: [
+            checkRun('Windows', 'FAILURE'),
+            // A third-party status spells its outcome differently, and code
+            // downstream must not have to know which kind it is looking at.
+            { context: 'codecov/patch', state: 'FAILURE', targetUrl: 'https://codecov' },
+          ],
+        }),
+      ),
+    });
+
+    assert.equal(pr.author, 'vzhukovs', 'the author is flattened out of its object');
+    assert.deepEqual(
+      pr.checks.map((check) => [check.name, check.status, check.conclusion]),
+      [
+        ['Windows', 'COMPLETED', 'FAILURE'],
+        ['codecov/patch', 'COMPLETED', 'FAILURE'],
+      ],
+    );
+  });
+
+  // Why peers rather than the base branch, in one assertion: podman-desktop
+  // runs pr-check on pull_request, so main never runs these jobs. Measuring
+  // against the base would report every red as inconclusive.
+  test('peerCheckFailures counts how many other PRs the same job is red on', async () => {
+    const { sampled, red } = await peerCheckFailures({
+      exclude: 17577,
+      config: CONFIG,
+      exec: fakeGh(
+        JSON.stringify([
+          { number: 17577, author: null, statusCheckRollup: [checkRun('Windows', 'FAILURE')] },
+          { number: 18550, author: null, statusCheckRollup: [checkRun('Windows', 'FAILURE')] },
+          { number: 18486, author: null, statusCheckRollup: [checkRun('Windows', 'FAILURE'), checkRun('Linux', 'SUCCESS')] },
+        ]),
+      ),
+    });
+
+    assert.equal(sampled, 2, 'our own PR must not be part of its own baseline');
+    assert.deepEqual(red.get('Windows'), [18550, 18486]);
+    assert.equal(red.has('Linux'), false, 'a green job has no business in the failure map');
+  });
+
+  test('every run against a commit is read, not just the latest', async () => {
+    const runs = await checkRunsForCommit('8374334', {
+      config: CONFIG,
+      exec: fakeGh(
+        JSON.stringify({
+          check_runs: [
+            { name: 'Windows', conclusion: 'failure', started_at: '2026-06-01T00:00:00Z' },
+            { name: 'Windows', conclusion: 'success', started_at: '2026-06-02T00:00:00Z' },
+          ],
+        }),
+      ),
+    });
+
+    // The same job, the same commit, two answers. `pr view` reports only the
+    // last one, which is how a re-run erases the evidence of a flake.
+    assert.deepEqual(
+      runs.map((run) => run.conclusion),
+      ['FAILURE', 'SUCCESS'],
+    );
+  });
+
+  const threadPage = (nodes, hasNextPage = false, endCursor = null) =>
+    JSON.stringify({
+      data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage, endCursor }, nodes } } } },
+    });
+
+  const thread = (id, author, extra = {}) => ({
+    id,
+    isResolved: false,
+    isOutdated: false,
+    path: 'packages/main/src/plugin/handler.ts',
+    line: 222,
+    comments: { nodes: [{ author: { login: author }, body: `${author} says`, createdAt: '2026-05-20T12:05:18Z', url: `u/${id}` }] },
+    ...extra,
+  });
+
+  test('threads come from GraphQL, because REST cannot say what is resolved', async () => {
+    await reviewThreads(17577, { config: CONFIG, exec: fakeGh(threadPage([])) });
+
+    const [call] = calls;
+    assert.deepEqual(call.args.slice(0, 2), ['api', 'graphql']);
+    assert.ok(call.args.some((arg) => arg.includes('isResolved')));
+    assert.ok(call.args.includes('number=17577'));
+    assert.ok(!call.args.some((arg) => /\bmutation\b/.test(arg)), 'reading must not need consent');
+  });
+
+  test('pagination is followed', async () => {
+    let page = 0;
+    const exec = (file, args, options, callback) => {
+      calls.push({ file, args, options, stdin: null });
+      const body = page++ === 0 ? threadPage([thread('t1', 'coderabbitai')], true, 'CURSOR') : threadPage([thread('t2', 'jiridostal')]);
+      queueMicrotask(() => callback(null, body, ''));
+      return { stdin: { end: () => {} } };
+    };
+
+    const threads = await reviewThreads(17577, { config: CONFIG, exec });
+
+    // A long-running PR with a chatty bot passes fifty threads, and the ones
+    // that fall off the first page are the ones that have waited longest.
+    assert.equal(threads.length, 2);
+    assert.ok(calls[1].args.includes('cursor=CURSOR'));
+    assert.deepEqual(
+      threads.map((entry) => entry.author),
+      ['coderabbitai', 'jiridostal'],
+    );
+  });
+
+  // Straight from PR #17577: both open threads are the bot's, and the reason
+  // the PR is blocked is a review body plus a top-level comment. Reading only
+  // threads would report two bot findings and no human ones.
+  test('review submissions and top-level comments are read too', async () => {
+    const { reviews, comments } = await discussion(17577, {
+      config: CONFIG,
+      exec: fakeGh(
+        JSON.stringify({
+          reviews: [
+            { author: { login: 'coderabbitai' }, state: 'COMMENTED', body: '', submittedAt: '2026-05-20T12:05:19Z' },
+            { author: { login: 'vancura' }, state: 'APPROVED', body: '', submittedAt: '2026-05-21T10:38:58Z' },
+            { author: { login: 'benoitf' }, state: 'CHANGES_REQUESTED', body: 'please split this', submittedAt: '2026-06-05T05:58:37Z' },
+          ],
+          comments: [{ author: { login: 'jiridostal' }, body: 'any update?', createdAt: '2026-06-02T09:06:38Z' }],
+        }),
+      ),
+    });
+
+    // The empty COMMENTED review is the wrapper around inline threads and says
+    // nothing; the empty APPROVED one says everything it needs to in its state.
+    assert.deepEqual(
+      reviews.map((review) => `${review.author}:${review.state}`),
+      ['vancura:APPROVED', 'benoitf:CHANGES_REQUESTED'],
+    );
+    assert.deepEqual(comments.map((comment) => comment.author), ['jiridostal']);
+  });
+
+  test('a resolved thread is still reported, and replies are counted', async () => {
+    const threads = await reviewThreads(17577, {
+      config: CONFIG,
+      exec: fakeGh(
+        threadPage([
+          thread('t1', 'jiridostal', {
+            isResolved: true,
+            comments: {
+              nodes: [
+                { author: { login: 'jiridostal' }, body: 'ask', createdAt: '2026-06-02T09:06:38Z', url: 'u1' },
+                { author: { login: 'vzhukovs' }, body: 'answer', createdAt: '2026-06-03T09:06:38Z', url: 'u2' },
+              ],
+            },
+          }),
+        ]),
+      ),
+    });
+
+    // Resolved is not the same as irrelevant: someone resolving a thread since
+    // the last sync is the difference between waiting and moving on.
+    assert.equal(threads[0].isResolved, true);
+    assert.equal(threads[0].replies, 1);
+    assert.equal(threads[0].body, 'ask', 'the first comment is the ask; later ones are the conversation');
   });
 });
 
