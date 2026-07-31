@@ -14,7 +14,10 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { RULES } from '../lib/hooks/rules.js';
+import { RULES, select } from '../lib/hooks/rules.js';
+
+/** The rule a command line trips, or null. */
+const fired = (line) => select(line)?.rule.id ?? null;
 
 describe('rule shape', () => {
   test('ids are unique', () => {
@@ -81,5 +84,119 @@ describe('coverage of section 6', () => {
     for (const rule of RULES.filter((r) => r.program === 'gh')) {
       assert.equal(rule.action, 'gate', `${rule.id}: gh writes must be gated`);
     }
+  });
+});
+
+// Every rule gets a pair: the command it must catch, and the neighbouring one
+// it must not. A one-sided test is what let the rules ship matching everything
+// — the shape and order assertions above all passed while force-push-without-
+// lease was refusing every `git push` and no-verify every `git commit`.
+describe('selectivity', () => {
+  test('force push is refused, an ordinary and a leased push are not', () => {
+    assert.equal(fired('git push --force origin main'), 'force-push-without-lease');
+    assert.equal(fired('git push -f origin main'), 'force-push-without-lease');
+    assert.equal(fired('git push -fu origin main'), 'force-push-without-lease');
+    // Written together, a later --force overrides the lease: still a force push.
+    assert.equal(fired('git push --force-with-lease --force'), 'force-push-without-lease');
+
+    assert.equal(fired('git push origin main'), 'push');
+    assert.equal(fired('git push --force-with-lease origin main'), 'push');
+    assert.equal(fired('git push --follow-tags origin main'), 'push');
+  });
+
+  test('gh pr writes are gated, gh pr reads are not', () => {
+    assert.equal(fired('gh pr create --base main --head x'), 'gh-pr-write');
+    assert.equal(fired('gh pr merge 12'), 'gh-pr-write');
+    assert.equal(fired('gh pr review 12 --approve'), 'gh-pr-write');
+
+    assert.equal(fired('gh pr view 12'), null);
+    assert.equal(fired('gh pr list --state open'), null);
+    assert.equal(fired('gh pr diff 12'), null);
+    assert.equal(fired('gh pr checks 12'), null);
+  });
+
+  test('gh issue writes are gated, gh issue reads are not', () => {
+    assert.equal(fired('gh issue comment 12 --body hello'), 'gh-issue-comment');
+    assert.equal(fired('gh issue create --title x'), 'gh-issue-write');
+    assert.equal(fired('gh issue close 12'), 'gh-issue-write');
+
+    assert.equal(fired('gh issue view 12'), null);
+    assert.equal(fired('gh issue list --label bug'), null);
+  });
+
+  test('gh api is gated by method and body, not by name', () => {
+    assert.equal(fired('gh api -X POST repos/o/r/issues'), 'gh-api-write');
+    assert.equal(fired('gh api --method=PATCH repos/o/r/issues/1'), 'gh-api-write');
+    assert.equal(fired('gh api repos/o/r/issues -f title=x'), 'gh-api-write');
+
+    assert.equal(fired('gh api repos/o/r/issues/1'), null);
+    assert.equal(fired('gh api -X GET repos/o/r'), null);
+  });
+
+  // gh api graphql is always an HTTP POST. Gating it on the method would gate
+  // the thread reads that /pd:pr-sync is built on; the document says which it
+  // is.
+  test('a graphql query reads, a graphql mutation writes', () => {
+    assert.equal(fired("gh api graphql -f query='query { repository { id } }'"), null);
+    assert.equal(
+      fired("gh api graphql -f query='mutation { resolveReviewThread(input: {}) { thread { id } } }'"),
+      'gh-api-write',
+    );
+  });
+
+  test('git add refuses the blanket forms and allows explicit paths', () => {
+    assert.equal(fired('git add -A'), 'add-all');
+    assert.equal(fired('git add .'), 'add-all');
+    assert.equal(fired('git add --all'), 'add-all');
+
+    assert.equal(fired('git add packages/main/src/x.ts'), null);
+    assert.equal(fired('git add ./packages/main/src/x.ts'), null);
+    assert.equal(fired('git add -p packages/main/src/x.ts'), null);
+  });
+
+  test('only an interactive rebase is refused', () => {
+    assert.equal(fired('git rebase -i HEAD~3'), 'interactive-rebase');
+    assert.equal(fired('git rebase --interactive main'), 'interactive-rebase');
+
+    assert.equal(fired('git rebase main'), null);
+    assert.equal(fired('git rebase --continue'), null);
+    assert.equal(fired('git rebase --abort'), null);
+  });
+
+  test('only a commit skipping hooks is refused', () => {
+    assert.equal(fired('git commit --no-verify -m x'), 'no-verify');
+    // -n is the short form of --no-verify for commit.
+    assert.equal(fired('git commit -n -m x'), 'no-verify');
+
+    assert.equal(fired('git commit -m x'), null);
+    assert.equal(fired('git commit -am x'), null);
+    assert.equal(fired('git commit --amend --no-edit'), null);
+    // A message that merely starts with a dash is not a flag.
+    assert.equal(fired('git commit -m "-n days later this broke"'), null);
+  });
+
+  // The whole point of the predicates: everyday work must pass untouched, or
+  // the gate gets disabled and takes the rest of the rules with it.
+  test('ordinary work trips nothing', () => {
+    for (const line of [
+      'git status',
+      'git diff --stat',
+      'git log --oneline -20',
+      'git checkout -b DESKTOP-1/x',
+      'git reset --soft main',
+      'pnpm lint:check',
+      'pnpm test:unit',
+      'gh auth status',
+      'gh repo view',
+      'git commit -m "fix(main): guard the empty case"',
+    ]) {
+      assert.equal(fired(line), null, `${line} must not trip a rule`);
+    }
+  });
+
+  test('a rule fires through a wrapper and through a chain', () => {
+    assert.equal(fired('rtk git push origin main'), 'push');
+    assert.equal(fired('pnpm test:unit && git push'), 'push');
+    assert.equal(fired('(git add -A)'), 'add-all');
   });
 });
