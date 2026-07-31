@@ -104,6 +104,27 @@ describe('the self-test', () => {
     }
   });
 
+  test('the ownership hook is exercised through the manifest too', async () => {
+    assert.equal(find(await gateSelftest({ pluginRoot: plugin }), 'owns:selftest').status, 'ok');
+  });
+
+  // Same failure as the gate's, one hook across: the map looks enforced and
+  // every write goes through.
+  test('names it when a write outside the active task is allowed', async () => {
+    const file = join(plugin, 'lib', 'hooks', 'owns.js');
+    const original = await readFile(file, 'utf8');
+    await writeFile(file, original.replace('export async function handle(payload, _context) {', 'export async function handle(payload, _context) {\n  return { block: false };'));
+
+    try {
+      const result = find(await gateSelftest({ pluginRoot: plugin }), 'owns:selftest');
+
+      assert.equal(result.status, 'fail');
+      assert.match(result.detail, /ownership map is not enforced/);
+    } finally {
+      await writeFile(file, original);
+    }
+  });
+
   test('fails the other way when the gate refuses ordinary work', async () => {
     const file = join(plugin, 'lib', 'hooks', 'dispatch.js');
     const original = await readFile(file, 'utf8');

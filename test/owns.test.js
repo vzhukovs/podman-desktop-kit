@@ -14,7 +14,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -113,6 +113,22 @@ describe('with a task running', () => {
   test('a file outside any repository is allowed whatever the session directory', async () => {
     const decision = await write(join(outside, 'notes.md'), repo);
     assert.equal(decision.block, false);
+  });
+
+  // Found by running the hook by hand rather than by a test: git reports the
+  // working tree with symlinks resolved, and every fixture here had already
+  // been through realpath, so both sides agreed by accident. Through a link —
+  // /tmp on macOS, or a repository behind one — the file looked like it was
+  // outside the tree, and the hook allowed everything.
+  test('a path reached through a symlink is still inside the tree', async () => {
+    const link = join(outside, 'link-to-repo');
+    await symlink(repo, link);
+
+    const owned = await write(join(link, 'packages/main/src/plugin/container-registry.ts'));
+    assert.equal(owned.block, false);
+
+    const other = await write(join(link, 'packages/renderer/src/App.svelte'));
+    assert.equal(other.block, true, 'a symlinked path must not read as outside the repository');
   });
 
   test('no file path is not a decision', async () => {
