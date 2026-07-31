@@ -97,25 +97,58 @@ describe('reads', () => {
     assert.deepEqual(call.args.slice(0, 5), ['issue', 'view', '17221', '--repo', 'podman-desktop/podman-desktop']);
   });
 
-  test('linkedPullRequests looks at every state, not just open ones', async () => {
+  /** A timeline response, as the GraphQL query shapes it. */
+  const timeline = (...prs) =>
+    JSON.stringify({
+      data: { repository: { issue: { timelineItems: { nodes: prs } } } },
+    });
+
+  // Searching for the issue number matches it anywhere in a pull request body,
+  // and dependency bumps paste whole upstream changelogs. Asking GitHub what it
+  // considers linked is the difference between an answer and a coincidence.
+  test('linkedPullRequests asks the timeline rather than searching text', async () => {
+    await linkedPullRequests(17221, { config: CONFIG, exec: fakeGh(timeline()) });
+
+    const [call] = calls;
+    assert.deepEqual(call.args.slice(0, 2), ['api', 'graphql']);
+    assert.ok(call.args.some((arg) => arg.includes('CROSS_REFERENCED_EVENT')));
+    assert.ok(call.args.some((arg) => arg.includes('CONNECTED_EVENT')));
+    assert.ok(call.args.includes('number=17221'));
+
+    // A query, not a mutation: the gate must not demand consent to read.
+    assert.ok(!call.args.some((arg) => /\bmutation\b/.test(arg)));
+  });
+
+  test('it reads both event shapes, drops duplicates, and flags reverts', async () => {
     const prs = await linkedPullRequests(17221, {
       config: CONFIG,
       exec: fakeGh(
-        JSON.stringify([
-          { number: 1, state: 'MERGED', title: 'fix: the thing', url: 'u1', mergedAt: '2026-01-01T00:00:00Z' },
-          { number: 2, state: 'MERGED', title: 'Revert "fix: the thing"', url: 'u2', mergedAt: null },
-        ]),
+        timeline(
+          { source: { number: 2, state: 'MERGED', title: 'Revert "fix: the thing"', url: 'u2', mergedAt: null } },
+          { subject: { number: 1, state: 'MERGED', title: 'fix: the thing', url: 'u1', mergedAt: '2026-01-01T00:00:00Z' } },
+          { source: { number: 2, state: 'MERGED', title: 'Revert "fix: the thing"', url: 'u2', mergedAt: null } },
+          // A cross-reference from an issue rather than a pull request.
+          { source: {} },
+        ),
       ),
     });
 
-    assert.ok(calls[0].args.includes('--state'));
-    assert.ok(calls[0].args.includes('all'));
+    assert.equal(prs.length, 2, 'the repeated timeline entry was not collapsed');
 
     // A closed PR that was reverted is the signal for the redo route, and
     // looking only at open PRs would miss the case that most needs archaeology.
+    assert.equal(prs[0].number, 1);
     assert.equal(prs[0].isRevert, false);
     assert.equal(prs[1].isRevert, true);
     assert.equal(prs[1].mergedAt, null);
+  });
+
+  test('an issue nothing references gives an empty list, not an error', async () => {
+    assert.deepEqual(await linkedPullRequests(1, { config: CONFIG, exec: fakeGh(timeline()) }), []);
+    assert.deepEqual(
+      await linkedPullRequests(1, { config: CONFIG, exec: fakeGh(JSON.stringify({ data: { repository: { issue: null } } })) }),
+      [],
+    );
   });
 
   test('gh failing is reported with what gh said', async () => {
