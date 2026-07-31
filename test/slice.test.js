@@ -16,6 +16,7 @@ import { join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
 import { issueDir } from '../lib/config.js';
+import { validateReceipt } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
@@ -23,9 +24,19 @@ import * as state from '../lib/state.js';
 const ISSUE = 4242;
 
 const CONFIG = {
-  repo: { base_branch: 'main' },
+  // npm rather than pnpm: the fixture's scripts are plain node, and the
+  // verification has to actually run them.
+  repo: { base_branch: 'main', package_manager: 'npm' },
   branches: { single: 'DESKTOP-{issue}/{slug}', sliced: 'DESKTOP-{issue}/{index}-{slug}' },
-  slicing: { strategy: 'prefer-independent', max_files_per_slice: 12, layer_order: ['extension-api', 'main', 'ui', 'tests'] },
+  slicing: {
+    strategy: 'prefer-independent',
+    max_files_per_slice: 12,
+    layer_order: ['extension-api', 'main', 'ui', 'tests'],
+    // Installing is covered in the worktree suite; here it would be minutes of
+    // npm for a workspace with no dependencies.
+    verify: { worktree: 'reuse', install: 'never' },
+  },
+  worktrees: { root: null, copy_files: [] },
 };
 
 const API = 'packages/extension-api/src/api.ts';
@@ -35,7 +46,13 @@ const SPEC = 'tests/playwright/theme.spec.ts';
 
 let repo;
 let home;
+let trees;
 let collected;
+
+/** @returns {object} CONFIG with the worktree root pointing beside the fixture */
+function config() {
+  return { ...CONFIG, worktrees: { ...CONFIG.worktrees, root: trees } };
+}
 
 /**
  * A task file, in the shape templates/task.md renders.
@@ -72,6 +89,7 @@ async function task(id, satisfies, owns) {
 before(async () => {
   repo = await initRepo('pdkit-slice-');
   home = await initRepo('pdkit-slice-home-');
+  trees = join(repo, '..', `${repo.split('/').pop()}-trees`);
 
   await seedWorkspace(repo);
   await commitAll(repo, 'chore: seed');
@@ -98,7 +116,7 @@ before(async () => {
 });
 
 after(async () => {
-  await cleanup(repo, home);
+  await cleanup(repo, home, trees);
 });
 
 /**
@@ -428,6 +446,136 @@ describe('set and read', () => {
 
   test('reading an issue with no graph is null, not an error', async () => {
     assert.equal(await slice.read(999999, { home }), null);
+  });
+});
+
+describe('verify', () => {
+  before(async () => {
+    const result = await slice.set({ issue: ISSUE, proposal: proposal(GOOD), facts: collected, config: config(), home });
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+  });
+
+  test('a slice that stands on its own comes back green, with the run attached', async () => {
+    const result = await slice.verifySlice({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, true, result.error ?? result.output);
+    assert.equal(result.verification.standalone, true);
+    assert.equal(result.verification.exitCode, 0);
+    assert.equal(result.verification.revertsCleanly, true);
+    assert.match(result.verification.command, /npm run typecheck && npm run lint:check && npm run test:unit/);
+
+    // The evidence is a receipt in the same format, and it validates — which
+    // is what stops the output block being edited into a green one afterwards.
+    const artefact = await readFile(join(issueDir(home, ISSUE), 'verify', 'S1.md'), 'utf8');
+    assert.equal(validateReceipt(artefact).ok, true, validateReceipt(artefact).reason);
+    assert.match(artefact, /typecheck ok/);
+  });
+
+  // Symbol dependence: nothing in the file lists says slice #2 needs #1, and
+  // this is the only thing that does.
+  test('a slice that needs another one is red standalone, and the redness is the evidence', async () => {
+    const result = await slice.verifySlice({
+      issue: ISSUE,
+      index: 2,
+      repoRoot: repo,
+      standalone: true,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.verification.standalone, true);
+    assert.equal(result.verification.exitCode, 2);
+
+    const artefact = await readFile(join(issueDir(home, ISSUE), 'verify', 'S2.md'), 'utf8');
+    assert.equal(validateReceipt(artefact).ok, true, 'a failed run still produces a valid capture');
+    assert.match(artefact, /cannot find name RunOptions/);
+  });
+
+  test('the same slice on top of what it is based on is green', async () => {
+    const result = await slice.verifySlice({
+      issue: ISSUE,
+      index: 2,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, true, result.error ?? result.output);
+    assert.equal(result.verification.standalone, false);
+  });
+
+  test('the result is stored on the slice, not returned and forgotten', async () => {
+    const stored = await slice.read(ISSUE, { home });
+    const second = stored.slices.find((entry) => entry.index === 2);
+
+    assert.equal(second.verification.ok, true);
+    assert.equal(second.verification.evidence, 'verify/S2.md');
+    assert.match(second.verification.diffDigest, /^sha256:[0-9a-f]{64}$/);
+  });
+
+  test('verifyAll walks in merge order and reports what is left standing', async () => {
+    const result = await slice.verifyAll({ issue: ISSUE, repoRoot: repo, home, config: config(), packageMap: packageMap(repo) });
+
+    // A stack stays contiguous: #2 follows the slice it is based on rather
+    // than waiting for every independent slice to go first.
+    assert.deepEqual(result.results.map((entry) => entry.index), [1, 2, 3]);
+    assert.equal(result.ok, true, JSON.stringify(result.results));
+    assert.deepEqual(result.problems, []);
+  });
+
+  test('a slice that claims main and fails there is named by independenceProblems', async () => {
+    // #3 promoted to branch from main while it is really the ui work — flip its
+    // stored verification to red and ask the same question verifyAll asks.
+    const graph = await slice.read(ISSUE, { home });
+    graph.slices[2].verification.ok = false;
+
+    const problems = slice.independenceProblems(graph);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0].detail, /#3 does not build from main/);
+  });
+});
+
+describe('checkFreshness', () => {
+  test('a verification of the current diff is fresh', async () => {
+    const graph = await slice.read(ISSUE, { home });
+    const fresh = await slice.checkFreshness({ graph, index: 1, repoRoot: repo, base: 'main' });
+
+    assert.equal(fresh.fresh, true);
+  });
+
+  // The property the whole gate leans on: "verified" must not decay into
+  // "was verified once".
+  test('a diff that moved since the run is not fresh, and says why', async () => {
+    await writeFiles(repo, { [API]: '// SPDX-License-Identifier: Apache-2.0\nexport const version = 2;\nexport interface RunOptions { env?: string }\n' });
+    await commitAll(repo, 'fix(api): bump the version');
+
+    const graph = await slice.read(ISSUE, { home });
+    const checked = await slice.checkFreshness({ graph, index: 1, repoRoot: repo, base: 'main' });
+
+    assert.equal(checked.fresh, false);
+    assert.match(checked.reason, /changed since it was verified/);
+    assert.notEqual(checked.digest, checked.expected);
+
+    await git(['revert', '--no-edit', 'HEAD'], repo);
+  });
+
+  test('a slice that was never verified is not fresh either', async () => {
+    const graph = await slice.read(ISSUE, { home });
+    graph.slices[0].verification = null;
+
+    const checked = await slice.checkFreshness({ graph, index: 1, repoRoot: repo, base: 'main' });
+    assert.equal(checked.fresh, false);
+    assert.match(checked.reason, /never been verified/);
   });
 });
 

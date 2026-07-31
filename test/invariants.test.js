@@ -78,6 +78,30 @@ describe('section 2.2, invariant 1: lib/state.js is the only writer of state.jso
   });
 });
 
+describe('section 2.2, invariant 3: a verification is produced, never supplied', () => {
+  test('only lib/slice.js names slices.json in code', async () => {
+    const offenders = (await modules())
+      .filter((module) => module.name !== 'slice.js')
+      .filter((module) => module.code.includes('slices.json'))
+      .map((module) => module.name);
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `these modules name slices.json: ${offenders.join(', ')}. The Standalone column is rendered from that ` +
+        'file, so a second writer is a way to type a green tick for a build that never ran.',
+    );
+  });
+
+  test('and it exports no way to write one in', async () => {
+    const slice = await import('../lib/slice.js');
+
+    for (const name of ['save', 'write', 'store', 'setVerification', 'update']) {
+      assert.equal(typeof slice[name], 'undefined', `lib/slice.js exports "${name}"`);
+    }
+  });
+});
+
 describe('section 2.2, invariant 2: the journal is append-only', () => {
   test('lib/journal.js opens files only for appending', async () => {
     const source = (await modules()).find((module) => module.name === 'journal.js').code;
