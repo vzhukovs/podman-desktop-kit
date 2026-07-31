@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
+import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
 import { candidatesFor, runScript, scopedScripts } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
@@ -87,6 +87,36 @@ describe('the runner', () => {
     assert.equal(checks.length, CHECK_IDS.length);
     assert.deepEqual(checks.map((check) => check.id), CHECK_IDS);
     for (const check of checks) assert.equal(typeof check.run, 'function', `${check.id} has no run()`);
+  });
+
+  // The second pass of the /pd:pr flow needs only these four. Re-running
+  // `pnpm test` on three packages to re-read a paragraph is minutes of
+  // nothing.
+  test('loadChecks can be narrowed, and refuses a name it does not have', async () => {
+    const narrowed = await loadChecks(BODY_DEPENDENT);
+
+    assert.deepEqual(narrowed.map((check) => check.id).sort(), [...BODY_DEPENDENT].sort());
+    await assert.rejects(() => loadChecks(['nope']), /no such check: nope/);
+  });
+
+  test('every body-dependent check really does read the body', async () => {
+    const prepared = await context();
+
+    for (const id of BODY_DEPENDENT) {
+      const checks = await loadChecks([id]);
+      const withoutBody = (await run({ ...prepared, prBody: null }, checks)).results[0];
+
+      // Either it has nothing to say about this diff, or it defers. What it
+      // must never do is pass on a body it has not seen.
+      assert.notEqual(withoutBody.status, 'fail', `${id} should not fail merely for lack of a body`);
+      if (withoutBody.status === 'pass') {
+        assert.match(
+          withoutBody.summary,
+          /nothing|untouched|no requirements/,
+          `${id} passed without a body for a reason that is not "nothing to check"`,
+        );
+      }
+    }
   });
 
   test('prepare gathers the repository state once, for every check', async () => {
