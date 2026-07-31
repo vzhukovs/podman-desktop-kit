@@ -47,7 +47,20 @@ slicing:
   strategy: prefer-independent   # prefer-independent | stack | single
   max_files_per_slice: 12
   require_standalone_verify: true
-  layer_order: [extension-api, main, preload, renderer, ui, extensions, tests, website]
+  # Every package in the fork has a place in this list. Three of them —
+  # packages/api, packages/webview-api and storybook — used to fall through to
+  # `other`, which meant their merge order was decided by nothing at all. The
+  # order is read twice: lower layers merge first, and layer decides which
+  # reviewers a slice will draw.
+  # One line: lib/yaml.js parses a deliberate subset and an inline sequence has
+  # to close on the line it opened.
+  layer_order: [extension-api, api, webview-api, main, preload, renderer, ui, storybook, extensions, tests, website]
+  verify:
+    # reuse keeps one tree per issue so node_modules survives between runs.
+    # ephemeral is correct and slow: every slice pays a full install, and a gate
+    # that is expensive to pass is a gate people route around.
+    worktree: reuse              # reuse | ephemeral
+    install: on-lockfile-change  # on-lockfile-change | always | never
 
 # Script name overrides for preflight (section 7). Empty by default: names are
 # resolved from the repository's own package.json through a candidate chain,
