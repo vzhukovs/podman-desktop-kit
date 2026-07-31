@@ -62,8 +62,16 @@ misses one gets redone rather than patched:
 
 ## Then
 
-`pdkit render plan --issue <n> --values <f> --path plan.md`, then
-`pdkit state <n> --to planned`.
+`pdkit render plan --issue <n> --values <f> --path plan.md`, one
+`pdkit render task --issue <n> --values <f> --path tasks/T<k>.md` per task, then
+`pdkit task sync --issue <n>` so the ownership map the pre-write hook enforces
+comes from the task files rather than from anyone's memory of them.
+
+`pdkit plan check <n>` before showing the plan to anybody: everything it finds
+is something `/pd:plan-review` would find anyway, and finding it here costs one
+command instead of a review round.
+
+Then `pdkit state <n> --to planned`.
 
 Approval is a human action. On approval — and only then — `pdkit ids freeze
 <n>` and `pdkit state <n> --to plan-approved`. The freeze is what makes R-IDs

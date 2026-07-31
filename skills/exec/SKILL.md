@@ -15,16 +15,31 @@ third attempt, and that is where drift starts.
 `pdkit state <issue>` says `plan-approved`. Implementing an unapproved plan
 means the requirements can still move under the code.
 
+## Once, before the first task
+
+```
+pdkit task sync --issue <n>
+```
+
+Reads the `Owns` sets out of the task files into the state record, which is
+what the pre-write hook enforces. Skip it and the hook has nothing to enforce:
+it allows every write and says so, which is a worse failure than a refusal
+because it looks like nothing happened.
+
 ## Per task
 
-1. Give the worker the task, its `Owns` list, its `Done when` command, and the
+1. `pdkit task start --issue <n> --task T1` in the working tree the task runs
+   in. From here until `task stop`, writes outside `T1`'s files are refused and
+   completing the task requires its receipt.
+2. Give the worker the task, its `Owns` list, its `Done when` command, and the
    frozen interfaces. Nothing else — not the whole plan, not the issue thread.
-2. The worker touches **only** the files in `Owns`. Anything else is a
+3. The worker touches **only** the files in `Owns`. Anything else is a
    planning error to report, not a boundary to cross.
-3. It finishes by running the `Done when` command and capturing the real
-   output.
-4. Commit: conventional subject, one `Signed-off-by`. Squash with
+4. `pdkit receipt write --issue <n> --task T1` runs the `Done when` command and
+   records what it printed.
+5. Commit: conventional subject, one `Signed-off-by`. Squash with
    `git reset --soft <base> && git commit`, never `rebase -i`.
+6. `pdkit task stop`.
 
 Tasks that share no files may run in parallel. Tasks that do share files were
 mis-planned — say so instead of serialising around it.
@@ -44,10 +59,20 @@ because the diff no longer corresponds to anything that was agreed.
 A task is done when the output of its `Done when` command is captured
 verbatim — not summarised, not trimmed to the interesting part.
 
-**As of stage 1 this is discipline, not enforcement.** The TaskCompleted hook
-that refuses a completion without a receipt lands in stage 2. Until then, a
-task marked done without captured output is exactly the claim receipts exist
-to replace, and nothing will stop you.
+`pdkit receipt write` runs the command itself. There is no parameter for
+output text, so there is nothing to compose: the choice between "the tests
+passed" and the test runner's own words is not offered.
+
+Two refusals to expect from the TaskCompleted hook, and they mean different
+things:
+
+- **no receipt, or one that no longer matches its digest** — run the command
+  above. A receipt edited after capture is refused by arithmetic, not by
+  suspicion.
+- **a valid receipt for a command that exited non-zero** — the work is not
+  finished. Fix it and capture again. If the command itself is wrong, that is
+  a finding about the plan; report it rather than editing `Done when` into
+  something that passes.
 
 ## Then
 
