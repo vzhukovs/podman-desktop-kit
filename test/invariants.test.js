@@ -105,6 +105,18 @@ describe('the hook table has one owner', () => {
       assert.ok(present.has(`hooks/${handler}`), `${event} -> lib/hooks/${handler} does not exist`);
     }
   });
+
+  // The gate must not be switchable off by a module that fails to load. Every
+  // other event may fail open; this one may not, and the difference is one
+  // entry in a list that is easy to edit without noticing what it decides.
+  test('pre-bash fails closed', async () => {
+    const { FAIL_CLOSED, HOOK_HANDLERS } = await import('../lib/hooks/events.js');
+
+    assert.ok(FAIL_CLOSED.includes('pre-bash'), 'pre-bash guards upstream writes and must fail closed');
+    for (const event of FAIL_CLOSED) {
+      assert.ok(event in HOOK_HANDLERS, `FAIL_CLOSED names "${event}", which is not a registered event`);
+    }
+  });
 });
 
 describe('licensing', () => {
