@@ -163,7 +163,7 @@ describe('verifying', () => {
     await readyIssue(1014);
     await open({ issue: 1014, branch: 'DESKTOP-1014/corrupt', home });
 
-    const file = join(paths(home).gates, `${encodeURIComponent('DESKTOP-1014/corrupt')}.json`);
+    const file = join(paths(home).gates, `${encodeURIComponent('push:DESKTOP-1014/corrupt')}.json`);
     await writeFile(file, '{ not json');
 
     assert.equal((await verify({ branch: 'DESKTOP-1014/corrupt', home })).valid, false);
@@ -173,11 +173,12 @@ describe('verifying', () => {
     await readyIssue(1015);
     await open({ issue: 1015, branch: 'DESKTOP-1015/tampered', home });
 
-    const file = join(paths(home).gates, `${encodeURIComponent('DESKTOP-1015/tampered')}.json`);
+    const file = join(paths(home).gates, `${encodeURIComponent('push:DESKTOP-1015/tampered')}.json`);
     await writeFile(
       file,
       JSON.stringify({
         token: 'x',
+        kind: 'push',
         branch: 'DESKTOP-1015/something-else',
         issue: 1015,
         slice: null,
@@ -249,5 +250,88 @@ describe('the journal', () => {
     const events = (await readJournal({ issue: 1040 }, { home })).map((entry) => entry.event);
     assert.ok(events.includes('gate-open'), 'gate-open was not journalled');
     assert.ok(events.includes('gate-spent'), 'gate-spent was not journalled');
+  });
+});
+
+describe('kinds of write', () => {
+  /** Walk an issue to a state where a pull request exists to reply on. */
+  async function openedPr(issue) {
+    await readyIssue(issue);
+    await transition(issue, 'pr-open', { home });
+  }
+
+  // The finding that made kinds necessary: replying to a review thread is a
+  // write to someone else's repository, it belongs to no branch, and the issue
+  // is in review rather than preflight-green when it happens. Before this there
+  // was no token that could be issued for it at all.
+  test('a reply token is issued for a pull request, from a review state', async () => {
+    await openedPr(1050);
+
+    const issued = await open({ issue: 1050, pr: 17577, kind: 'reply', home });
+    assert.equal(issued.ok, true, issued.error);
+    assert.equal(issued.kind, 'reply');
+
+    assert.equal((await verify({ pr: 17577, kind: 'reply', home })).valid, true);
+  });
+
+  test('a reply token is not a push token, in either direction', async () => {
+    await openedPr(1051);
+    await open({ issue: 1051, pr: 17577, kind: 'reply', home });
+
+    // The branch key and the pull request key cannot collide, so a reply token
+    // can never stand in for consent to publish code.
+    const asPush = await verify({ branch: 'DESKTOP-1051/whatever', home });
+    assert.equal(asPush.valid, false);
+    assert.match(asPush.reason, /no consent token for push/);
+  });
+
+  test('a push token cannot be issued from a review state, and a reply token cannot be issued before preflight', async () => {
+    await openedPr(1052);
+
+    const push = await open({ issue: 1052, branch: 'DESKTOP-1052/late', kind: 'push', home });
+    assert.equal(push.ok, false);
+    assert.match(push.error, /push token is only issued from preflight-green/);
+
+    await readyIssue(1053);
+    const reply = await open({ issue: 1053, pr: 2871, kind: 'reply', home });
+    assert.equal(reply.ok, false);
+    assert.match(reply.error, /reply token is only issued from pr-open, review-in-progress/);
+  });
+
+  test('a token for one pull request does not cover another', async () => {
+    await openedPr(1054);
+    await open({ issue: 1054, pr: 17577, kind: 'reply', home });
+
+    assert.equal((await verify({ pr: 17578, kind: 'reply', home })).valid, false);
+  });
+
+  test('a reply token needs a pull request number, and says so', async () => {
+    await openedPr(1055);
+
+    const issued = await open({ issue: 1055, kind: 'reply', home });
+    assert.equal(issued.ok, false);
+    assert.match(issued.error, /needs --pr/);
+  });
+
+  // The batch, not the thread, is the unit of consent: a human reads eight
+  // drafted replies in one go, and a token per thread would mean confirming
+  // eight times. It still expires with the TTL.
+  test('a reply token covers the batch it was shown for, until it is spent or expires', async () => {
+    await openedPr(1056);
+    const issued = await open({ issue: 1056, pr: 17577, kind: 'reply', home });
+
+    assert.equal((await verify({ pr: 17577, kind: 'reply', token: issued.token, home })).valid, true);
+    assert.equal((await verify({ pr: 17577, kind: 'reply', token: issued.token, home })).valid, true);
+
+    assert.equal((await close({ pr: 17577, kind: 'reply' }, { home })).ok, true);
+    assert.equal((await verify({ pr: 17577, kind: 'reply', home })).valid, false);
+  });
+
+  test('a kind nobody defined is refused rather than treated as a push', async () => {
+    await openedPr(1057);
+
+    const issued = await open({ issue: 1057, pr: 1, kind: 'merge', home });
+    assert.equal(issued.ok, false);
+    assert.match(issued.error, /not a kind of write/);
   });
 });

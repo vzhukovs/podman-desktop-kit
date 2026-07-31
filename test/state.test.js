@@ -69,9 +69,12 @@ describe('transition table integrity', () => {
     }
   });
 
-  test('gate-eligible states exist in the table', () => {
-    for (const state of GATE_ELIGIBLE) {
-      assert.ok(state in TRANSITIONS, `${state} is gate-eligible but not a state`);
+  test('gate-eligible states exist in the table, for every kind of write', () => {
+    for (const [kind, states] of Object.entries(GATE_ELIGIBLE)) {
+      assert.ok(states.length > 0, `${kind} can never be issued`);
+      for (const state of states) {
+        assert.ok(state in TRANSITIONS, `${state} is gate-eligible for ${kind} but not a state`);
+      }
     }
   });
 });

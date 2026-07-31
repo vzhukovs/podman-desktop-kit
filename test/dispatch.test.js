@@ -156,7 +156,7 @@ describe('the gate', () => {
 
     const decision = await handle(bash('git push origin main'));
     assert.equal(decision.block, true);
-    assert.match(decision.reason, /no consent token for main/);
+    assert.match(decision.reason, /no consent token for push main/);
   });
 
   test('the refspec is read through HEAD: and through -u', async () => {
@@ -170,7 +170,7 @@ describe('the gate', () => {
   test('gh pr create is gated on its head branch', async () => {
     const decision = await handle(bash('gh pr create --base main --head DESKTOP-2001/other --title x'));
     assert.equal(decision.block, true);
-    assert.match(decision.reason, /no consent token for DESKTOP-2001\/other/);
+    assert.match(decision.reason, /no consent token for push DESKTOP-2001\/other/);
 
     await gate.open({ issue: 2001, branch: BRANCH, home });
     assert.equal((await handle(bash(`gh pr create --base main --head ${BRANCH} --title x`))).block, false);
@@ -209,7 +209,7 @@ describe('failing closed', () => {
   // failure inside the gate rather than a simulated one.
   test('a failure while spending the token refuses', async () => {
     await gate.open({ issue: 2001, branch: BRANCH, home });
-    const file = join(home, 'gates', `${encodeURIComponent(BRANCH)}.json`);
+    const file = join(home, 'gates', `${encodeURIComponent(`push:${BRANCH}`)}.json`);
 
     await chmod(file, 0o400);
     try {
@@ -219,5 +219,68 @@ describe('failing closed', () => {
     } finally {
       await chmod(file, 0o600);
     }
+  });
+});
+
+describe('writes that belong to a pull request rather than a branch', () => {
+  before(async () => {
+    await readyIssue(2002);
+    await transition(2002, 'pr-open', { home });
+  });
+
+  // The hole this closes. Before the token had a kind, every write with no
+  // branch of its own fell back to the current branch — so a token issued to
+  // push slice #1 authorised replying in a review, commenting on the issue,
+  // and any gh api mutation, all without anyone confirming those.
+  test('a push token does not authorise a review write', async () => {
+    await readyIssue(2003);
+    await gate.open({ issue: 2003, branch: BRANCH, kind: 'push', home });
+
+    const decision = await handle(bash('gh pr review 17577 --approve'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /no consent token for reply #17577/);
+  });
+
+  test('a reply token for that pull request lets it through', async () => {
+    await gate.open({ issue: 2002, pr: 17577, kind: 'reply', home });
+
+    const decision = await handle(bash('gh pr comment 17577 --body "fixed"'));
+    assert.equal(decision.block, false, decision.reason);
+  });
+
+  test('and does not cover another pull request', async () => {
+    await gate.open({ issue: 2002, pr: 17577, kind: 'reply', home });
+
+    const decision = await handle(bash('gh pr comment 17578 --body "fixed"'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /no consent token for reply #17578/);
+  });
+
+  // The batch is the unit of consent, so the token survives the first reply.
+  test('the token is not spent on the first write', async () => {
+    await gate.open({ issue: 2002, pr: 17577, kind: 'reply', home });
+
+    assert.equal((await handle(bash('gh pr comment 17577 --body a'))).block, false);
+    assert.equal((await handle(bash('gh pr comment 17577 --body b'))).block, false);
+  });
+
+  // A raw GraphQL mutation carries a thread id and no pull request number, so
+  // there is nothing to check a token against. Refused with the command that
+  // does work, rather than matched against whatever token is lying around.
+  test('a mutation that names no pull request is refused with a remedy', async () => {
+    await gate.open({ issue: 2002, pr: 17577, kind: 'reply', home });
+
+    const decision = await handle(bash('gh api graphql -f query="mutation { resolveReviewThread(input: {threadId: \\"x\\"}) { thread { id } } }"'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /does not name a pull request/);
+    assert.match(decision.reason, /pdkit pr reply --pr/);
+  });
+
+  test('commenting on an upstream issue is refused whatever token exists', async () => {
+    await gate.open({ issue: 2002, pr: 17577, kind: 'reply', home });
+
+    const decision = await handle(bash('gh issue comment 17221 --body "any update?"'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /human action/);
   });
 });

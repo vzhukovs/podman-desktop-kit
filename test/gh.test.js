@@ -26,6 +26,7 @@ import {
   linkedPullRequests,
   peerCheckFailures,
   pullRequest,
+  replyToThread,
   reviewThreads,
   upstreamSlug,
 } from '../lib/gh.js';
@@ -420,5 +421,72 @@ describe('creating a pull request', () => {
       /no consent token/,
     );
     assert.equal(calls.length, 0);
+  });
+});
+
+describe('replying to a review thread', () => {
+  const REPLIED = JSON.stringify({ data: { addPullRequestReviewThreadReply: { comment: { url: 'https://example/c1' } } } });
+
+  before(async () => {
+    // A pull request has to exist before there is anything to reply on.
+    await transition(6001, 'pr-open', { home });
+  });
+
+  test('without a reply token it refuses, and nothing is sent', async () => {
+    await assert.rejects(
+      () => replyToThread({ pr: 17577, threadId: 't1', body: 'done', home, exec: fakeGh(REPLIED) }),
+      /refusing to reply on #17577.*no consent token/s,
+    );
+
+    assert.equal(calls.length, 0);
+  });
+
+  test('a push token is not consent to reply', async () => {
+    // The issue is in pr-open, so no push token can even be issued; what is
+    // being asserted is that the two keys cannot be found for one another.
+    await gate.open({ issue: 6001, pr: 17578, kind: 'reply', home });
+
+    await assert.rejects(() => replyToThread({ pr: 17577, threadId: 't1', body: 'done', home, exec: fakeGh(REPLIED) }), /no consent token/);
+  });
+
+  test('with a token the reply is sent, and resolving is a second call after it', async () => {
+    await gate.open({ issue: 6001, pr: 17577, kind: 'reply', home });
+
+    const result = await replyToThread({
+      pr: 17577,
+      threadId: 'PRRT_kwDO',
+      body: 'Fixed in 8374334.',
+      resolve: true,
+      home,
+      exec: (file, args, options, callback) => {
+        calls.push({ file, args, options, stdin: null });
+        const body = args.some((arg) => arg.includes('resolveReviewThread'))
+          ? JSON.stringify({ data: { resolveReviewThread: { thread: { id: 't', isResolved: true } } } })
+          : REPLIED;
+        queueMicrotask(() => callback(null, body, ''));
+        return { stdin: { end: () => {} } };
+      },
+    });
+
+    assert.equal(result.url, 'https://example/c1');
+    assert.equal(result.resolved, true);
+
+    // Reply first, resolve second: a thread resolved before the answer lands is
+    // a thread the reviewer sees closed with nothing in it.
+    assert.ok(calls[0].args.some((arg) => arg.includes('addPullRequestReviewThreadReply')));
+    assert.ok(calls[0].args.includes('body=Fixed in 8374334.'));
+    assert.ok(calls[1].args.some((arg) => arg.includes('resolveReviewThread')));
+  });
+
+  // Eight drafted replies read in one go are one act of consent. Spending on
+  // the first would refuse the other seven the human just approved.
+  test('the token covers the whole batch rather than one thread', async () => {
+    await gate.open({ issue: 6001, pr: 17577, kind: 'reply', home });
+
+    for (const threadId of ['t1', 't2', 't3']) {
+      await replyToThread({ pr: 17577, threadId, body: 'ok', home, exec: fakeGh(REPLIED) });
+    }
+
+    assert.equal(calls.length, 3);
   });
 });

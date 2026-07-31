@@ -119,16 +119,30 @@ journal:
 
 review:
   bots_collapsed: [coderabbitai]
+  # A match EXPANDS a collapsed bot thread back to full text. It never collapses
+  # anything and is never consulted for a human: dropping a security finding
+  # because it lacked a configured word is the mistake the filter exists to
+  # prevent, so the filter does not get to make it.
   bot_escalate: [security, data-loss, correctness]
+  stale_after_days: 14         # uncalibrated, like the quickfix thresholds
 
 gates:
   push_ttl: 10m
-  # Exactly one state, and a one-element list here is not redundancy.
-  # slices-approved comes BEFORE preflight; a gate that opens from there lets a
-  # push past preflight entirely. Both routes — quickfix and slices-approved —
-  # converge on preflight-green anyway (section 1), so the second entry added
-  # nothing and opened a way around the one check that matters.
-  require_states: [preflight-green]
+  # require_states used to live here and was deleted in 0.6 — that is what
+  # closed open item B, and it closed by removal rather than by finding the key
+  # a job.
+  #
+  # Which states a token may be issued from now lives in state.GATE_ELIGIBLE,
+  # keyed by what is being written: push only from preflight-green, reply from
+  # pr-open and review-in-progress. The only thing a config key could really do
+  # is WIDEN one of those lists, and a widened push list is a token issued
+  # before preflight ran. Every other piece of this plugin holds because the
+  # unwanted input does not exist — receipts have no text parameter, the verify
+  # verdict has no way in — and a knob that opens the gate wider contradicts
+  # exactly that.
+  #
+  # push_ttl stays: how fast consent goes stale is a real preference, and no
+  # value of it lets a write through that was not confirmed.
 
 worktrees:
   enabled: true

@@ -80,10 +80,25 @@ describe('coverage of section 6', () => {
     });
   }
 
-  test('every GitHub write goes through the gate, never a bare allow', () => {
+  // Gated or denied outright — never allowed. Denying is the stronger answer
+  // and belongs to the writes no state in section 1 authorises at all: nothing
+  // in this workflow has pdkit posting to someone else's tracker.
+  test('every GitHub write is gated or denied, never a bare allow', () => {
     for (const rule of RULES.filter((r) => r.program === 'gh')) {
-      assert.equal(rule.action, 'gate', `${rule.id}: gh writes must be gated`);
+      assert.ok(['gate', 'deny'].includes(rule.action), `${rule.id}: gh writes must not be allowed`);
     }
+  });
+
+  // Consent to publish code is not consent to speak in a review. Before the
+  // token had a kind, the push token for whatever branch you happened to be
+  // standing on authorised every one of these.
+  test('a write to an open pull request asks for a reply token, not a push token', () => {
+    const kindOf = (id) => RULES.find((rule) => rule.id === id)?.gate ?? 'push';
+
+    assert.equal(kindOf('push'), 'push');
+    assert.equal(kindOf('gh-pr-create'), 'push');
+    assert.equal(kindOf('gh-pr-write'), 'reply');
+    assert.equal(kindOf('gh-api-write'), 'reply');
   });
 });
 
@@ -105,7 +120,7 @@ describe('selectivity', () => {
   });
 
   test('gh pr writes are gated, gh pr reads are not', () => {
-    assert.equal(fired('gh pr create --base main --head x'), 'gh-pr-write');
+    assert.equal(fired('gh pr create --base main --head x'), 'gh-pr-create');
     assert.equal(fired('gh pr merge 12'), 'gh-pr-write');
     assert.equal(fired('gh pr review 12 --approve'), 'gh-pr-write');
 

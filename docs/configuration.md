@@ -97,7 +97,7 @@ the shipped default through.
 | `worktrees.root` | Where trees go. Beside the fork, never inside it: a checkout under the repository shows up in `git status` and eventually in a pull request |
 | `worktrees.copy_files` | Copied into every new tree, and again after each verification reset — `git clean` takes them |
 | `quickfix.max_changed_lines`, `quickfix.max_files` | Thresholds above which a quickfix escalates back to triage |
-| `gates.push_ttl`, `gates.require_states` | When a push gate may be issued at all |
+| `gates.push_ttl` | How fast consent goes stale. Which states a token may be issued from is not configurable — see `state.GATE_ELIGIBLE` |
 
 ### The package map
 
