@@ -13,7 +13,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { TEMPLATES, render, write } from '../lib/render.js';
+import { TEMPLATES, render, validateSections, write } from '../lib/render.js';
 
 let home;
 
@@ -129,5 +129,45 @@ describe('write', () => {
     });
 
     assert.ok((await readFile(path, 'utf8')).length > 0);
+  });
+});
+
+describe('validateSections', () => {
+  test('a rendered artefact has every section its template declares', async () => {
+    for (const name of Object.keys(TEMPLATES)) {
+      const text = await render(name, await fillAll(name));
+      const result = await validateSections(name, text);
+
+      assert.deepEqual(result.missing, [], `${name} lost ${result.missing.join(', ')} on render`);
+    }
+  });
+
+  // The case this exists for: an artefact rewritten by an agent reads as one
+  // with less to say rather than as one with something missing. A PR body
+  // without `Steps to check` is not a shorter PR body.
+  test('a dropped section is reported by name', async () => {
+    const text = (await render('prBody', await fillAll('prBody'))).replace(/### How to test this PR\?/, '');
+    const result = await validateSections('prBody', text);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.missing, ['How to test this PR?']);
+  });
+
+  test('a heading whose text varies per issue still matches', async () => {
+    const result = await validateSections('plan', '# PLAN: DESKTOP-18248\n');
+
+    assert.ok(!result.missing.includes('PLAN: DESKTOP-{{issue}}'));
+  });
+
+  // An artefact that says more than the template asked for is not a defect,
+  // and reporting it as one would push whoever wrote it to say less.
+  test('extra sections are not reported', async () => {
+    const text = `${await render('reviewReport', await fillAll('reviewReport'))}\n## Anything else\n`;
+
+    assert.equal((await validateSections('reviewReport', text)).ok, true);
+  });
+
+  test('an unknown template is an error', async () => {
+    await assert.rejects(() => validateSections('nope', ''), /no template named/);
   });
 });

@@ -17,17 +17,21 @@
 ```
 
 ## Tasks
+<!-- One block per task, in exactly this shape — `pdkit plan check` reads them
+     back, so it is a contract and not a suggestion:
 
-### T1: {{taskTitle}}
-- Satisfies: {{satisfies}}
-- Owns: {{ownedFiles}}
-  <!-- Exclusive. Two tasks sharing a file is a planning error, not a
-       coordination problem. Enforced by the pre-write hook. -->
-- Done when: `{{command}}`
-  <!-- An executable command and its expected output. Prose is not accepted:
-       "works correctly" cannot be checked by anyone but its author. -->
-- Steps:
-  1. {{step}}
+       ### T1: <title>
+       - Satisfies: R1, R3
+       - Owns: packages/main/src/plugin/exec.ts
+       - Done when: `pnpm test:main -- exec.spec.ts`
+       - Steps:
+         1. <step>
+
+     Owns is exclusive: two tasks sharing a file is a planning error, not a
+     coordination problem, and the pre-write hook enforces it. Done when is an
+     executable command, because "works correctly" cannot be checked by anyone
+     except its author. One to three files per task. -->
+{{tasks}}
 
 ## Upstream compliance
 - SPDX headers needed: {{spdx}}
