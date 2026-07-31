@@ -3,10 +3,11 @@
 Scenarios, in the order you are likely to hit them. Each names the commands and
 the decision points that are yours rather than the plugin's.
 
-**What works today:** scenarios 1 and 2, up to and including an open pull
-request, with the plan reviewed before the code and the diff audited after it.
+**What works today:** scenarios 1 through 5 and 7, up to and including an open
+pull request, its review, and coming back to it after upstream has moved.
 Everything marked *(stage N)* below is registered but still a stub — the skill
-says so rather than improvising.
+says so rather than improvising. Publishing itself has been exercised once end
+to end; replying to a live review has not (see the plan for stage 4).
 
 ## Before anything
 
@@ -104,19 +105,65 @@ pdkit slice cascade --issue 12345 --from 1    rebase the dependents, verify agai
 
 Anything that stopped being green is reported, not rebased into a lie.
 
-## 4. Coming back after a break
+## 4. A pull request that has gone stale
+
+```
+/pd:pr-status                        → what is open, what is blocked, how idle
+/pd:pr-sync 17577                    → threads, fixes, replies
+```
+
+What the dashboard tells you, and what it deliberately does not:
+
+```
+pdkit pr refresh 17577               read GitHub into prs.json
+pdkit pr ci 17577                    the CI verdict, measured
+pdkit pr threads 17577               bots collapsed, threads mapped to slices
+```
+
+**A red job has two possible meanings and they are measured apart.** `fail` is
+red here and green on other people's open pull requests. `inconclusive` is the
+same job red on theirs too — a warning, not a block, because refusing to
+proceed over something the change did not do teaches people to work around the
+gate. `flake` is the same job answering twice on one commit. A `pending` job
+prints its age: a check stuck IN_PROGRESS since June is a finding about the
+pull request, not about CI.
+
+**Threads are not the whole of the feedback.** Review submissions and top-level
+comments come back too, and on a stale PR that is usually where the blocking
+comment is. Bots are collapsed to one line with a link — never dropped, and an
+escalation word expands one back.
+
+Publishing takes two tokens, because they are two different acts of consent:
+
+```
+pdkit gate open --issue 17221 --branch <b>              push, per branch, spent on use
+pdkit gate open --issue 17221 --pr 17577 --kind reply   replies, per PR, covers the batch
+```
+
+Splitting an already-open pull request, when upstream asks:
+
+```
+pdkit slice suggest --issue 17221 --from-pr 17577
+pdkit pr threads 17577               which new slice each existing thread moves to
+```
+
+## 5. Coming back after a break
 
 ```
 /pd:sync
-/pd:resume 12345      → upstream drift, rebase, conflicts             (stage 4)
-/pd:pr-sync 2871      → review threads accumulated meanwhile          (stage 4)
+/pd:resume 12345      → upstream drift, rebase, conflicts
 /pd:preflight 12345
 /pd:pr 12345
 ```
 
+`pdkit drift 12345` measures each slice from **its own** branch point, and says
+separately which upstream commits touched lines the plan cites. A commit in the
+file is a candidate for a mechanical conflict; a commit in those lines is a
+candidate for a semantic one, and semantic means stop.
+
 A previous green preflight means nothing after a rebase.
 
-## 5. Reviewing someone else's PR
+## 6. Reviewing someone else's PR
 
 ```
 /pd:review-pr 2903                                                    (stage 5)
@@ -124,7 +171,7 @@ A previous green preflight means nothing after a rebase.
 
 Outside the issue lifecycle entirely.
 
-## 6. Two issues at once
+## 7. Two issues at once
 
 ```
 pdkit worktree create --issue 12345

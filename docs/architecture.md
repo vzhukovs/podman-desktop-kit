@@ -50,7 +50,12 @@ Three things are enforced rather than requested, and each closes a failure that
 was actually observed:
 
 - **The push gate.** `git push` and `gh pr create` are denied without a
-  short-lived token for that exact branch.
+  short-lived token for that exact branch. A token knows what it is consent
+  for: a `push` token is keyed by branch and issued only from `preflight-green`;
+  a `reply` token is keyed by pull request, for writes that belong to no branch.
+  Keys of different kinds cannot be found for one another, so consent to publish
+  code is not consent to speak in a review — which it silently was before the
+  kinds existed.
 - **File ownership.** A worker writing outside its task's `Owns` set fails.
   This turns the ownership map from a request into an invariant and removes a
   class of merge conflicts rather than resolving them.

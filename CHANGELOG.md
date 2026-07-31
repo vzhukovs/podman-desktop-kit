@@ -134,7 +134,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bodies for `slice` and `worktree-kit`; `/pd:pr` runs its whole sequence
     once per slice, confirmation included.
 
+- **Stage 4 of section 12 — the pull request lifecycle.** A pull request stops
+  being something the plugin forgets the moment it is opened.
+  - `lib/pr.js` — pull requests as entities with identifiers. `prs.json`, one
+    writer, rendered to `prs/<k>.md`. Before this the number of an opened pull
+    request survived only inside a state-transition reason, so nothing could
+    answer which PR belonged to which slice, which slice a review thread was
+    about, or what to re-check after a fix.
+  - **Merge is a fact about a pull request, not about an issue.** `merged` is
+    terminal in the state machine and upstream merges slices one at a time;
+    recording the first merged slice on the issue would have locked it before
+    the second could reach `preflight-green`. `pdkit close --finish` moves the
+    issue, and only when every pull request has landed. A maintainer-closed PR
+    counts as unfinished — that is the entry to the redo route, not the exit.
+  - **A red job is measured, not interpreted.** Four outcomes: `fail` (red here,
+    green on other people's open PRs), `inconclusive` (red on theirs too — a
+    warning, since blocking on what the change did not do teaches people to
+    route around the gate), `flake` (the same job, the same commit, two
+    answers), `pending` (with its age, because a check IN_PROGRESS since June is
+    a finding). The baseline is the peer population rather than the base branch:
+    podman-desktop runs `pr-check` on `pull_request`, so `main` never runs those
+    jobs and a base comparison would call every red inconclusive.
+  - `lib/threads.js` — `lib/audit.js` applied to review feedback. Bot or human,
+    thread to file to slice to task to requirement, and a thread whose file
+    belongs to no slice flagged rather than dropped. Nothing is classified.
+    Escalation words match in one direction only: they expand a collapsed bot
+    back to full text and never collapse anything.
+  - **Review threads are not where the feedback is.** `gh.discussion` reads
+    review submissions and top-level comments as well, because on the pull
+    request this stage was built against both open threads are a bot's while
+    the reason it is blocked is a four-line `CHANGES_REQUESTED` body.
+  - `lib/drift.js` — what landed upstream under each slice since it branched,
+    measured from that slice's own branch point, with commits that touched
+    lines the plan cites reported separately. Hunks are read with
+    `--unified=0`: with context lines a one-line change claims six, and every
+    commit in the file would look semantic.
+  - `pdkit pr register|list|show|refresh|ci|threads|render|reply|merged|closed`,
+    `pdkit drift`, `pdkit amendment new`, `pdkit close`, and
+    `pdkit slice suggest --from-pr` (scenario 13, open item I).
+  - Bodies for `pr-status`, `pr-sync`, `resume` and `close`.
+
 ### Changed
+
+- **A consent token now knows what it is consent for, which closed a hole.**
+  `dispatch.js` fell back to the current branch for commands with no branch of
+  their own, so the token issued to push slice #1 also authorised `gh pr
+  review`, `gh issue comment` and any `gh api` mutation — one confirmation,
+  given for publishing code, silently covering writes nobody was asked about.
+  Tokens are now keyed `push:<branch>` or `reply:pr-<k>`, and keys of different
+  kinds cannot be found for one another. Writes to the issue tracker are refused
+  outright: no state authorises them, and the route that produces issue text
+  says a human posts it.
+- **`gates.require_states` is deleted** (open item B). Which states a token may
+  be issued from lives in `state.GATE_ELIGIBLE`, keyed by kind. The only thing
+  the config key could do was widen a list, and a widened push list is a token
+  issued before preflight. `pdkit doctor` warns while it is still present.
+- A reply token is not spent on first use. The unit of consent for replies is
+  the batch of drafts a human read in one go; spending on the first of eight
+  would refuse the seven they just approved.
+- `state.counters` gained `amendment`, so `A1` comes from a counter rather than
+  from whoever is writing the amendment.
+- `review.bots_collapsed` lists the accounts that actually comment on
+  podman-desktop pull requests. codecov posts a coverage table under a plain
+  login, and it was being quoted in full underneath the human objection.
+- `pdkit doctor` checks GraphQL reachability, not only that `gh` is logged in.
+  Everything this stage reads about a review is GraphQL-only, and a token
+  without the scope fails mid-sync with half the feedback read.
 
 - **`lib/evidence.js` set `RTK_DISABLE`, which is not a variable rtk reads.**
   The name is `RTK_DISABLED`. With rtk enabled, every receipt and every
