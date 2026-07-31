@@ -24,6 +24,7 @@ import {
   allocateTask,
   allocateSlice,
   branchName,
+  parseBranch,
   slugify,
 } from '../lib/ids.js';
 import { transition } from '../lib/state.js';
@@ -108,11 +109,52 @@ describe('branchName', () => {
 
   // preflight checks the branch name against this pattern, so the two have to
   // agree or every PR fails its own gate.
+  //
+  // Asserted by behaviour rather than by comparing the pattern to a copy of
+  // itself: a second literal in this file is exactly the duplication exporting
+  // BRANCH_PATTERN exists to prevent, and it fails on any edit including a
+  // correct one.
   test('output matches the pattern preflight enforces', () => {
-    const pattern = /^DESKTOP-\d+\/(\d+-)?[a-z0-9-]+$/;
-    assert.match(branchName({ issue: 1, slug: 'x' }), pattern);
-    assert.match(branchName({ issue: 1, index: 3, slug: 'x-y' }), pattern);
-    assert.deepEqual(BRANCH_PATTERN, pattern);
+    assert.match(branchName({ issue: 1, slug: 'x' }), BRANCH_PATTERN);
+    assert.match(branchName({ issue: 1, index: 3, slug: 'x-y' }), BRANCH_PATTERN);
+  });
+
+  test('the pattern accepts our branches and nothing else', () => {
+    for (const name of ['DESKTOP-1/x', 'DESKTOP-12345/2-main-exec-plumbing', 'DESKTOP-7/fix-17221']) {
+      assert.match(name, BRANCH_PATTERN, `${name} should be accepted`);
+    }
+    for (const name of ['main', 'DESKTOP-1', 'DESKTOP-1/', 'desktop-1/x', 'DESKTOP-x/y', 'DESKTOP-1/Mixed-Case']) {
+      assert.doesNotMatch(name, BRANCH_PATTERN, `${name} should be rejected`);
+    }
+  });
+});
+
+// The gate uses this to check a branch belongs to the issue a token is asked
+// for, so it has to take apart exactly what branchName puts together.
+describe('parseBranch', () => {
+  test('round-trips what branchName produces', () => {
+    assert.deepEqual(parseBranch(branchName({ issue: 12345, slug: 'fix-the-thing' })), {
+      issue: 12345,
+      index: null,
+      slug: 'fix-the-thing',
+    });
+    assert.deepEqual(parseBranch(branchName({ issue: 12345, index: 2, slug: 'main-exec-plumbing' })), {
+      issue: 12345,
+      index: 2,
+      slug: 'main-exec-plumbing',
+    });
+  });
+
+  // A slug may start with digits; only digits followed by a dash are an index.
+  test('tells a slice index from a slug that begins with digits', () => {
+    assert.deepEqual(parseBranch('DESKTOP-1/2fix'), { issue: 1, index: null, slug: '2fix' });
+    assert.deepEqual(parseBranch('DESKTOP-1/12-34-x'), { issue: 1, index: 12, slug: '34-x' });
+  });
+
+  test('returns null for anything that is not one of ours', () => {
+    for (const name of ['main', 'DESKTOP-1', 'feature/x', '', 'DESKTOP-1/UPPER']) {
+      assert.equal(parseBranch(name), null, `${name} should not parse`);
+    }
   });
 
   test('a title becomes a usable slug', () => {
