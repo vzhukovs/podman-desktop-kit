@@ -7,10 +7,13 @@
 // no capture at all — so the cases that matter here are the ones where the
 // output is not what the command produced, and whether the record says so.
 
-import { test, describe } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { EVIDENCE_ENV, capture } from '../lib/evidence.js';
+import { EVIDENCE_ENV, capture, digest, fence, transcript, validateReceipt, writeReceipt } from '../lib/evidence.js';
 
 describe('capture', () => {
   test('records stdout, the exit code and how long it took', async () => {
@@ -47,11 +50,18 @@ describe('capture', () => {
 
   // Section 8.2: what makes a receipt evidence rather than a claim is that the
   // output was not compressed on its way here.
+  //
+  // Asserted from inside the child process on purpose. The previous version of
+  // this test compared EVIDENCE_ENV against a constant this module declares
+  // itself, which is why it stayed green while the variable was named
+  // RTK_DISABLE — a name rtk has never heard of. A module agreeing with itself
+  // proves nothing about the process it starts.
   test('rtk is disabled for the run', async () => {
-    const result = await capture({ command: 'echo "RTK_DISABLE=$RTK_DISABLE"' });
+    const result = await capture({ command: 'echo "seen=$RTK_DISABLED"' });
 
-    assert.equal(EVIDENCE_ENV.RTK_DISABLE, '1');
-    assert.equal(result.stdout.trim(), 'RTK_DISABLE=1');
+    assert.equal(result.stdout.trim(), 'seen=1');
+    assert.equal(EVIDENCE_ENV.RTK_DISABLED, '1');
+    assert.equal(EVIDENCE_ENV.RTK_DISABLE, undefined, 'RTK_DISABLE is not a variable rtk reads');
   });
 
   test('a timeout is reported as incomplete rather than as a clean result', async () => {
@@ -65,5 +75,173 @@ describe('capture', () => {
 
   test('an empty command is refused rather than run', async () => {
     await assert.rejects(() => capture({ command: '   ' }), /no command/);
+  });
+});
+
+describe('fencing a transcript', () => {
+  // Test output contains fenced code often enough that a fixed three-backtick
+  // fence would break the file rather than the argument, and an Output block
+  // that ends early is one that lost its tail while still looking whole.
+  test('the fence is longer than any run of backticks inside it', () => {
+    const fenced = fence('a\n```\nb\n');
+
+    assert.ok(fenced.startsWith('````\n'));
+    assert.ok(fenced.endsWith('\n````'));
+  });
+
+  test('three backticks are enough for ordinary output', () => {
+    assert.ok(fence('plain\n').startsWith('```\n'));
+  });
+
+  test('a transcript always ends with a newline', () => {
+    const run = { command: 'printf x', stdout: 'x', stderr: '', exitCode: 0 };
+    assert.equal(transcript(run), '$ printf x\nx\n');
+  });
+});
+
+describe('receipts', () => {
+  let home;
+
+  /**
+   * @param {{command?: string, stdout?: string, stderr?: string, exitCode?: number|null, complete?: boolean, incompleteBecause?: string}} [over]
+   */
+  const run = (over = {}) => ({
+    command: 'pnpm test:main',
+    exitCode: 0,
+    stdout: 'Test Files  1 passed (1)\n',
+    stderr: '',
+    durationMs: 4210,
+    at: '2026-07-31T10:00:00.000Z',
+    complete: true,
+    ...over,
+  });
+
+  before(async () => {
+    home = await mkdtemp(join(tmpdir(), 'pdkit-receipt-'));
+  });
+
+  after(async () => {
+    await rm(home, { recursive: true, force: true });
+  });
+
+  test('a written receipt validates', async () => {
+    const written = await writeReceipt({ issue: 18248, taskId: 'T1', run: run(), files: ['a.ts'], home });
+    const checked = validateReceipt(await readFile(written.path, 'utf8'));
+
+    assert.equal(checked.ok, true, checked.reason);
+    assert.equal(checked.exitCode, 0);
+    assert.equal(checked.command, 'pnpm test:main');
+  });
+
+  test('the captured output is in the file verbatim', async () => {
+    const written = await writeReceipt({ issue: 18248, taskId: 'T2', run: run({ stdout: 'a\n\n  spaced   \n' }), home });
+    const content = await readFile(written.path, 'utf8');
+
+    assert.match(content, /\$ pnpm test:main\na\n\n {2}spaced {3}\n/);
+  });
+
+  // The receipt worth having most. A red run is how a task reports that it is
+  // not done, and a validator that refused red receipts would make them the
+  // ones it pays not to write. Deciding "not done" is the hook's job.
+  test('a failing run produces a valid receipt', async () => {
+    const written = await writeReceipt({
+      issue: 18248,
+      taskId: 'T3',
+      run: run({ exitCode: 1, stderr: '18 unhandled errors\n' }),
+      home,
+    });
+    const checked = validateReceipt(await readFile(written.path, 'utf8'));
+
+    assert.equal(checked.ok, true, checked.reason);
+    assert.equal(checked.exitCode, 1);
+  });
+
+  test('output containing a fence survives the round trip', async () => {
+    const written = await writeReceipt({ issue: 18248, taskId: 'T4', run: run({ stdout: 'before\n```\nfenced\n```\nafter\n' }), home });
+    const checked = validateReceipt(await readFile(written.path, 'utf8'));
+
+    assert.equal(checked.ok, true, checked.reason);
+  });
+
+  test('a killed run records that it has no exit code', async () => {
+    const written = await writeReceipt({
+      issue: 18248,
+      taskId: 'T5',
+      run: run({ exitCode: null, complete: false, incompleteBecause: 'killed by SIGTERM after 150ms' }),
+      home,
+    });
+    const checked = validateReceipt(await readFile(written.path, 'utf8'));
+
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /incomplete/);
+  });
+});
+
+describe('validateReceipt refuses what is not a capture', () => {
+  const genuine = (over = {}) => {
+    const text = transcript({ command: 'pnpm test:main', stdout: 'ok\n', stderr: '' });
+    return [
+      '# RECEIPT T1',
+      '',
+      '- Issue: 18248',
+      `- Exit code: ${over.exitCode ?? 0}`,
+      '- Duration: 10ms',
+      `- Capture: ${over.capture ?? 'complete'}`,
+      `- Evidence: ${over.evidence ?? digest(text)} (pdkit 0.1.0)`,
+      '',
+      '## Command',
+      '```bash',
+      over.command ?? 'pnpm test:main',
+      '```',
+      '',
+      '## Output',
+      fence(over.output ?? text),
+      '',
+    ].join('\n');
+  };
+
+  test('the fixture itself is valid, or the rest of this proves nothing', () => {
+    assert.equal(validateReceipt(genuine()).ok, true);
+  });
+
+  // The whole point of the digest: pdkit writes the file, so the remaining way
+  // to fake a receipt is to edit one afterwards.
+  test('output edited after capture is refused', () => {
+    const edited = genuine().replace('ok', 'all tests passed');
+
+    const checked = validateReceipt(edited);
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /edited after it was captured/);
+  });
+
+  test('a narrative with no captured output is refused', () => {
+    const checked = validateReceipt('# RECEIPT T1\n\nI ran the tests and they passed.\n');
+
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /no fenced Output block/);
+  });
+
+  // A hand-written file can have an output block. It cannot have a digest that
+  // matches, and it will not have one at all unless somebody set out to forge
+  // it — which is a different conversation from an agent taking a shortcut.
+  test('an output block with no digest is refused', () => {
+    const checked = validateReceipt(genuine().replace(/^- Evidence:.*$/m, ''));
+
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /no Evidence digest/);
+  });
+
+  test('a truncated capture is refused even with a matching digest', () => {
+    const checked = validateReceipt(genuine({ capture: 'incomplete — output exceeded 32 bytes' }));
+
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /lost its tail/);
+  });
+
+  test('an output block for a different command is refused', () => {
+    const checked = validateReceipt(genuine({ command: 'pnpm lint:check' }));
+
+    assert.equal(checked.ok, false);
+    assert.match(checked.reason, /does not open with the command/);
   });
 });
