@@ -11,7 +11,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
@@ -632,6 +632,15 @@ describe('materialize', () => {
 
   // The reason materializing is safe to get wrong: it adds branches and
   // touches nothing else.
+  // The husky hook adds it in a tree where pnpm install has run, and rejects
+  // the duplicate that -s would then produce. In a tree where it has not — a
+  // fresh worktree, which is where slicing works — nothing adds it, and
+  // preflight would reject a branch this command just made.
+  test('the commit carries a sign-off when no hook is there to add one', async () => {
+    const message = await git(['log', '-1', '--format=%B', `DESKTOP-${ISSUE}/1-extension-api-run-options`], repo);
+    assert.match(message, /^Signed-off-by: .+ <.+>$/m);
+  });
+
   test('the working branch is exactly where it was', async () => {
     const files = await git(['diff', '--name-only', `main...DESKTOP-${ISSUE}/work`], repo);
     assert.deepEqual(files.split('\n').sort(), [API, EXEC, THEME, SPEC].sort());
@@ -690,6 +699,30 @@ describe('materialize', () => {
     await git(['reset', '--hard', 'HEAD~1'], repo);
   });
 
+  test('and leaves it to the hook when one will run', async () => {
+    const hooks = join(repo, '.fixture-hooks');
+    await mkdir(hooks, { recursive: true });
+    // A hook that adds nothing: what matters is that materialize sees it and
+    // does not sign, since a second trailer is what husky rejects.
+    await writeFile(join(hooks, 'commit-msg'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    await git(['config', 'core.hooksPath', '.fixture-hooks'], repo);
+
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 3,
+      repoRoot: repo,
+      subject: 'feat(ui): high contrast themes',
+      home,
+      config: config(),
+    });
+    assert.equal(result.ok, true, result.error);
+
+    const message = await git(['log', '-1', '--format=%B', `DESKTOP-${ISSUE}/3-ui-contrast`], repo);
+    assert.equal(/Signed-off-by:/.test(message), false);
+
+    await git(['config', '--unset', 'core.hooksPath'], repo);
+  });
+
   test('a dirty tree stops it, because the mess would ride along', async () => {
     await writeFiles(repo, { 'packages/ui/src/theme.ts': 'export const theme = "half-done";\n' });
 
@@ -703,7 +736,7 @@ describe('materialize', () => {
     });
 
     assert.equal(result.ok, false);
-    assert.match(result.error, /uncommitted changes/);
+    assert.match(result.error, /1 uncommitted change/);
 
     await git(['checkout', '--', '.'], repo);
   });
