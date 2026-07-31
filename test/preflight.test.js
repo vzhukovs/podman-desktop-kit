@@ -253,3 +253,160 @@ describe('the checks that run commands', () => {
     }
   });
 });
+
+// A check that only ever passes is indistinguishable from a check that does
+// nothing, so each of these is driven to fail as well.
+describe('the upstream rule checks', () => {
+  /** Run one check against a context with the given overrides. */
+  async function only(id, overrides) {
+    const checks = (await loadChecks()).filter((check) => check.id === id);
+    const report = await run({ ...(await context()), ...overrides }, checks);
+    return report.results[0];
+  }
+
+  const sha = 'abcdef1234567890';
+  const signed = { 'Signed-off-by': ['Test <test@example.com>'] };
+
+  test('spdx: an added source file without the header fails', async () => {
+    await writeFile(join(repo, 'packages/main/src/naked.ts'), 'export const naked = 1;\n');
+
+    const result = await only('spdx', {
+      changed: [{ status: 'A', path: 'packages/main/src/naked.ts' }],
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.output, /naked\.ts/);
+  });
+
+  // Only added files. A modified file that never had a header is somebody
+  // else's omission, and adopting it grows the diff for no reason.
+  test('spdx: a modified file without the header is not this branch problem', async () => {
+    const result = await only('spdx', {
+      changed: [{ status: 'M', path: 'packages/main/src/naked.ts' }],
+    });
+
+    assert.equal(result.status, 'pass');
+  });
+
+  test('spdx: an added svelte file needs no header', async () => {
+    await writeFile(join(repo, 'packages/renderer/src/X.svelte'), '<div/>\n');
+
+    const result = await only('spdx', {
+      changed: [{ status: 'A', path: 'packages/renderer/src/X.svelte' }],
+    });
+
+    assert.equal(result.status, 'pass');
+    assert.match(result.summary, /no added files need a header/);
+  });
+
+  test('conventional-commits: an unknown type fails, and the remedy is not rebase -i', async () => {
+    const result = await only('conventional-commits', {
+      commits: [{ sha, subject: 'improve(main): things', body: '', trailers: signed }],
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.output, /not one of the accepted types/);
+    assert.match(result.remedy, /reset --soft/);
+    assert.doesNotMatch(result.remedy, /rebase -i(?! *,? *which)/);
+  });
+
+  // The 0.3 correction, at the point where it would otherwise reject valid
+  // work every week.
+  test('conventional-commits: a missing scope passes with a note', async () => {
+    const result = await only('conventional-commits', {
+      commits: [{ sha, subject: 'fix: guard the empty case', body: '', trailers: signed }],
+    });
+
+    assert.equal(result.status, 'pass');
+    assert.match(result.output, /scope/);
+  });
+
+  test('signed-off-by: none fails', async () => {
+    const result = await only('signed-off-by', {
+      commits: [{ sha, subject: 'fix(main): x', body: '', trailers: {} }],
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.remedy, /commit with -s/);
+  });
+
+  test('signed-off-by: two fails, and the remedy names what produced them', async () => {
+    const result = await only('signed-off-by', {
+      commits: [{ sha, subject: 'fix(main): x', body: '', trailers: { 'Signed-off-by': ['A <a@b>', 'A <a@b>'] } }],
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.remedy, /rebase -i/);
+    assert.match(result.remedy, /reset --soft/);
+  });
+
+  test('extension-api: touching the declaration without a drafted body defers rather than passes', async () => {
+    const result = await only('extension-api', {
+      changedFiles: ['packages/extension-api/src/extension-api.d.ts'],
+      prBody: null,
+    });
+
+    assert.equal(result.status, 'skip');
+    assert.match(result.summary, /not drafted yet/);
+  });
+
+  test('extension-api: a body that skips disposal fails', async () => {
+    const result = await only('extension-api', {
+      changedFiles: ['packages/extension-api/src/extension-api.d.ts'],
+      prBody: 'This is backward compatible with existing extensions.',
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /disposal/);
+  });
+
+  test('extension-api: a body covering both passes', async () => {
+    const result = await only('extension-api', {
+      changedFiles: ['packages/extension-api/src/extension-api.d.ts'],
+      prBody: 'Backward compatible: the field is optional. The listener is disposed with the extension.',
+    });
+
+    assert.equal(result.status, 'pass');
+  });
+
+  test('extension-api: an untouched declaration is skipped', async () => {
+    const result = await only('extension-api', { changedFiles: ['packages/main/src/x.ts'] });
+    assert.equal(result.status, 'skip');
+  });
+});
+
+describe('api-surface', () => {
+  // The trap itself. A symbol that looks internal but is declared in
+  // extension-api.d.ts is public API, with obligations nobody thought they
+  // were taking on.
+  test('an added export that appears in the public surface fails', async () => {
+    const surface = join(repo, 'packages/extension-api/src');
+    await mkdir(surface, { recursive: true });
+    await writeFile(join(surface, 'extension-api.d.ts'), 'export interface RunOptions { env?: string }\n');
+
+    const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
+    await writeFile(join(repo, 'packages/main/src/exec.ts'), 'export interface RunOptions { env?: string }\n');
+    await git(['add', '-A']);
+    await git(['commit', '-q', '-m', 'feat(main): add RunOptions\n\nSigned-off-by: Test <test@example.com>']);
+
+    const checks = (await loadChecks()).filter((check) => check.id === 'api-surface');
+    const report = await run(await context(), checks);
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].output, /RunOptions/);
+    assert.match(report.results[0].remedy, /public API/);
+  });
+
+  test('an added export that is nowhere in the surface passes', async () => {
+    const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
+    await writeFile(join(repo, 'packages/main/src/internal.ts'), 'export interface PurelyInternal { x: number }\n');
+    await git(['add', '-A']);
+    await git(['commit', '-q', '-m', 'feat(main): add internal\n\nSigned-off-by: Test <test@example.com>']);
+
+    const checks = (await loadChecks()).filter((check) => check.id === 'api-surface');
+    const prepared = await context();
+    const report = await run({ ...prepared, changedFiles: ['packages/main/src/internal.ts'] }, checks);
+
+    assert.equal(report.results[0].status, 'pass');
+  });
+});
