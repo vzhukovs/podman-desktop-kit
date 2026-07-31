@@ -14,7 +14,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
@@ -71,6 +71,31 @@ describe('create', () => {
 
     assert.equal(again.ok, true);
     assert.equal(again.created, false);
+  });
+
+  // git reports trees with symlinks resolved and the configured root usually is
+  // not. Comparing the strings makes an existing tree invisible, and the next
+  // `worktree add` fails with "already exists" for a tree just declared absent.
+  // Found by running the CLI, not by this suite — the fixtures resolve their
+  // own paths, so both sides used to agree by accident.
+  test('finds a tree again through a symlinked root', async () => {
+    const real = await create({ repoRoot: repo, name: 'wt-symlink', config: config(), home });
+    assert.equal(real.created, true);
+
+    const link = join(repo, '..', 'trees-by-another-name');
+    await rm(link, { recursive: true, force: true });
+    await symlink(trees, link);
+
+    const viaLink = await create({
+      repoRoot: repo,
+      name: 'wt-symlink',
+      config: { ...CONFIG, worktrees: { ...CONFIG.worktrees, root: link } },
+      home,
+    });
+
+    assert.equal(viaLink.ok, true, viaLink.error);
+    assert.equal(viaLink.created, false, 'the same tree, reached by another name');
+    await rm(link, { force: true });
   });
 
   test('reports git errors rather than swallowing them', async () => {

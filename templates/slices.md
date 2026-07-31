@@ -17,14 +17,11 @@
 {{mergeOrder}}
 
 ## Rationale per slice
-{{rationale}}
-<!-- One block per slice:
+<!-- Why separate: name the reviewer this slice is for, and why they are not the
+     reviewer of the next one.
 
-     ### #1 <title>
-     - Why separate: <the reviewer this slice is for, and why they are not the
-       reviewer of the next one>
-     - Self-justifying without the next slice: <yes, and why — or no, in which
-       case say "groundwork for #N" in the PR body and admit it here. Upstream
-       does not accept dead code staged for a future PR, and hiding it does not
-       make it land faster.>
-     - Steps to check: <draft; /pd:pr fills it out> -->
+     Self-justifying without the next slice: yes and why — or no, in which case
+     say "groundwork for #N" in the PR body and admit it here. Upstream does not
+     accept dead code staged for a future PR, and hiding it does not make it
+     land faster. -->
+{{rationale}}
