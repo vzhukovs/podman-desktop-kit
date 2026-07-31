@@ -9,6 +9,23 @@ model: opus
 The only command in this plugin that writes to someone else's repository.
 Order matters and is not negotiable.
 
+## Sliced or single
+
+`pdkit slice show --issue <n>` says which this is.
+
+**With a graph**, the whole of what follows runs once per slice, in merge
+order, and finishes each slice before starting the next — including the human
+confirmation. Collecting three bodies and asking once turns the gate into the
+reflex it exists to prevent. The token is per branch for the same reason.
+
+Step 1 becomes `pdkit slice materialize --issue <n> --slice <i> --subject
+"<type>(<scope>): <description>"`, which cuts the branch from the slice's base,
+applies the slice and makes the single commit — no squash needed, and the
+working branch is left where it was. Steps 3 and 5 take `--slice <i>`, or infer
+it from the branch you are standing on.
+
+**Without one**, it runs once, as below.
+
 ## Steps
 
 1. **Branch.** `pdkit branch create --issue <n> --slug <slug>`. Idempotent —
@@ -24,12 +41,21 @@ Order matters and is not negotiable.
    everything. Note what `ci-blind-spots` reports: it decides whether `Notes
    for reviewers` is mandatory.
 
+   On a slice this also reads the stored verification, and fails if the branch
+   has drifted from what was verified. Re-verify rather than arguing with it:
+   that check is the only thing standing between "verified" and "was verified
+   once".
+
 4. **Body.** `pdkit render prBody --issue <n> --values <f> --strip-comments`.
    Write it to a file. The four upstream headings are not ours to rearrange —
    a podman-desktop reviewer scans for their own.
 
-   - `Closes #<n>` in the last slice of a stack, `Part of #<n>` in the rest;
+   - `Closes #<n>` in the last slice to merge, `Part of #<n>` in the rest;
      on the quickfix route, a single `Fixes #<n>` and no coverage table.
+   - The coverage table lists **this slice's** R-IDs — `pdkit slice show`
+     has them. Preflight asks for exactly those, not the whole frozen set.
+   - `Not in this PR`: name the slices the rest went to, by branch. This is
+     the section that stops a reviewer looking for the other half.
    - `Steps to check`: at least three numbered steps, each with an expected
      result. Preflight enforces this, including on quickfix.
    - `Notes for reviewers`: mandatory when preflight flagged something CI
@@ -60,6 +86,15 @@ Order matters and is not negotiable.
    `pdkit pr create` verifies and spends the token itself. If you open the PR
    any other way, do it after `gate open` and expect the hook to spend the
    token on the `gh` call.
+
+   On a stacked slice the pull request opens against **its base branch**, not
+   `main` — `pdkit slice show` names it. Against `main` the diff would carry
+   the previous slice's work, and the reviewer would be reading two changes
+   believing they are one.
+
+   Then start the next slice at step 1. The issue returns to
+   `preflight-green` for each; an issue with three slices passes through that
+   state three times.
 
 ## What the gate will refuse, and why arguing with it is wrong
 
