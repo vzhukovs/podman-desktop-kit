@@ -11,10 +11,10 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
+import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
 import { issueDir } from '../lib/config.js';
 import { validateReceipt } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
@@ -55,35 +55,12 @@ function config() {
 }
 
 /**
- * A task file, in the shape templates/task.md renders.
- *
  * @param {string} id
  * @param {string[]} satisfies
  * @param {string[]} owns
  */
-async function task(id, satisfies, owns) {
-  const directory = join(issueDir(home, ISSUE), 'tasks');
-  await mkdir(directory, { recursive: true });
-  await writeFile(
-    join(directory, `${id}.md`),
-    [
-      `# ${id}: work`,
-      '',
-      `- Issue: ${ISSUE}`,
-      `- Satisfies: ${satisfies.join(', ')}`,
-      '- Status: done',
-      '',
-      '## Owns',
-      ...owns.map((path) => `- ${path}`),
-      '',
-      '## Done when',
-      '```bash',
-      'true',
-      '```',
-      'Expected: nothing',
-      '',
-    ].join('\n'),
-  );
+function task(id, satisfies, owns) {
+  return writeTask({ home, issue: ISSUE, id, satisfies, owns });
 }
 
 before(async () => {

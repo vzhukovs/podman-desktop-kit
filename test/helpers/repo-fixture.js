@@ -155,6 +155,41 @@ export async function seedWorkspace(root) {
 }
 
 /**
+ * A task file under an issue, in the shape templates/task.md renders.
+ *
+ * Slicing reads these to answer which R-IDs a file carries, so a test about
+ * requirement coverage needs real ones rather than a hand-written graph.
+ *
+ * @param {{home: string, issue: number, id: string, satisfies: string[], owns: string[]}} input
+ * @returns {Promise<void>}
+ */
+export async function writeTask(input) {
+  const directory = join(input.home, 'issues', String(input.issue), 'tasks');
+  await mkdir(directory, { recursive: true });
+
+  await writeFile(
+    join(directory, `${input.id}.md`),
+    [
+      `# ${input.id}: work`,
+      '',
+      `- Issue: ${input.issue}`,
+      `- Satisfies: ${input.satisfies.join(', ')}`,
+      '- Status: done',
+      '',
+      '## Owns',
+      ...input.owns.map((path) => `- ${path}`),
+      '',
+      '## Done when',
+      '```bash',
+      'true',
+      '```',
+      'Expected: nothing',
+      '',
+    ].join('\n'),
+  );
+}
+
+/**
  * The package map the modules under test read, without going through
  * `pdkit init`.
  *

@@ -14,12 +14,16 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
+import { cleanup, commitAll, git as gitIn, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
+import * as ids from '../lib/ids.js';
 import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
+import * as slice from '../lib/slice.js';
+import * as state from '../lib/state.js';
 import { candidatesFor, runScript, scopedScripts } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
@@ -175,13 +179,19 @@ describe('the runner', () => {
 
   test('the checks deferred to later stages skip rather than pass', async () => {
     const report = await run(await context());
-    const deferred = ['slice-standalone', 'e2e-stability', 'e2e-environment'];
 
-    for (const id of deferred) {
+    for (const id of ['e2e-stability', 'e2e-environment']) {
       const result = report.results.find((entry) => entry.id === id);
       assert.equal(result.status, 'skip', `${id} must not report a pass for work it did not do`);
-      assert.match(result.summary, /stage [35]/);
+      assert.match(result.summary, /stage 5/);
     }
+  });
+
+  test('slice-standalone skips on work that was never sliced, and says that is why', async () => {
+    const report = await run(await context(), await loadChecks(['slice-standalone']));
+
+    assert.equal(report.results[0].status, 'skip');
+    assert.match(report.results[0].summary, /no slice graph/);
   });
 
   test('format marks a red report and counts the blocking failures', () => {
@@ -605,5 +615,172 @@ describe('api-surface', () => {
     const report = await run({ ...prepared, changedFiles: ['packages/main/src/internal.ts'] }, checks);
 
     assert.equal(report.results[0].status, 'pass');
+  });
+});
+
+// A sliced issue is where preflight stops being a single question. Which slice
+// this run is about decides what it is a diff FROM, which requirements it is
+// expected to cover, and whether a stored verification still applies — and
+// getting any of the three wrong produces a report that is confident about the
+// wrong change.
+describe('a sliced issue', () => {
+  const ISSUE = 7301;
+  const API = 'packages/extension-api/src/api.ts';
+  const EXEC = 'packages/main/src/exec.ts';
+
+  let sliced;
+  let slicedHome;
+  let slicedTrees;
+  let graph;
+
+  const config = () => ({
+    repo: { base_branch: 'main', package_manager: 'npm' },
+    branches: { sliced: 'DESKTOP-{issue}/{index}-{slug}' },
+    slicing: { layer_order: ['extension-api', 'main', 'ui', 'tests'], verify: { install: 'never' } },
+    worktrees: { root: slicedTrees, copy_files: [] },
+  });
+
+  before(async () => {
+    sliced = await initRepo('pdkit-preflight-sliced-');
+    slicedHome = await initRepo('pdkit-preflight-sliced-home-');
+    slicedTrees = join(sliced, '..', `${sliced.split('/').pop()}-trees`);
+
+    await seedWorkspace(sliced);
+    await commitAll(sliced, 'chore: seed');
+
+    await gitIn(['checkout', '-b', `DESKTOP-${ISSUE}/work`], sliced);
+    await writeFiles(sliced, {
+      [API]: '// SPDX-License-Identifier: Apache-2.0\nexport interface RunOptions { env?: string }\n',
+      [EXEC]: '// SPDX-License-Identifier: Apache-2.0\nimport type { RunOptions } from "@fixture/api";\nexport function exec(_o: RunOptions) {}\n',
+    });
+    await commitAll(sliced, 'feat: change set');
+
+    await state.transition(ISSUE, 'triaged', { home: slicedHome });
+    await state.transition(ISSUE, 'planned', { home: slicedHome });
+    for (let i = 0; i < 2; i += 1) await ids.allocateRequirement(ISSUE, { home: slicedHome });
+    await ids.freezeRequirements(ISSUE, { home: slicedHome });
+    await writeTask({ home: slicedHome, issue: ISSUE, id: 'T1', satisfies: ['R1'], owns: [API] });
+    await writeTask({ home: slicedHome, issue: ISSUE, id: 'T2', satisfies: ['R2'], owns: [EXEC] });
+
+    const facts = await slice.facts({ issue: ISSUE, repoRoot: sliced, home: slicedHome, config: config(), packageMap: packageMap(sliced) });
+    const stored = await slice.set({
+      issue: ISSUE,
+      proposal: {
+        slices: [
+          { slug: 'api', title: 'add RunOptions', files: [API], baseSlice: null },
+          { slug: 'main-exec', title: 'thread it through', files: [EXEC], baseSlice: 1 },
+        ],
+      },
+      facts,
+      config: config(),
+      home: slicedHome,
+    });
+    assert.equal(stored.ok, true, JSON.stringify(stored.problems));
+
+    await slice.verifyAll({ issue: ISSUE, repoRoot: sliced, home: slicedHome, config: config(), packageMap: packageMap(sliced) });
+
+    for (const [index, subject] of [[1, 'feat(extension-api): add RunOptions'], [2, 'feat(main): thread RunOptions']]) {
+      for (const to of ['plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved']) {
+        await state.transition(ISSUE, to, { home: slicedHome, approvedBy: 'test' });
+      }
+      const made = await slice.materialize({ issue: ISSUE, index, repoRoot: sliced, subject, home: slicedHome, config: config() });
+      assert.equal(made.ok, true, made.error);
+    }
+
+    graph = await slice.read(ISSUE, { home: slicedHome });
+  });
+
+  after(async () => {
+    await cleanup(sliced, slicedHome, slicedTrees);
+  });
+
+  const on = (overrides = {}) => prepare({ issue: ISSUE, repoRoot: sliced, home: slicedHome, ...overrides });
+
+  test('the base of a stacked slice is its parent branch, not main', async () => {
+    // Standing on slice #2's branch, which is where /pd:pr runs preflight.
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/2-main-exec`], sliced);
+    const prepared = await on();
+
+    assert.equal(prepared.slice, 2, 'the slice is inferred from the branch');
+    assert.equal(prepared.base, `DESKTOP-${ISSUE}/1-api`);
+    // The whole point: from main this list would also contain slice #1's file.
+    assert.deepEqual(prepared.changedFiles, [EXEC]);
+  });
+
+  test('and an independent slice still reads against main', async () => {
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/1-api`], sliced);
+    const prepared = await on();
+
+    assert.equal(prepared.slice, 1);
+    assert.equal(prepared.base, 'main');
+    assert.deepEqual(prepared.changedFiles, [API]);
+  });
+
+  test('slice-standalone passes on a fresh green verification', async () => {
+    const report = await run(await on(), await loadChecks(['slice-standalone']));
+
+    assert.equal(report.results[0].status, 'pass', report.results[0].summary);
+    assert.match(report.results[0].summary, /slice #1 standalone on main/);
+  });
+
+  test('r-coverage asks for the slice R-IDs, not the whole frozen set', async () => {
+    const prepared = await on({ prBody: 'Part of #7301\n\n| R-ID | … |\n| R1 | adds RunOptions |\n' });
+    const report = await run(prepared, await loadChecks(['r-coverage']));
+
+    // R2 belongs to slice #2 and is deliberately absent from this body.
+    assert.equal(report.results[0].status, 'pass', report.results[0].summary);
+    assert.match(report.results[0].summary, /R1 covered \(slice #1\)/);
+  });
+
+  test('and still fails when the slice’s own R-ID is missing', async () => {
+    const prepared = await on({ prBody: 'Part of #7301, no table at all\n' });
+    const report = await run(prepared, await loadChecks(['r-coverage']));
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].summary, /R1 is not mentioned/);
+  });
+
+  // "Verified" must not decay into "was verified once", and on a materialized
+  // branch a mismatch also means the branch is not what was verified.
+  test('slice-standalone fails once the branch moves away from what was verified', async () => {
+    await writeFiles(sliced, { [API]: '// SPDX-License-Identifier: Apache-2.0\nexport interface RunOptions { env?: string; cwd?: string }\n' });
+    await commitAll(sliced, 'fix(extension-api): add cwd');
+
+    const report = await run(await on(), await loadChecks(['slice-standalone']));
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].summary, /stale/);
+    assert.match(report.results[0].remedy, /slice verify/);
+
+    await gitIn(['reset', '--hard', 'HEAD~1'], sliced);
+  });
+
+  test('and fails when the attached run has been edited', async () => {
+    const path = join(slicedHome, 'issues', String(ISSUE), 'verify', 'S1.md');
+    const original = await readFile(path, 'utf8');
+    await writeFile(path, original.replace(/typecheck ok/, 'everything is fine, trust me'));
+
+    const report = await run(await on(), await loadChecks(['slice-standalone']));
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].summary, /not a valid capture/);
+
+    await writeFile(path, original);
+  });
+
+  test('a slice that never passed cannot be pushed on the strength of the graph', async () => {
+    const path = join(slicedHome, 'issues', String(ISSUE), 'slices.json');
+    const original = await readFile(path, 'utf8');
+    const broken = JSON.parse(original);
+    broken.slices[0].verification.ok = false;
+    broken.slices[0].verification.exitCode = 1;
+    await writeFile(path, JSON.stringify(broken, null, 2));
+
+    const report = await run(await on(), await loadChecks(['slice-standalone']));
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].summary, /did not pass its standalone build/);
+
+    await writeFile(path, original);
   });
 });
