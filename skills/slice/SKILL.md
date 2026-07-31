@@ -104,6 +104,26 @@ that the build survives the revert, and the template says so.
 human's to give, and branches are cut from it — `pdkit slice materialize`
 refuses before it.
 
+## Splitting a pull request that is already open
+
+Scenario 13: upstream asks for a published pull request to be split. Same
+slicer, different source —
+
+```
+pdkit slice suggest --issue <n> --from-pr <k>
+```
+
+fetches `refs/pull/<k>/head` and takes the base from where that pull request
+branched, not from where upstream is now. It works on a pull request that is
+not ours, which is the point.
+
+Once the new graph is set, `pdkit pr threads <k>` names the slice each existing
+review thread belongs to — that is the migration plan, and it is the same
+mapping the sync uses. Say in each new pull request body where the discussion
+came from, and reply in the original thread pointing at the new PR before the
+old one is closed. A reviewer who has to find their own comments again is a
+reviewer who reviews it as new work.
+
 ## When the answer is "this cannot be cut"
 
 Say that. A diff whose parts cannot be separated without rewriting the work is

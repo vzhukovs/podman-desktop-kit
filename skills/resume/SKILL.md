@@ -6,13 +6,62 @@ disable-model-invocation: true
 model: opus
 ---
 
-Sync, then find which upstream commits since the branch point touched your files.
+Everything here assumes the world moved while you were away, and asks whether it
+moved under the plan or merely around it.
 
-Classify conflicts: mechanical ones are resolved and journalled; semantic ones — upstream rewrote what the plan stood on — stop the flow and produce an amendment for approval.
+## Steps
 
-After rebasing, re-run preflight and standalone verification. A previous green means nothing now.
+1. **`/pd:sync`** — fetch, and see where the fork stands. Read-only.
 
-This is the only place `--force-with-lease` is allowed, on your own branch, under a gate.
+2. **`pdkit drift <issue>`** — the upstream commits that landed since each slice
+   branched and touched that slice's files.
 
-> Stub. The full procedure lands with its stage — see section 12 of
-> `specs/podman-desktop-kit-architecture.md`.
+   Each slice is measured from **its own** branch point. A stacked slice
+   branched from its predecessor, so drift against `main` would report the
+   previous slice's own commits as upstream movement.
+
+   The column that matters is the last one: whether a commit touched **lines the
+   plan cites**. A commit in the file is a candidate for a mechanical conflict. A
+   commit in the lines the plan built on is a candidate for a semantic one, and
+   semantic means stop.
+
+3. **Rebase, slice by slice, in merge order.** `pd-conflict-analyst` classifies
+   every conflict:
+
+   - **mechanical** — imports, formatting, a moved file, a rename. Resolve it,
+     and journal the resolution.
+   - **semantic** — upstream rewrote what the plan stood on. **Stop.** Read the
+     new commits, produce an amendment (`pdkit amendment new`), and get it
+     approved before touching anything else.
+
+   The hint from step 2 is a hint. The dangerous semantic conflict is the one
+   that merges cleanly: git is satisfied, the build is green, and the code now
+   does something the plan never intended. If a conflict touches logic the plan
+   depended on, treat it as semantic even when nothing complained.
+
+4. **Re-verify from scratch.** `pdkit slice verify --issue <n> --all
+   --standalone`, then `pdkit preflight <n> --slice <i>`. A previous green
+   describes a diff that no longer exists — and the digest check will say so
+   before you do.
+
+5. **Publish under a gate.**
+
+   ```
+   pdkit state <n> --to preflight-green
+   pdkit gate open --issue <n> --branch <b>
+   git push --force-with-lease origin <b>
+   ```
+
+   This is the only place `--force-with-lease` is allowed: your own branch,
+   under a token. `--force` without a lease is refused always, token or not.
+
+6. **Hand over to `/pd:pr-sync <k>`** for whatever accumulated in review while
+   the branch sat.
+
+## When it is worse than a rebase
+
+If upstream reimplemented the thing the issue was about, say so plainly and
+stop. The routes for that are `redo` (the work existed and was reverted) and
+`invalid` (it is already fixed), and both start at `/pd:triage`, not here.
+Rebasing a plan onto a world that no longer needs it produces a pull request
+nobody can review.
