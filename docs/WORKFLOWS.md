@@ -4,8 +4,9 @@ Scenarios, in the order you are likely to hit them. Each names the commands and
 the decision points that are yours rather than the plugin's.
 
 **What works today:** scenarios 1 and 2, up to and including an open pull
-request. Everything marked *(stage N)* below is registered but still a stub —
-the skill says so rather than improvising.
+request, with the plan reviewed before the code and the diff audited after it.
+Everything marked *(stage N)* below is registered but still a stub — the skill
+says so rather than improvising.
 
 ## Before anything
 
@@ -24,10 +25,10 @@ broken manifest gates nothing at all.
 ```
 /pd:triage 12345      → route, drafted requirements
 /pd:plan 12345        → reconnaissance, open questions, plan     [you approve]
-/pd:plan-review 12345 → adversarial review of the plan                (stage 2)
+/pd:plan-review 12345 → adversarial review of the plan
 /pd:exec 12345        → implementation, one task per worker, receipts
 /pd:validate 12345    → evidence from the running application         (stage 5)
-/pd:audit 12345       → diff against plan, fresh context              (stage 2)
+/pd:audit 12345       → diff against plan, fresh context
 /pd:slice 12345       → usually one slice                             (stage 3)
 /pd:preflight 12345   → deterministic gates
 /pd:pr 12345          → branch, PR body, PR                      [you confirm push]
@@ -152,6 +153,50 @@ Ordinary work is untouched: `git status`, `git add <path>`, `git commit -m`,
 `gh pr view`, `gh api` reads. If a refusal looks wrong, `pdkit doctor
 --gate-selftest` says whether the gate is behaving; rephrasing the command is
 not a fix, and the parser was written for exactly that attempt.
+
+## The ownership hook
+
+While a task is marked active in a working tree, writes outside that task's
+files are refused:
+
+```
+pdkit task sync --issue 12345          # read the Owns sets out of the task files
+pdkit task start --issue 12345 --task T1
+…
+pdkit task stop
+```
+
+`task sync` is not optional. Without it the state record has no ownership for
+the task, and the hook allows every write while saying so — which reads as
+nothing having happened.
+
+Two allowances are deliberate. With no active task nothing is constrained: the
+rule belongs to executing a planned task, not to having the plugin installed.
+And with a task whose ownership was never synced, the write goes through with a
+message naming the command that fixes it, because blocking there would make an
+unsynced plan look like a broken tool.
+
+What catches a worker that ran outside all of this is `pdkit audit`, which
+reports every file changed outside every task's ownership. The hook catches it
+in time; the audit catches it for certain.
+
+## Receipts
+
+A task is finished when the command in its `Done when` has been run and what it
+printed has been recorded:
+
+```
+pdkit receipt write --issue 12345 --task T1
+```
+
+`pdkit` runs the command itself. There is no parameter for output text — the
+choice between "the tests passed" and the test runner's own words is not
+offered — and the digest it records over the captured block means a receipt
+edited afterwards stops validating.
+
+Completing a task without one is refused. So is completing one whose receipt
+records a non-zero exit: that receipt is valid, and what it proves is that the
+work is not done.
 
 ## Decision points that stay yours
 

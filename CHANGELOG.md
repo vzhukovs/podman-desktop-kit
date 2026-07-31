@@ -59,8 +59,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bodies for the seven stage 1 skills: `sync`, `triage`, `plan`, `exec`,
     `preflight`, `pr`, `quickfix`.
 
+- **Stage 2 of section 12 — quality.** Drift from the plan stops reaching a
+  pull request.
+  - `lib/active.js` — which task is running in which working tree. The piece
+    the model was missing: `state.json` knew that T1 owns three files, and
+    nothing could tell that T1 is what runs *here*. Keyed on the tree, because
+    five worktrees share one `$PDKIT_HOME` and two of them can be on the same
+    issue at different slices.
+  - `lib/globs.js` — path matching for `Owns`. Refuses what it cannot express
+    exactly (`src/**.ts`) instead of approximating it, since the difference is
+    how deep a permission reaches.
+  - **The ownership hook.** Writes outside the active task's files are refused,
+    with the refusal naming the whole owned set. Two allowances are deliberate
+    and tested: no active task constrains nothing, and a task whose ownership
+    was never synced allows the write while naming the command that fixes it.
+  - **Receipts as a gate.** `pdkit receipt write` runs the command from
+    `Done when` itself; there is no parameter for output text, so "summarise
+    the run convincingly" is not a path that exists. A digest over the captured
+    block catches a receipt edited afterwards. `validateReceipt` answers "is
+    this a real capture" and deliberately not "did the run succeed" — a red
+    receipt is valid, and it is the one worth having most.
+  - `lib/artefacts.js` — reads `plan.md` and `tasks/T*.md` back, and checks
+    what a grep can check: tasks sharing files, `Done when` as prose,
+    requirements with no task, `[NEEDS DECISION]` left in.
+  - `lib/audit.js` — the facts `pd-auditor` works from, including every file
+    changed outside every task's ownership. No verdict field, and `pdkit audit`
+    always exits zero: a collector that graded its own findings would be the
+    second opinion the audit is meant to be getting.
+  - `session-start` re-anchors to the active task and revokes outstanding
+    consent tokens; `pre-compact` writes the active task to the journal. With
+    no active task, SessionStart prints nothing at all.
+  - `pdkit task`, `receipt`, `plan check`, `audit`, `render --check`, and
+    `doctor` self-testing the ownership hook through the manifest.
+  - Bodies for `plan-review` and `audit`, both ordered machine first.
+
 ### Changed
 
+- **`lib/evidence.js` set `RTK_DISABLE`, which is not a variable rtk reads.**
+  The name is `RTK_DISABLED`. With rtk enabled, every receipt and every
+  preflight proof would have been captured through it — compressed output,
+  indistinguishable in the file from the real thing. The test missed it by
+  comparing the module against a constant the module declares itself; it now
+  asserts from inside the child process.
+- `templates/plan.md` takes a `{{tasks}}` placeholder instead of a hardcoded T1
+  block. It could not render a plan with two tasks before.
+- `templates/receipt.md` records the capture's completeness and its digest.
+- `skills/exec` no longer says receipts are discipline rather than enforcement.
+- `pdkit doctor` checks rtk for real, replacing the placeholder that deferred
+  it: whether it is installed, and whether its `exclude_commands` covers
+  `tools.rtk.never_rewrite`.
 - `knowledge/upstream-rules.md` verified against podman-desktop at `b0e77bc`.
   The SPDX header is the Red Hat Apache block, not a bare identifier line, and
   the commit scope is optional rather than required — the earlier text would
@@ -79,9 +126,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Stages 2 to 5 remain stubs: no `Owns` hook, no receipt enforcement, no
-  slicer, no PR lifecycle, no Playwright validation. The skills for those say
-  so instead of improvising.
+- Stages 3 to 5 remain stubs: no slicer, no PR lifecycle, no Playwright
+  validation. The skills for those say so instead of improvising.
+- Stage 2 is **implemented in code and not confirmed in practice**, on the same
+  terms as stage 1. Its readiness signal in section 12 is "the auditor caught a
+  divergence the implementer did not notice", and that is settled by the single
+  live run deferred until after stage 5 — not by the test suite.
+- Auto-blocking a task after N attempts is still not implemented;
+  `templates/task.md` no longer promises it.
 - `slicing.layer_order` does not cover three packages of the fork
   (`packages/api`, `packages/webview-api`, `storybook`); `pdkit doctor` warns.
   The decision belongs to stage 3, where slice order first matters.

@@ -4,8 +4,9 @@
 - Satisfies: {{satisfies}}
 - Status: {{status}}
 - Attempts: {{attempts}}
-  <!-- Auto-blocked after the configured limit. A task that failed three times
-       needs a different plan, not a fourth attempt. -->
+  <!-- Recorded, not enforced: nothing blocks a fourth attempt yet. Read it
+       yourself — a task that failed three times needs a different plan rather
+       than another try. -->
 
 ## Owns
 {{ownedFiles}}

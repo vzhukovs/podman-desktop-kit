@@ -131,3 +131,38 @@ command. `lib/hooks/command-parse.js` canonicalizes wrapped forms, and
 Keep `tools.rtk.readonly_only: true`. Commands whose output becomes a receipt
 run with rtk disabled: a compressed test log is a claim, not evidence, and
 receipts exist precisely to be more than claims.
+
+### Setting it up
+
+rtk installs its own hook, globally, and patches `~/.claude/settings.json`.
+The plugin does not do this for you, and `/pd:doctor` only reports what it
+finds:
+
+```bash
+rtk init -g          # installs ~/.claude/hooks/rtk-rewrite.sh, prompts before patching
+rtk init --show      # what is installed
+```
+
+Then exclude the commands the plugin needs to see unrewritten, in
+`~/.config/rtk/config.toml`:
+
+```toml
+[hooks]
+exclude_commands = [
+  "git push", "git commit", "git reset", "git rebase", "git cherry-pick",
+  "gh pr", "gh issue", "gh api",
+]
+```
+
+That list is `tools.rtk.never_rewrite` from the plugin config, and
+`/pd:doctor` warns about any entry missing from the TOML. It matches the file
+as text rather than parsing it — enough for a warning, and a second parser in
+a zero-dependency project would not be.
+
+Two things worth being clear about. The exclusion list **narrows the surface;
+it is not what holds.** What holds is that the gate parses the command it is
+given, `rtk git push` included, and `/pd:doctor --gate-selftest` probes exactly
+that form. And receipts bypass rtk through `RTK_DISABLED=1`, set by
+`lib/evidence.js` on every capture — the variable name is rtk's own, confirmed
+against its documentation, because a bypass with a misspelled variable does
+nothing and does it silently.
