@@ -93,6 +93,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `doctor` self-testing the ownership hook through the manifest.
   - Bodies for `plan-review` and `audit`, both ordered machine first.
 
+- **Stage 3 of section 12 — slicing.** One change set becomes N atomic pull
+  requests, each one built before it is offered.
+  - `lib/slice.js` — the graph and the criterion. A slice is a **base plus a
+    set of files**, not a set of commits: verification is step one of the
+    /pd:pr flow, before any branch exists, so what gets built is the diff
+    restricted to those files. The same diff is what materializing applies
+    back, and what `--from-pr` will substitute for a published one.
+  - **The refusals.** `pdkit slice set` rejects, by name, two slices sharing a
+    file, a changed file in no slice, a base that is not a slice or forms a
+    cycle, a public API change mixed into another layer or merging after it,
+    and an R-ID that reaches no slice. Spanning layers and exceeding
+    `max_files_per_slice` warn instead — those are conversations, not defects.
+  - **The criterion.** `pdkit slice verify` builds a slice alone on `main` in a
+    worktree and runs the repository's own typecheck, lint and scoped tests.
+    Green means it branches from `main`; red means it needs a stack, and the
+    red run is the evidence for the stack rather than something to hide.
+  - **The verdict is produced, never supplied.** `slices.json` is written only
+    by `lib/slice.js`, the run is attached as a receipt under `verify/S<i>.md`
+    and validated by the same function receipts use, and `slices.md` is
+    rendered from the graph. There is no parameter through which an agent could
+    write "standalone: ✅" — the argument that closed receipts in stage 2.
+  - **Freshness.** The digest of the verified diff is stored and recomputed by
+    preflight, which fails rather than passes on a mismatch. On a materialized
+    branch that is also proof the branch is what was verified.
+  - `pdkit slice materialize` cuts the branch from the slice's base, applies
+    the slice and makes one commit, leaving the working branch untouched. It
+    refuses before `slices-approved`.
+  - `pdkit slice cascade` rebases what is stacked on a changed slice and
+    verifies each one again from its branch. Anything that stopped being green
+    is reported and journalled, not rebased into a lie.
+  - `lib/worktree.js` — create, list, remove, and prepare the verification
+    tree. `worktrees.*` had been in the config since stage 0 with nothing
+    reading it. Removal refuses while a tree holds an unmerged branch;
+    preparation cleans `-fdx` with one exception, `node_modules`, and the
+    marker recording which lockfile is installed lives inside it so the claim
+    and the thing it claims about share a fate.
+  - `pdkit slice suggest`, `set`, `show`, `verify`, `render`, `materialize`,
+    `cascade`, and `pdkit worktree create|list|remove`.
+  - Bodies for `slice` and `worktree-kit`; `/pd:pr` runs its whole sequence
+    once per slice, confirmation included.
+
 ### Changed
 
 - **`lib/evidence.js` set `RTK_DISABLE`, which is not a variable rtk reads.**
@@ -118,6 +159,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   template; `gates.require_states` no longer allows issuing a token from a
   state that precedes preflight; and section 4 documents the two preflight
   passes that the body-reading checks require.
+- **`preflight` reads the slice, not just the issue.** The base comes from the
+  graph — a stacked slice diffed from `main` hands every file check the
+  previous slice's work as though it were this one's — and `r-coverage` asks
+  for the slice's R-IDs. Demanding the whole frozen set failed the first slice
+  of three for not covering requirements belonging to the third; its own remedy
+  line described that situation without being able to recognise it.
+- **`slice-standalone` stops being a stub.** It re-checks what a stored result
+  cannot say about itself: that the digest still matches, and that the attached
+  run is still a valid capture.
+- **`pr-open` may return to `preflight-green`.** An issue with three slices
+  passes through that state three times, and the gate is issued per branch from
+  `preflight-green` alone; widening `GATE_ELIGIBLE` instead would have opened a
+  way around preflight itself.
+- **`repo.changedPaths` can turn rename detection off,** and slicing turns it
+  off. A rename names two paths and the function kept one, which would carry
+  the new file into a slice and leave the old one behind.
+- `templates/slices.md` can hold more than one slice. The table row and the
+  rationale block were hardcoded for slice #1, so the artefact this whole stage
+  produces could not be rendered for a graph of three — the same defect stage 2
+  found in `templates/plan.md`.
+- `slicing.layer_order` covers every package in the fork. `packages/api`,
+  `packages/webview-api` and `storybook` used to fall through to `other`, which
+  meant their merge order was decided by nothing.
+- `pdkit doctor` checks the worktree root and whether git still believes in the
+  trees it lists, and names the config file that decides `slicing.layer_order`
+  — `init` copies the whole defaults file, so a list the plugin has since
+  extended goes on being shadowed by that copy.
+- Architecture spec bumped to 0.5, with the 0.4 snapshot frozen.
+
 - `templates/pr-body.md` rebuilt on the upstream template's four sections.
 - Deny rules gained their `when` predicates. As shipped in the skeleton, six of
   the eight matched only a program and subcommand — the force-push rule refused
@@ -126,14 +196,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Stages 3 to 5 remain stubs: no slicer, no PR lifecycle, no Playwright
-  validation. The skills for those say so instead of improvising.
+- Stages 4 and 5 remain stubs: no PR lifecycle, no Playwright validation. The
+  skills for those say so instead of improvising.
 - Stage 2 is **implemented in code and not confirmed in practice**, on the same
   terms as stage 1. Its readiness signal in section 12 is "the auditor caught a
   divergence the implementer did not notice", and that is settled by the single
   live run deferred until after stage 5 — not by the test suite.
 - Auto-blocking a task after N attempts is still not implemented;
   `templates/task.md` no longer promises it.
-- `slicing.layer_order` does not cover three packages of the fork
-  (`packages/api`, `packages/webview-api`, `storybook`); `pdkit doctor` warns.
-  The decision belongs to stage 3, where slice order first matters.
+- Stage 3 is implemented in code and exercised against the fork, but **no
+  sliced pull request has been opened upstream**. Its readiness signal in
+  section 12 — "one change set cut into 3 PRs, each standalone green" — is
+  closed as far as the branches and the verifications go, and the last step
+  waits with the live run deferred until after stage 5.
+- `pdkit slice --from-pr` (scenario 13) is not implemented. The slicer's input
+  is abstracted down to a diff, so the remaining work is migrating review
+  threads into the new pull requests, which needs the same GraphQL layer as
+  `pr-sync`.
+- `Reverts cleanly` is a textual check — the patch comes off. Whether the build
+  survives a revert costs another full run per slice and is not claimed.

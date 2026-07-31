@@ -29,7 +29,7 @@ broken manifest gates nothing at all.
 /pd:exec 12345        → implementation, one task per worker, receipts
 /pd:validate 12345    → evidence from the running application         (stage 5)
 /pd:audit 12345       → diff against plan, fresh context
-/pd:slice 12345       → usually one slice                             (stage 3)
+/pd:slice 12345       → usually one slice                        [you approve]
 /pd:preflight 12345   → deterministic gates
 /pd:pr 12345          → branch, PR body, PR                      [you confirm push]
 ```
@@ -51,11 +51,58 @@ If the fix outgrows the thresholds, `pdkit issue escalate 12908` sends it back
 to triage. That ordering is not bureaucracy: requirements derived from a diff
 you have already written describe what you built rather than what was needed.
 
-## 3. A new feature
+## 3. A new feature, cut into several pull requests
 
 The full path. `/pd:slice` will usually produce 2–5 pull requests, and the plan
 has to have anticipated that: a diff planned without slicing in mind cannot be
-cut apart afterwards without redoing the work. The slicer lands in stage 3.
+cut apart afterwards without redoing the work.
+
+```
+/pd:slice 12345       → graph of slices, each one verified       [you approve]
+/pd:pr 12345          → per slice: branch, preflight, body, PR   [you confirm each]
+```
+
+What happens under those two lines:
+
+```
+pdkit slice suggest --issue 12345 --json     facts: file → package → layer → task → R-IDs
+pdkit slice set --issue 12345 --from f.json  refuses a graph that cannot work
+pdkit slice verify --issue 12345 --all       builds each slice alone, from main
+pdkit slice render --issue 12345             slices.md, verified columns included
+pdkit state 12345 --to sliced                                    [you approve]
+pdkit slice materialize --issue 12345 --slice 1 --subject "…"
+pdkit preflight 12345 --slice 1              … then the body, the second pass,
+                                             the gate, and the next slice
+```
+
+**A slice is a base plus a set of files.** Verification runs before any branch
+exists, so what gets built is the diff restricted to those files, applied to a
+scratch worktree from `main`.
+
+**Green standalone means the slice branches from `main`. Red means it needs a
+stack** — and the red run is the evidence for the stack, not a failure to fix.
+Independence is preferred because a stack is fragile: after #1 merges, #2 needs
+its base switched and its review threads point at lines that moved.
+
+What the machine refuses, so the slicer does not have to be trusted with it:
+two slices sharing a file, a changed file in no slice, a cycle between bases, a
+public API change mixed into another layer or merging after it, an R-ID that
+reaches no slice.
+
+What stays judgement: whether a slice justifies itself without the next one.
+Upstream does not accept dead code staged for a future PR.
+
+**Verification is re-checked, not remembered.** `slices.json` stores the digest
+of the diff that was verified; preflight recomputes it and fails on a mismatch.
+On a materialized branch that doubles as proof the branch is what was verified.
+
+If a review fix lands in a slice that others are stacked on:
+
+```
+pdkit slice cascade --issue 12345 --from 1    rebase the dependents, verify again
+```
+
+Anything that stopped being green is reported, not rebased into a lie.
 
 ## 4. Coming back after a break
 
@@ -76,6 +123,22 @@ A previous green preflight means nothing after a rebase.
 ```
 
 Outside the issue lifecycle entirely.
+
+## 6. Two issues at once
+
+```
+pdkit worktree create --issue 12345
+pdkit worktree create --issue 12908
+```
+
+One tree per issue, beside the fork rather than inside it. State lives in
+`$PDKIT_HOME` keyed by issue, so both trees see the same plan, receipts and
+slice graph — while the *active task* pointer is per tree, which is what lets
+two trees run two tasks of the same issue without either ownership hook
+guarding the wrong files.
+
+`pdkit worktree remove --issue 12345` refuses while the tree holds a branch
+that has not landed: removing it takes the commits with it and says nothing.
 
 ---
 

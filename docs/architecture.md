@@ -32,6 +32,18 @@ The split is not stylistic. Anything that must be **true** is in `lib/` and
 `skills/` and `agents/`. A rule stated only in a prompt is a rule that holds
 most of the time.
 
+## What the slicer is, in one paragraph
+
+A slice is a base plus a set of files. It is verified before any branch exists,
+by applying the diff restricted to those files to a scratch worktree from
+`main` and running the repository's own typecheck, lint and tests there. Green
+means it branches from `main`; red means it needs a stack, and the red run is
+the evidence for that stack. The result is produced by `pdkit` and stored with
+the digest of the diff it describes, so preflight can ask later whether it is
+still about this diff — which is also how a materialized branch is checked
+against what was verified. Nothing in that sentence has a parameter an agent
+could supply.
+
 ## Why hooks rather than instructions
 
 Three things are enforced rather than requested, and each closes a failure that
@@ -53,6 +65,8 @@ Stated rather than discovered later:
   blind spots shared with the model that wrote the code.
 - Slicing a finished diff is expensive. That is why the plan carries a slice
   hypothesis.
+- `Reverts cleanly` is a textual check: the patch comes off. Whether the build
+  survives a revert costs another full run per slice, and is not claimed.
 - Stacked PRs are fragile, which is why independent slices are the default.
 - Consent fatigue is real. The gate prints the PR body and branch list rather
   than a yes/no prompt, because that is the thing worth reading.

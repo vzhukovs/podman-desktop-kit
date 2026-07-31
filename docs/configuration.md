@@ -66,6 +66,20 @@ The config is **copied** from `defaults/config.yaml` rather than generated, so
 the comments explaining each decision come with it. An existing file is kept;
 `--force` overwrites it.
 
+One consequence of copying the whole file: a default the plugin changes later is
+shadowed by your copy, and it looks exactly like a setting you chose. That is
+how `slicing.layer_order` stayed at its stage-0 value after the plugin extended
+it. Where it matters, `doctor` names the file that decides a key —
+
+```
+! package-map:layers  no layer claims @podman-desktop/core-api, … — extend
+                      slicing.layer_order in ~/.pdkit/podman-desktop/config.yaml
+                      and re-run `pdkit init`
+```
+
+— so the fix is to edit that key in your own file, or delete it there and let
+the shipped default through.
+
 ### What each key does
 
 | Key | Effect |
@@ -76,6 +90,12 @@ the comments explaining each decision come with it. An existing file is kept;
 | `state.root` | Where `$PDKIT_HOME` lives, unless the environment says otherwise |
 | `branches.single`, `branches.sliced` | Branch name templates; `{issue}`, `{index}`, `{slug}` |
 | `slicing.layer_order` | Merge order for slices, and the layer each package is filed under. A package no entry claims is reported by `doctor` rather than filed under the nearest match |
+| `slicing.strategy` | `prefer-independent` by default. A stack is fragile — after #1 merges, #2 needs its base switched and its threads point at moved lines |
+| `slicing.max_files_per_slice` | A warning threshold, not a refusal. Size is a conversation |
+| `slicing.verify.worktree` | `reuse` keeps one tree per issue, so `node_modules` survives between runs; `ephemeral` rebuilds it every time and pays a full install per slice |
+| `slicing.verify.install` | `on-lockfile-change` (default), `always`, or `never`. The marker recording which lockfile is installed lives inside `node_modules`, so wiping one wipes the other |
+| `worktrees.root` | Where trees go. Beside the fork, never inside it: a checkout under the repository shows up in `git status` and eventually in a pull request |
+| `worktrees.copy_files` | Copied into every new tree, and again after each verification reset — `git clean` takes them |
 | `quickfix.max_changed_lines`, `quickfix.max_files` | Thresholds above which a quickfix escalates back to triage |
 | `gates.push_ttl`, `gates.require_states` | When a push gate may be issued at all |
 
