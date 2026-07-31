@@ -907,3 +907,64 @@ describe('a base that fails the same command', () => {
     assert.match(values.rows, /inconclusive/);
   });
 });
+
+// Scenario 13: upstream asks for an already-published pull request to be split.
+// The slicer does not change — what changes is where the diff comes from.
+describe('--from-pr', () => {
+  let upstream;
+  let clone;
+
+  before(async () => {
+    upstream = await initRepo('pdkit-upstream-');
+    await writeFiles(upstream, { 'packages/main/src/a.ts': 'export const a = 1;\n' });
+    await commitAll(upstream, 'chore: seed');
+
+    // Somebody's pull request, published the way GitHub serves one.
+    await git(['checkout', '-b', 'their-work'], upstream);
+    await writeFiles(upstream, { 'packages/main/src/a.ts': 'export const a = 2;\n', 'packages/ui/src/b.ts': 'export const b = 1;\n' });
+    const head = await commitAll(upstream, 'feat: their change');
+    await git(['update-ref', 'refs/pull/7/head', head], upstream);
+
+    // Upstream moves on after the pull request was opened.
+    await git(['checkout', 'main'], upstream);
+    await writeFiles(upstream, { 'packages/preload/src/c.ts': 'export const c = 1;\n' });
+    await commitAll(upstream, 'chore: unrelated upstream work');
+
+    clone = await initRepo('pdkit-clone-');
+    await git(['remote', 'add', 'upstream', upstream], clone);
+    await git(['fetch', 'upstream', 'main'], clone);
+  });
+
+  after(async () => {
+    await cleanup(upstream, clone);
+  });
+
+  test('the head is fetched and the base is where it branched, not where upstream is now', async () => {
+    const fetched = await slice.fetchPullRequestHead({
+      pr: 7,
+      repoRoot: clone,
+      config: { repo: { upstream_remote: 'upstream', base_branch: 'main' } },
+    });
+
+    const seed = await git(['rev-parse', 'upstream/main~1'], clone);
+    assert.equal(fetched.base, seed, 'the base is the fork point');
+
+    // Against the tip, the diff would carry the unrelated upstream commit and
+    // the slicer would be asked to place a file nobody in this PR touched.
+    const files = await slice.sliceDiff({
+      repoRoot: clone,
+      base: fetched.base,
+      ref: fetched.ref,
+      files: ['packages/main/src/a.ts', 'packages/ui/src/b.ts'],
+    });
+    assert.match(files, /packages\/ui\/src\/b\.ts/);
+    assert.equal(files.includes('packages/preload/src/c.ts'), false);
+  });
+
+  test('a pull request the remote does not serve is an error, not an empty slice', async () => {
+    await assert.rejects(
+      () => slice.fetchPullRequestHead({ pr: 999, repoRoot: clone, config: { repo: { upstream_remote: 'upstream' } } }),
+      /999/,
+    );
+  });
+});
