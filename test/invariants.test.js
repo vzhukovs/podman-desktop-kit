@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const LIB = fileURLToPath(new URL('../lib/', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 /**
  * Drop comments, so an invariant stated in prose is not mistaken for a
@@ -115,6 +116,72 @@ describe('the hook table has one owner', () => {
     assert.ok(FAIL_CLOSED.includes('pre-bash'), 'pre-bash guards upstream writes and must fail closed');
     for (const event of FAIL_CLOSED) {
       assert.ok(event in HOOK_HANDLERS, `FAIL_CLOSED names "${event}", which is not a registered event`);
+    }
+  });
+});
+
+// A skill is instructions the model follows. One naming a command that does
+// not exist fails mid-flow, with the model improvising a substitute — which is
+// exactly the moment improvisation is least wanted.
+describe('skills only name commands that exist', () => {
+  /**
+   * Code spans and fenced blocks only.
+   *
+   * Prose mentions pdkit too — "check the pdkit environment" is a sentence,
+   * not an invocation — and matching it would make this test fail on English
+   * rather than on a wrong command.
+   *
+   * @param {string} markdown
+   * @returns {string}
+   */
+  function codeOnly(markdown) {
+    const fenced = [...markdown.matchAll(/```[\s\S]*?```/g)].map((match) => match[0]);
+    const inline = [...markdown.matchAll(/`[^`\n]+`/g)].map((match) => match[0]);
+    return [...fenced, ...inline].join('\n');
+  }
+
+  test('every `pdkit <command>` in a written skill is a real command', async () => {
+    const { COMMANDS } = await import('../lib/cli.js');
+    const skillsDir = join(ROOT, 'skills');
+
+    const problems = [];
+    for (const entry of await readdir(skillsDir)) {
+      const text = await readFile(join(skillsDir, entry, 'SKILL.md'), 'utf8');
+
+      // A stub is not instructions anybody follows, and it may name a command
+      // from the stage it is waiting for.
+      if (text.includes('> Stub.')) continue;
+
+      for (const [, command] of codeOnly(text).matchAll(/\bpdkit ([a-z][a-z-]*)/g)) {
+        if (!COMMANDS.includes(command)) problems.push(`${entry}: pdkit ${command}`);
+      }
+    }
+
+    assert.deepEqual(problems, [], `these skills name commands pdkit does not have:\n  ${problems.join('\n  ')}`);
+  });
+
+  test('the dispatcher and the exported list agree', async () => {
+    const { COMMANDS } = await import('../lib/cli.js');
+    const source = await readFile(join(ROOT, 'lib', 'cli.js'), 'utf8');
+
+    for (const command of COMMANDS) {
+      // `version` is answered before the switch, since --version has to work
+      // without a command at all.
+      const handled =
+        new RegExp(`case '${command}':`).test(source) || new RegExp(`command === '${command}'`).test(source);
+      assert.ok(handled, `COMMANDS lists "${command}" but nothing in the dispatcher handles it`);
+    }
+  });
+
+  test('every dispatched command is in the exported list', async () => {
+    const { COMMANDS } = await import('../lib/cli.js');
+    const source = await readFile(join(ROOT, 'lib', 'cli.js'), 'utf8');
+
+    // Scoped to the top-level switch: the sub-command switches inside runGate
+    // and runIssue use the same syntax and are not pdkit commands.
+    const body = source.slice(source.indexOf('switch (command) {'));
+    for (const [, command] of body.matchAll(/^\s{6}case '([a-z-]+)':/gm)) {
+      assert.ok(COMMANDS.includes(command), `the dispatcher handles "${command}", which COMMANDS does not list`);
     }
   });
 });
