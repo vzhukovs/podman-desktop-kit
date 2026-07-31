@@ -12,11 +12,13 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { GATE_PROBES, gateSelftest } from '../lib/doctor.js';
+import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
+import { GATE_PROBES, diagnose, gateSelftest } from '../lib/doctor.js';
+import { create } from '../lib/worktree.js';
 
 let plugin;
 
@@ -140,5 +142,46 @@ describe('the self-test', () => {
     } finally {
       await writeFile(file, original);
     }
+  });
+});
+
+// Slice verification builds in a worktree, so a root that cannot be written or
+// a tree git has lost track of becomes a verification failure that looks like a
+// failing slice.
+describe('the worktree checks', () => {
+  let repo;
+  let home;
+
+  before(async () => {
+    repo = await initRepo('pdkit-doctor-worktree-');
+    home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-worktree-home-'));
+
+    await writeFile(join(repo, 'file.txt'), 'x\n');
+    await writeFile(join(repo, '.pdkit.yaml'), `worktrees:\n  root: ${join(repo, '..', 'doctor-trees')}\n`);
+    await commitAll(repo, 'chore: seed');
+  });
+
+  after(async () => {
+    await cleanup(repo, home, join(repo, '..', 'doctor-trees'));
+  });
+
+  test('a root that does not exist yet is fine, and is not created by asking', async () => {
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+    const root = find(report.checks, 'worktrees:root');
+
+    assert.equal(root.status, 'ok');
+    assert.match(root.detail, /not there yet/);
+    await assert.rejects(access(join(repo, '..', 'doctor-trees')), 'diagnosing must not create what it is diagnosing');
+  });
+
+  test('a tree git lists but disk does not have is a warning with the fix in it', async () => {
+    await create({ repoRoot: repo, name: 'ghost', config: { worktrees: { root: join(repo, '..', 'doctor-trees') }, repo: { base_branch: 'main' } }, home });
+    await rm(join(repo, '..', 'doctor-trees', 'ghost'), { recursive: true, force: true });
+
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+    const registered = find(report.checks, 'worktrees:registered');
+
+    assert.equal(registered.status, 'warn');
+    assert.match(registered.detail, /git worktree prune/);
   });
 });

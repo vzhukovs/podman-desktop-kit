@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import {
   DEFAULT_HOME,
   DEFAULTS_PATH,
+  definedIn,
   expandTilde,
   get,
   issueDir,
@@ -152,5 +153,33 @@ describe('paths', () => {
     assert.equal(p.packageMap, join(home, 'package-map.json'));
     assert.equal(p.journal, join(home, 'journal'));
     assert.equal(issueDir(home, 12345), join(home, 'issues', '12345'));
+  });
+});
+
+// `pdkit init` copies the whole defaults file into $PDKIT_HOME, so a default
+// the plugin later changes goes on being shadowed by that copy — and the report
+// that blames the value should be able to say which file decided it.
+describe('definedIn', () => {
+  test('names the last layer that defines a key', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'pdkit-defined-home-'));
+    const repo = await mkdtemp(join(tmpdir(), 'pdkit-defined-repo-'));
+
+    try {
+      await writeFile(join(home, 'config.yaml'), 'slicing:\n  layer_order: [main]\n');
+
+      const fromHome = definedIn('slicing.layer_order', { home, repoRoot: repo });
+      assert.equal(fromHome.name, 'home');
+      assert.equal(fromHome.path, join(home, 'config.yaml'));
+
+      await writeFile(join(repo, '.pdkit.yaml'), 'slicing:\n  layer_order: [ui]\n');
+      assert.equal(definedIn('slicing.layer_order', { home, repoRoot: repo }).name, 'repo');
+
+      // A key only the shipped defaults define still resolves.
+      assert.equal(definedIn('gates.push_ttl', { home, repoRoot: repo }).name, 'defaults');
+      assert.equal(definedIn('nothing.like.this', { home, repoRoot: repo }), null);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+      await rm(repo, { recursive: true, force: true });
+    }
   });
 });
