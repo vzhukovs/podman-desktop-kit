@@ -375,6 +375,128 @@ describe('the upstream rule checks', () => {
   });
 });
 
+describe('the artefact checks', () => {
+  async function only(id, overrides) {
+    const checks = (await loadChecks()).filter((check) => check.id === id);
+    const report = await run({ ...(await context()), ...overrides }, checks);
+    return report.results[0];
+  }
+
+  /** A body with the sections these checks read. */
+  const body = ({ steps = '1. Build → it builds\n2. Run → it runs\n3. Restart → still fine', notes = '- Checked on macOS.', extra = '' } = {}) =>
+    `### What issues does this PR fix or reference?\n\nFixes #5001\n${extra}\n\n### How to test this PR?\n\n${steps}\n\n**Notes for reviewers**\n${notes}\n\n- [ ] Tests are covering the bug fix or the new feature\n`;
+
+  test('branch-name: a branch for another issue fails', async () => {
+    const result = await only('branch-name', { issue: 9999 });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /names issue 5001.*for 9999/);
+  });
+
+  test('branch-name: a branch that is not ours fails', async () => {
+    assert.equal((await only('branch-name', { branch: 'my-feature' })).status, 'fail');
+    assert.equal((await only('branch-name', { branch: null })).status, 'fail');
+  });
+
+  test('branch-name: the right branch passes', async () => {
+    assert.equal((await only('branch-name', {})).status, 'pass');
+  });
+
+  // The defect this check found in itself: the section ran on past its own
+  // steps and counted "Notes for reviewers" and the template checkbox as
+  // steps with no expected result, failing a body the plugin had produced.
+  test('steps-to-check: notes and the checkbox are not steps', async () => {
+    const result = await only('steps-to-check', { prBody: body() });
+
+    assert.equal(result.status, 'pass');
+    assert.equal(result.summary, '3 steps, each with an expected result');
+  });
+
+  test('steps-to-check: fewer than three fails', async () => {
+    const result = await only('steps-to-check', { prBody: body({ steps: '1. Build → it builds\n2. Run → it runs' }) });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /at least 3/);
+  });
+
+  // "Test the dialog" is not a step. What a reviewer needs is what should
+  // happen.
+  test('steps-to-check: a step with no expected result fails', async () => {
+    const result = await only('steps-to-check', {
+      prBody: body({ steps: '1. Build it\n2. Test the dialog\n3. Look at it' }),
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /no expected result/);
+  });
+
+  test('steps-to-check: it applies on the quickfix route too', async () => {
+    const result = await only('steps-to-check', {
+      route: 'quickfix',
+      prBody: body({ steps: '1. Build it' }),
+    });
+
+    assert.equal(result.status, 'fail');
+  });
+
+  test('r-coverage: skipped on quickfix, and the report says why', async () => {
+    const result = await only('r-coverage', { route: 'quickfix', prBody: body() });
+
+    assert.equal(result.status, 'skip');
+    assert.match(result.summary, /issue number/);
+  });
+
+  test('ci-blind-spots: an untouched blind area passes', async () => {
+    const result = await only('ci-blind-spots', { changedFiles: ['packages/main/src/x.ts'] });
+    assert.equal(result.status, 'pass');
+  });
+
+  // CI builds on three platforms and runs unit tests on one, and its e2e
+  // failures do not block a merge. A green PR is not evidence.
+  test('ci-blind-spots: packaging without Notes for reviewers fails', async () => {
+    const result = await only('ci-blind-spots', {
+      changedFiles: ['.electron-builder.config.cjs'],
+      prBody: '### How to test this PR?\n\n1. Build → it builds\n',
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /packaging/);
+  });
+
+  test('ci-blind-spots: with the notes, it passes', async () => {
+    const result = await only('ci-blind-spots', {
+      changedFiles: ['.electron-builder.config.cjs'],
+      prBody: body({ notes: '- Packaged and launched on macOS 15; CI only builds the installer.' }),
+    });
+
+    assert.equal(result.status, 'pass');
+  });
+
+  test('ci-blind-spots: before the body exists it defers rather than passing', async () => {
+    const result = await only('ci-blind-spots', { changedFiles: ['packages/main/src/win32-paths.ts'], prBody: null });
+
+    assert.equal(result.status, 'skip');
+    assert.match(result.summary, /not drafted yet/);
+  });
+
+  // A warning, because every one of these is sometimes correct. Blocking
+  // would train people to route around the gate.
+  test('debug-leftovers: warns without blocking', async () => {
+    const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
+    await writeFile(join(repo, 'packages/main/src/messy.ts'), 'export const f = (x: any) => { console.log(x); };\n');
+    await git(['add', '-A']);
+    await git(['commit', '-q', '-m', 'chore: messy\n\nSigned-off-by: Test <test@example.com>']);
+
+    const checks = (await loadChecks()).filter((check) => check.id === 'debug-leftovers');
+    const report = await run(await context(), checks);
+
+    assert.equal(report.results[0].status, 'warn');
+    assert.equal(report.ok, true, 'a warning must not block');
+    assert.match(report.results[0].summary, /console\.log/);
+    assert.match(report.results[0].summary, /any/);
+  });
+});
+
 describe('api-surface', () => {
   // The trap itself. A symbol that looks internal but is declared in
   // extension-api.d.ts is public API, with obligations nobody thought they
