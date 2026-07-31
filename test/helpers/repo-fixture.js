@@ -119,6 +119,11 @@ export async function seedWorkspace(root) {
           typecheck: 'node scripts/typecheck.mjs',
           'lint:check': 'node -e "process.exit(0)"',
           'test:main': 'node -e "process.exit(0)"',
+          // A stand-in for the build a fresh tree needs before it can be
+          // checked — podman-desktop has one, and it decides whether every
+          // slice comes back red.
+          'build:marker': 'node -e "require(\'node:fs\').writeFileSync(\'built-marker.txt\', \'built\\n\')"',
+          'build:broken': 'node -e "process.exit(3)"',
           'test:ui': 'node -e "process.exit(0)"',
           'test:unit': 'node -e "process.exit(0)"',
         },

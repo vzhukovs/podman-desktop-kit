@@ -61,6 +61,16 @@ slicing:
     # that is expensive to pass is a gate people route around.
     worktree: reuse              # reuse | ephemeral
     install: on-lockfile-change  # on-lockfile-change | always | never
+    # Build steps a fresh tree needs before anything can be checked in it, by
+    # script name; anything the repository does not define is skipped.
+    #
+    # podman-desktop needs this one. @podman-desktop/core-api resolves through
+    # packages/api/dist, which exists only after build:core-api — and until it
+    # does, typecheck:main cannot find the module and eslint's type-aware rules
+    # see `any` where a type should be, reporting errors in files no slice
+    # touched. Every slice then comes back red for a reason unrelated to
+    # slicing. It costs about two seconds.
+    prepare: [build:core-api]
 
 # Script name overrides for preflight (section 7). Empty by default: names are
 # resolved from the repository's own package.json through a candidate chain,

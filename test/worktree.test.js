@@ -232,6 +232,36 @@ describe('prepare', () => {
     assert.equal(result.installed, false);
   });
 
+  // The build a fresh tree needs before anything in it can be checked. Runs
+  // after every clean rather than after every install: the output is untracked,
+  // so `clean -fdx` takes it each time.
+  test('prepare scripts run, and only the ones the repository defines', async () => {
+    const withPrepare = {
+      ...config(),
+      repo: { base_branch: 'main', package_manager: 'npm' },
+      slicing: { verify: { install: 'never', prepare: ['build:marker', 'build:does-not-exist'] } },
+    };
+
+    const result = await prepare({ repoRoot: repo, name, base: 'main', config: withPrepare, home });
+
+    assert.equal(result.ok, true, result.error);
+    assert.deepEqual(result.prepared, ['build:marker']);
+    assert.equal(await readFile(join(path, 'built-marker.txt'), 'utf8'), 'built\n');
+  });
+
+  test('a prepare script that fails stops the tree from being used', async () => {
+    const broken = {
+      ...config(),
+      repo: { base_branch: 'main', package_manager: 'npm' },
+      slicing: { verify: { install: 'never', prepare: ['build:broken'] } },
+    };
+
+    const result = await prepare({ repoRoot: repo, name, base: 'main', config: broken, home });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /cannot verify anything in this state/);
+  });
+
   test('a failing install is reported, not passed over', async () => {
     const broken = {
       ...config(),
