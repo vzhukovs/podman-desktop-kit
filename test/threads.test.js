@@ -278,3 +278,33 @@ describe('formatting', () => {
     assert.equal(threads.format({ items: [] }), '_None._');
   });
 });
+
+describe('when there is nothing to map against', () => {
+  // "This thread belongs to no slice" is a finding only when slices exist. On
+  // an issue with no graph and no Owns it is true of every thread, and
+  // reporting all of them buries the case the check was written for.
+  test('an issue with no graph and no ownership reports no unmapped threads', async () => {
+    const facts = await threads.collect({
+      issue: 999123,
+      pr: 17577,
+      config: CONFIG,
+      home,
+      threads: [
+        {
+          id: 't1',
+          author: 'jiridostal',
+          body: 'this looks wrong',
+          path: 'packages/main/src/anything.ts',
+          line: 4,
+          isResolved: false,
+          createdAt: '2026-05-20T00:00:00Z',
+        },
+      ],
+      discussion: { reviews: [], comments: [] },
+    });
+
+    assert.equal(facts.mappable, false);
+    assert.deepEqual(facts.unmapped, []);
+    assert.equal(threads.format(facts).includes('unmapped'), false);
+  });
+});

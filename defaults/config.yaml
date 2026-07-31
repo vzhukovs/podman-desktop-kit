@@ -118,7 +118,11 @@ journal:
   reanchor_scope: issue        # SessionStart injects the active issue only
 
 review:
-  bots_collapsed: [coderabbitai]
+  # Logins, not just accounts GitHub marks with a [bot] suffix — several of
+  # these post under a plain login. Taken from what actually comments on
+  # podman-desktop pull requests: coderabbit reviews, codecov posts a coverage
+  # table on every PR.
+  bots_collapsed: [coderabbitai, codecov, github-actions, dependabot, renovate]
   # A match EXPANDS a collapsed bot thread back to full text. It never collapses
   # anything and is never consulted for a human: dropping a security finding
   # because it lacked a configured word is the mistake the filter exists to

@@ -13,7 +13,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -21,13 +21,14 @@ import {
   BRANCH_PATTERN,
   allocateRequirement,
   freezeRequirements,
+  allocateAmendment,
   allocateTask,
   allocateSlice,
   branchName,
   parseBranch,
   slugify,
 } from '../lib/ids.js';
-import { transition } from '../lib/state.js';
+import { setOwns, transition } from '../lib/state.js';
 
 let home;
 
@@ -89,6 +90,27 @@ describe('task and slice IDs', () => {
   test('slices are numbered from 1 in merge order', async () => {
     assert.equal(await allocateSlice(1, { home }), 1);
     assert.equal(await allocateSlice(1, { home }), 2);
+  });
+
+  // An amendment is referred to from the plan, the slices and the reply that
+  // told a reviewer what changed. A second A1 makes all three ambiguous, and
+  // the number is not the agent's to pick.
+  test('amendments are A-prefixed and never restart', async () => {
+    assert.equal(await allocateAmendment(1, { home }), 'A1');
+    assert.equal(await allocateAmendment(1, { home }), 'A2');
+    assert.equal(await allocateAmendment(2, { home }), 'A1', 'numbering is per issue');
+  });
+
+  test('an issue recorded before the counter existed still gets A1', async () => {
+    // Written by an earlier version: counters with no amendment field. Falling
+    // through to undefined would have produced "Aundefined".
+    await setOwns(3, 'T1', ['packages/main/src/x.ts'], { home });
+    const record = JSON.parse(await readFile(join(home, 'issues', '3', 'state.json'), 'utf8'));
+    delete record.counters.amendment;
+    await writeFile(join(home, 'issues', '3', 'state.json'), JSON.stringify(record));
+
+    assert.equal(await allocateAmendment(3, { home }), 'A1');
+    assert.equal(await allocateAmendment(3, { home }), 'A2');
   });
 });
 
