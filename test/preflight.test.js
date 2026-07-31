@@ -405,6 +405,51 @@ describe('the upstream rule checks', () => {
   });
 });
 
+// Without this one every other result is ambiguous: the file checks read the
+// committed diff and the command checks run the working tree.
+describe('working-tree', () => {
+  async function check() {
+    const checks = await loadChecks(['working-tree']);
+    return (await run(await context(), checks)).results[0];
+  }
+
+  // Earlier blocks leave files behind on purpose — the spdx cases need a file
+  // on disk to read. This check is the one that notices, so it starts from a
+  // clean fixture rather than from whatever ran before it.
+  before(async () => {
+    await execFileAsync('git', ['add', '-A'], { cwd: repo });
+    await execFileAsync('git', ['commit', '-q', '-m', 'chore: fixture leftovers\n\nSigned-off-by: Test <test@example.com>'], { cwd: repo });
+  });
+
+  test('a clean tree passes', async () => {
+    assert.equal((await check()).status, 'pass');
+  });
+
+  test('an uncommitted change blocks, and the remedy says why it matters', async () => {
+    await writeFile(join(repo, 'packages/main/src/base.ts'), 'export const base = 2;\n');
+
+    const result = await check();
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /uncommitted/);
+    assert.match(result.remedy, /base\.\.\.HEAD.*working tree/s);
+
+    await execFileAsync('git', ['checkout', '--', 'packages/main/src/base.ts'], { cwd: repo });
+  });
+
+  // An untracked scratch file changes nothing about what is pushed — unless
+  // it is a spec file, in which case the test run covers code no reviewer
+  // will ever see.
+  test('an untracked file warns without blocking', async () => {
+    await writeFile(join(repo, 'scratch.md'), 'notes\n');
+
+    const result = await check();
+    assert.equal(result.status, 'warn');
+    assert.match(result.output, /scratch\.md/);
+
+    await rm(join(repo, 'scratch.md'));
+  });
+});
+
 describe('the artefact checks', () => {
   async function only(id, overrides) {
     const checks = (await loadChecks()).filter((check) => check.id === id);
