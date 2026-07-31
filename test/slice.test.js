@@ -790,3 +790,87 @@ describe('cascade', () => {
     assert.deepEqual(slice.dependentsOf(graph, 3), []);
   });
 });
+
+// A red run has two causes and they are different findings: the slice broke
+// something, or the base does not pass this command either. The live run
+// against the fork produced the second twice — a missing build step, then a
+// binary the install had not fetched — and every slice came back red for it.
+//
+// Its own repository, because the case is "main itself does not build", and a
+// fixture that shared main with the suites above would be telling them that.
+describe('a base that fails the same command', () => {
+  let broken;
+  let brokenHome;
+  let brokenTrees;
+
+  const FILE = 'packages/ui/src/theme.ts';
+
+  before(async () => {
+    broken = await initRepo('pdkit-slice-broken-');
+    brokenHome = await initRepo('pdkit-slice-broken-home-');
+    brokenTrees = join(broken, '..', `${broken.split('/').pop()}-trees`);
+
+    await seedWorkspace(broken);
+    // Broken on main, before any slice exists.
+    await writeFiles(broken, {
+      'scripts/typecheck.mjs': 'console.error("the toolchain itself is broken here");\nprocess.exit(9);\n',
+    });
+    await commitAll(broken, 'chore: seed, with a base that does not typecheck');
+
+    await git(['checkout', '-b', 'DESKTOP-7777/work'], broken);
+    await writeFiles(broken, { [FILE]: '// SPDX-License-Identifier: Apache-2.0\nexport const theme = "dark";\n' });
+    await commitAll(broken, 'feat(ui): dark');
+
+    await state.transition(7777, 'triaged', { home: brokenHome });
+    await state.transition(7777, 'planned', { home: brokenHome });
+  });
+
+  after(async () => {
+    await cleanup(broken, brokenHome, brokenTrees);
+  });
+
+  const brokenConfig = () => ({ ...CONFIG, worktrees: { ...CONFIG.worktrees, root: brokenTrees } });
+
+  test('the verification is inconclusive, and says which command', async () => {
+    const facts = await slice.facts({ issue: 7777, repoRoot: broken, home: brokenHome, config: brokenConfig(), packageMap: packageMap(broken) });
+    const stored = await slice.set({
+      issue: 7777,
+      proposal: { slices: [{ slug: 'ui', title: 'dark', files: [FILE], baseSlice: null }] },
+      facts,
+      config: brokenConfig(),
+      home: brokenHome,
+    });
+    assert.equal(stored.ok, true, JSON.stringify(stored.problems));
+
+    const result = await slice.verifySlice({
+      issue: 7777,
+      index: 1,
+      repoRoot: broken,
+      home: brokenHome,
+      config: brokenConfig(),
+      packageMap: packageMap(broken),
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.verification.baselineOk, false, 'the base fails it too');
+
+    // And the slice is not accused of failing to be independent, which would
+    // send somebody re-cutting a graph that was never the problem.
+    assert.deepEqual(slice.independenceProblems(result.graph), []);
+  });
+
+  test('the measurement is cached per base and command', async () => {
+    const cache = JSON.parse(await readFile(join(issueDir(brokenHome, 7777), 'verify', 'baseline.json'), 'utf8'));
+
+    assert.equal(Object.keys(cache).length, 1);
+    assert.equal(Object.values(cache)[0].ok, false);
+    assert.match(Object.values(cache)[0].command, /typecheck/);
+  });
+
+  test('and slices.md says inconclusive rather than a cross', async () => {
+    const graph = await slice.read(7777, { home: brokenHome });
+    const values = slice.renderValues(graph);
+
+    assert.match(values.rows, /inconclusive/);
+  });
+});
