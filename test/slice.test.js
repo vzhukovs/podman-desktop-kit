@@ -596,3 +596,220 @@ describe('independenceProblems', () => {
     assert.deepEqual(slice.independenceProblems(graph), []);
   });
 });
+
+describe('materialize', () => {
+  test('refuses before a human has approved the graph', async () => {
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      subject: 'feat(api): add RunOptions',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /is planned; branches are cut from slices-approved/);
+  });
+
+  test('refuses a commit subject upstream would reject', async () => {
+    await state.transition(ISSUE, 'plan-approved', { home });
+    await state.transition(ISSUE, 'implemented', { home });
+    await state.transition(ISSUE, 'validated', { home });
+    await state.transition(ISSUE, 'audited', { home });
+    await state.transition(ISSUE, 'sliced', { home });
+    await state.transition(ISSUE, 'slices-approved', { home, approvedBy: 'the owner' });
+
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      subject: 'added RunOptions',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /not a conventional commit subject/);
+  });
+
+  test('cuts a branch from the base and puts the slice on it, in one commit', async () => {
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      subject: 'feat(extension-api): add RunOptions',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.created, true);
+    assert.equal(result.base, 'main');
+
+    const changed = await git(['diff', '--name-only', 'main...HEAD'], repo);
+    assert.deepEqual(changed.split('\n'), [API]);
+    assert.equal(await git(['log', '-1', '--format=%s'], repo), 'feat(extension-api): add RunOptions');
+    assert.equal(await git(['rev-parse', '--abbrev-ref', 'HEAD'], repo), `DESKTOP-${ISSUE}/1-extension-api-run-options`);
+  });
+
+  // The reason materializing is safe to get wrong: it adds branches and
+  // touches nothing else.
+  test('the working branch is exactly where it was', async () => {
+    const files = await git(['diff', '--name-only', `main...DESKTOP-${ISSUE}/work`], repo);
+    assert.deepEqual(files.split('\n').sort(), [API, EXEC, THEME, SPEC].sort());
+  });
+
+  test('a stacked slice branches from its parent, and carries only its own files', async () => {
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 2,
+      repoRoot: repo,
+      subject: 'feat(main): thread RunOptions through exec',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.base, `DESKTOP-${ISSUE}/1-extension-api-run-options`);
+
+    const own = await git(['diff', '--name-only', `${result.base}...HEAD`], repo);
+    assert.deepEqual(own.split('\n'), [EXEC]);
+  });
+
+  test('re-running adopts an unchanged branch rather than failing', async () => {
+    const again = await slice.materialize({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      subject: 'feat(extension-api): add RunOptions',
+      home,
+      config: config(),
+    });
+
+    assert.equal(again.ok, true, again.error);
+    assert.equal(again.adopted, true);
+    assert.equal(again.created, false);
+  });
+
+  test('and refuses when the branch no longer matches the slice', async () => {
+    const branch = `DESKTOP-${ISSUE}/1-extension-api-run-options`;
+    await git(['checkout', branch], repo);
+    await writeFiles(repo, { [API]: '// SPDX-License-Identifier: Apache-2.0\nexport const version = 99;\n' });
+    await commitAll(repo, 'fix(extension-api): something a reviewer asked for');
+
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      subject: 'feat(extension-api): add RunOptions',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /--force/);
+
+    await git(['reset', '--hard', 'HEAD~1'], repo);
+  });
+
+  test('a dirty tree stops it, because the mess would ride along', async () => {
+    await writeFiles(repo, { 'packages/ui/src/theme.ts': 'export const theme = "half-done";\n' });
+
+    const result = await slice.materialize({
+      issue: ISSUE,
+      index: 3,
+      repoRoot: repo,
+      subject: 'feat(ui): high contrast themes',
+      home,
+      config: config(),
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /uncommitted changes/);
+
+    await git(['checkout', '--', '.'], repo);
+  });
+});
+
+describe('cascade', () => {
+  before(async () => {
+    // A review fix lands in slice #1, the way one does: on the branch, after
+    // the pull request is open.
+    await git(['checkout', `DESKTOP-${ISSUE}/1-extension-api-run-options`], repo);
+    await writeFiles(repo, {
+      [API]: '// SPDX-License-Identifier: Apache-2.0\nexport const version = 1;\nexport interface RunOptions { env?: string; cwd?: string }\n',
+    });
+    await commitAll(repo, 'fix(extension-api): add cwd, as review asked');
+  });
+
+  test('rebases what is stacked on the changed slice and verifies it again', async () => {
+    const result = await slice.cascade({
+      issue: ISSUE,
+      from: 1,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.deepEqual(result.conflicted, []);
+    assert.deepEqual(result.rebased, [2]);
+    assert.equal(result.ok, true, JSON.stringify(result.results));
+
+    // #2 now sits on top of the fixed #1 rather than the version it was cut on.
+    const merged = await git(['merge-base', '--is-ancestor', `DESKTOP-${ISSUE}/1-extension-api-run-options`, `DESKTOP-${ISSUE}/2-main-exec-plumbing`], repo).then(
+      () => true,
+      () => false,
+    );
+    assert.equal(merged, true);
+  });
+
+  test('the verification stored for a rebased slice is from its branch', async () => {
+    const graph = await slice.read(ISSUE, { home });
+    const second = graph.slices.find((entry) => entry.index === 2);
+
+    assert.equal(second.verification.ok, true);
+    assert.equal(second.verification.standalone, false);
+
+    const fresh = await slice.checkFreshness({ graph, index: 2, repoRoot: repo, ref: second.branch });
+    assert.equal(fresh.fresh, true, 'what was verified is what the branch now contains');
+  });
+
+  test('a slice that stopped being green is reported, not rebased into a lie', async () => {
+    // The fix withdraws what #2 depends on. Nothing about the file lists
+    // changes; only the build knows.
+    await git(['checkout', `DESKTOP-${ISSUE}/1-extension-api-run-options`], repo);
+    await writeFiles(repo, { [API]: '// SPDX-License-Identifier: Apache-2.0\nexport const version = 1;\n' });
+    await commitAll(repo, 'revert(extension-api): drop RunOptions again');
+
+    const result = await slice.cascade({
+      issue: ISSUE,
+      from: 1,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.regressed, [2]);
+
+    const journal = await readFile(join(home, 'journal', `${new Date().toISOString().slice(0, 7)}.md`), 'utf8');
+    assert.match(journal, /event:slice-regressed.*no longer green: #2/);
+  });
+
+  test('dependentsOf follows the stack, not just the first step', () => {
+    const graph = {
+      slices: [
+        { index: 1, baseSlice: null },
+        { index: 2, baseSlice: 1 },
+        { index: 3, baseSlice: 2 },
+        { index: 4, baseSlice: null },
+      ],
+    };
+
+    assert.deepEqual(slice.dependentsOf(graph, 1), [2, 3]);
+    assert.deepEqual(slice.dependentsOf(graph, 3), []);
+  });
+});
