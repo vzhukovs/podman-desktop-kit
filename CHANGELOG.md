@@ -204,11 +204,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   live run deferred until after stage 5 — not by the test suite.
 - Auto-blocking a task after N attempts is still not implemented;
   `templates/task.md` no longer promises it.
-- Stage 3 is implemented in code and exercised against the fork, but **no
-  sliced pull request has been opened upstream**. Its readiness signal in
-  section 12 — "one change set cut into 3 PRs, each standalone green" — is
-  closed as far as the branches and the verifications go, and the last step
-  waits with the live run deferred until after stage 5.
+- Stage 3 was exercised against the fork end to end: three slices across three
+  layers, all verified green (two standalone from `main`, one stacked), three
+  branches materialized carrying only their own files, preflight green on a
+  slice branch, and a review fix cascaded through the stack. **No pull request
+  was opened.** The readiness signal in section 12 — "one change set cut into 3
+  PRs, each standalone green" — is closed as far as branches and verifications
+  go; publishing waits with the live run deferred until after stage 5.
+- Measured while doing it: installing into a fresh worktree from a warm pnpm
+  store takes about fifteen seconds, not the minutes assumed when the reuse
+  policy was chosen. What dominates is the repository-wide `lint:check` at
+  roughly 100 seconds per slice.
 - `pdkit slice --from-pr` (scenario 13) is not implemented. The slicer's input
   is abstracted down to a diff, so the remaining work is migrating review
   threads into the new pull requests, which needs the same GraphQL layer as
