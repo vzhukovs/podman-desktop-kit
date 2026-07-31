@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: Apache-2.0
+
+// Tests for lib/hooks/dispatch.js — the whole path, from a hook payload to a
+// decision.
+//
+// rules.test.js already covers which rule a line trips. What is asserted here
+// is everything that needs the world: which branch a write lands on, whether a
+// token exists for that branch, that allowing spends it, and that a failure
+// anywhere in that chain refuses instead of allowing.
+//
+// The last one is the reason this file exists. lib/cli.js allows a Bash call
+// when a handler throws, on purpose; if that policy reached inside the gate, a
+// crash would read as consent.
+
+import { test, describe, before, beforeEach, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { chmod, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+
+import { handle } from '../lib/hooks/dispatch.js';
+import * as gate from '../lib/gate.js';
+import { transition } from '../lib/state.js';
+
+const run = promisify(execFile);
+
+const BRANCH = 'DESKTOP-2001/fix-the-thing';
+
+let home;
+let repo;
+let previousHome;
+
+/** A PreToolUse payload for a Bash call. */
+const bash = (command) => ({ tool_name: 'Bash', tool_input: { command }, cwd: repo });
+
+/** Walk an issue to the only state a token is issued from. */
+async function readyIssue(issue) {
+  for (const to of [
+    'triaged',
+    'planned',
+    'plan-approved',
+    'implemented',
+    'validated',
+    'audited',
+    'sliced',
+    'slices-approved',
+    'preflight-green',
+  ]) {
+    const result = await transition(issue, to, { home });
+    assert.ok(result.ok, `could not reach ${to}: ${result.error}`);
+  }
+}
+
+before(async () => {
+  home = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-home-'));
+  repo = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-repo-'));
+
+  // dispatch resolves $PDKIT_HOME the same way every other entry point does;
+  // pointing the variable at a temporary directory exercises that path rather
+  // than working around it.
+  previousHome = process.env.PDKIT_HOME;
+  process.env.PDKIT_HOME = home;
+
+  await run('git', ['init', '-q', '-b', BRANCH], { cwd: repo });
+
+  await readyIssue(2001);
+});
+
+beforeEach(async () => {
+  await gate.revokeAll({ home });
+});
+
+after(async () => {
+  if (previousHome === undefined) delete process.env.PDKIT_HOME;
+  else process.env.PDKIT_HOME = previousHome;
+
+  await rm(home, { recursive: true, force: true });
+  await rm(repo, { recursive: true, force: true });
+});
+
+describe('what is not ours', () => {
+  test('a call that is not Bash passes through', async () => {
+    const decision = await handle({ tool_name: 'Read', tool_input: { file_path: '/x' } });
+    assert.equal(decision.block, false);
+  });
+
+  test('an empty or missing command passes through', async () => {
+    assert.equal((await handle(null)).block, false);
+    assert.equal((await handle({ tool_name: 'Bash', tool_input: {} })).block, false);
+    assert.equal((await handle(bash('   '))).block, false);
+  });
+
+  test('ordinary work passes through', async () => {
+    for (const line of ['git status', 'pnpm test:unit', 'gh pr view 12', 'git commit -m x']) {
+      assert.equal((await handle(bash(line))).block, false, `${line} was blocked`);
+    }
+  });
+});
+
+describe('unconditional refusals', () => {
+  test('a force push is refused even with a valid token', async () => {
+    const issued = await gate.open({ issue: 2001, branch: BRANCH, home });
+    assert.equal(issued.ok, true);
+
+    const decision = await handle(bash(`git push --force origin ${BRANCH}`));
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'force-push-without-lease');
+
+    // And the token it did not use is still there.
+    assert.equal((await gate.verify({ branch: BRANCH, home })).valid, true);
+  });
+
+  test('a refusal says what to do instead and quotes the command', async () => {
+    const decision = await handle(bash('git add -A'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /List the paths explicitly/);
+    assert.match(decision.reason, /command: git add -A/);
+  });
+});
+
+describe('the gate', () => {
+  test('a push without a token is refused', async () => {
+    const decision = await handle(bash('git push'));
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'push');
+    assert.match(decision.reason, /no consent token/);
+  });
+
+  test('a push with a token is allowed and spends it', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+
+    const first = await handle(bash('git push'));
+    assert.equal(first.block, false);
+    assert.match(first.message, /spent/);
+
+    // One token, one push. The second attempt is a new decision.
+    const second = await handle(bash('git push'));
+    assert.equal(second.block, true);
+    assert.match(second.reason, /already spent/);
+  });
+
+  test('an expired token does not allow', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, ttlMs: -1, home });
+
+    const decision = await handle(bash('git push'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /expired/);
+  });
+
+  // The reason targetBranch prefers the explicit form: consent for the feature
+  // branch must not open a push to main from that same branch.
+  test('a token does not cover a push to a different branch', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+
+    const decision = await handle(bash('git push origin main'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /no consent token for main/);
+  });
+
+  test('the refspec is read through HEAD: and through -u', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+    assert.equal((await handle(bash(`git push origin HEAD:${BRANCH}`))).block, false);
+
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+    assert.equal((await handle(bash(`git push -u origin ${BRANCH}`))).block, false);
+  });
+
+  test('gh pr create is gated on its head branch', async () => {
+    const decision = await handle(bash('gh pr create --base main --head DESKTOP-2001/other --title x'));
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /no consent token for DESKTOP-2001\/other/);
+
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+    assert.equal((await handle(bash(`gh pr create --base main --head ${BRANCH} --title x`))).block, false);
+  });
+
+  // Section 8.2: a rewriter must not become a way past the gate.
+  test('a wrapped push is gated exactly like a bare one', async () => {
+    assert.equal((await handle(bash('rtk git push'))).block, true);
+
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+    assert.equal((await handle(bash('rtk git push'))).block, false);
+  });
+
+  test('a chained push is gated', async () => {
+    const decision = await handle(bash('pnpm test:unit && git push'));
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'push');
+  });
+});
+
+describe('failing closed', () => {
+  test('a push outside a repository is refused, not allowed', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-nogit-'));
+    try {
+      const decision = await handle({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: outside });
+      assert.equal(decision.block, true);
+      assert.match(decision.reason, /no branch to check/);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  // The case cli.js's fail-open policy would get wrong: a valid token exists,
+  // the rule matched, and then something breaks. That must read as "no", not
+  // as "yes". The token file is made read-only so spending it throws — a real
+  // failure inside the gate rather than a simulated one.
+  test('a failure while spending the token refuses', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+    const file = join(home, 'gates', `${encodeURIComponent(BRANCH)}.json`);
+
+    await chmod(file, 0o400);
+    try {
+      const decision = await handle(bash('git push'));
+      assert.equal(decision.block, true);
+      assert.match(decision.reason, /could not be checked/);
+    } finally {
+      await chmod(file, 0o600);
+    }
+  });
+});

@@ -7,17 +7,17 @@
 // is a way the naive approach — substring matching on the raw command — gets it
 // wrong.
 //
-// The first three blocks are the original contract, written at skeleton time
-// and implemented in stage 1. The last block is not: those cases were found
-// while writing the parser, and each one is a shape of `git push` that the
-// contract as written would have let through. They are asserted here rather
-// than trusted, because "the parser probably handles that" is the belief this
-// whole file exists to replace.
+// The parse, matches and hasFlag blocks are the original contract, written at
+// skeleton time and implemented in stage 1. The last block is not: those cases
+// were found while writing the parser, and each one is a shape of `git push`
+// that the contract as written would have let through. They are asserted here
+// rather than trusted, because "the parser probably handles that" is the
+// belief this whole file exists to replace.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parse, matches, hasFlag } from '../lib/hooks/command-parse.js';
+import { parse, matches, hasFlag, optionValue } from '../lib/hooks/command-parse.js';
 
 describe('parse', () => {
   test('splits on && so a chained push is still seen', () => {
@@ -124,6 +124,19 @@ describe('hasFlag', () => {
   test('does not confuse --force with --force-with-lease', () => {
     const [command] = parse('git push --force-with-lease');
     assert.equal(hasFlag(command, '--force'), false);
+  });
+});
+
+describe('optionValue', () => {
+  test('reads both spellings and stops at the first hit', () => {
+    assert.equal(optionValue(parse('gh api -X POST repos/o/r')[0], ['-X', '--method']), 'POST');
+    assert.equal(optionValue(parse('gh api --method=PATCH repos/o/r')[0], ['-X', '--method']), 'PATCH');
+    assert.equal(optionValue(parse('gh pr create --head DESKTOP-1/x')[0], ['--head']), 'DESKTOP-1/x');
+  });
+
+  test('is null when absent, and when the option ends the line', () => {
+    assert.equal(optionValue(parse('gh api repos/o/r')[0], ['-X', '--method']), null);
+    assert.equal(optionValue(parse('gh api repos/o/r -X')[0], ['-X']), null);
   });
 });
 
