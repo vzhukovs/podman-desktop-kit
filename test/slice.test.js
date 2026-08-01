@@ -18,6 +18,7 @@ import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFile
 import { issueDir } from '../lib/config.js';
 import { validateReceipt } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
+import { fetchPullRequestHead } from '../lib/repo.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
 
@@ -940,7 +941,7 @@ describe('--from-pr', () => {
   });
 
   test('the head is fetched and the base is where it branched, not where upstream is now', async () => {
-    const fetched = await slice.fetchPullRequestHead({
+    const fetched = await fetchPullRequestHead({
       pr: 7,
       repoRoot: clone,
       config: { repo: { upstream_remote: 'upstream', base_branch: 'main' } },
@@ -963,7 +964,7 @@ describe('--from-pr', () => {
 
   test('a pull request the remote does not serve is an error, not an empty slice', async () => {
     await assert.rejects(
-      () => slice.fetchPullRequestHead({ pr: 999, repoRoot: clone, config: { repo: { upstream_remote: 'upstream' } } }),
+      () => fetchPullRequestHead({ pr: 999, repoRoot: clone, config: { repo: { upstream_remote: 'upstream' } } }),
       /999/,
     );
   });
