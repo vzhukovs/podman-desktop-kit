@@ -38,6 +38,15 @@ spent twice.
    a signal, not noise. Either the reviewer found a requirement the plan missed,
    or the pull request failed to explain itself. Decide which, out loud.
 
+   **A fifth outcome exists and is not on that list: the reviewer rejected the
+   approach.** "This should not be done this way at all" is not a change to
+   make, and classifying it `accept` starts an edit against a design the
+   maintainer already refused. It is `pdkit issue rework <n> --reason "<what
+   was refused>"`: back to `triaged`, pull request left open, branch untouched,
+   planning starting again from the issue rather than from the diff. Say so and
+   stop — what to do instead is the next planning round's question, and the
+   reviewer usually named it.
+
 4. **Amendments.** If an `accept` changes what the plan promised — a new
    requirement, a changed one, a slice that has to move — then
    `pdkit amendment new --issue <n> --values <f>`. **It goes to the user for

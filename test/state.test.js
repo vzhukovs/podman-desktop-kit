@@ -374,3 +374,68 @@ describe('adopting work that predates the plugin', () => {
     assert.ok((await read(405, { home })).adopted);
   });
 });
+
+describe('the review rejected the approach', () => {
+  /** Walk an issue to an open pull request with a frozen requirement set. */
+  async function published(issue) {
+    await transition(issue, 'triaged', { home });
+    await transition(issue, 'planned', { home });
+    await allocateRequirement(issue, { home });
+    await allocateRequirement(issue, { home });
+    await freezeRequirements(issue, { home });
+    for (const to of ['plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved', 'preflight-green', 'pr-open']) {
+      await transition(issue, to, { home });
+    }
+  }
+
+  // #17577: a maintainer named a different design in the review body. The only
+  // moves the machine had were "push again", which assumes the design survived,
+  // and "abandon", which throws away an issue still worth doing.
+  test('an open pull request can go back to triage', async () => {
+    await published(501);
+
+    const back = await transition(501, 'triaged', { home, reason: 'rework: the approach was refused' });
+    assert.equal(back.ok, true);
+
+    const record = await read(501, { home });
+    assert.equal(record.state, 'triaged');
+    assert.equal(record.route, null, 'the route is chosen again, from the issue');
+  });
+
+  test('the requirement set thaws, and keeps every number it had', async () => {
+    const record = await read(501, { home });
+
+    assert.equal(record.requirements.frozen, false);
+    // An R-ID means one thing forever; a rework may add to the set and may
+    // never renumber it.
+    assert.deepEqual(record.requirements.ids, ['R1', 'R2']);
+    assert.equal(record.requirements.next, 3);
+  });
+
+  test('it is refused without a reason, because nothing else on disk says why', async () => {
+    await published(502);
+
+    const refused = await transition(502, 'triaged', { home });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /a rework needs --reason/);
+    assert.equal((await read(502, { home })).state, 'pr-open', 'a refused transition changes nothing');
+  });
+
+  test('the same door exists from review-in-progress', async () => {
+    await published(503);
+    await transition(503, 'review-in-progress', { home });
+
+    assert.equal((await transition(503, 'triaged', { home, reason: 'rework: wrong layer' })).ok, true);
+  });
+
+  // Planning has to start from the issue, not from the diff that was refused.
+  test('it lands on triaged rather than jumping into planning', async () => {
+    assert.ok(!TRANSITIONS['pr-open'].includes('planned'));
+    assert.ok(!TRANSITIONS['review-in-progress'].includes('planned'));
+  });
+
+  test('an ordinary transition still needs no reason', async () => {
+    await published(504);
+    assert.equal((await transition(504, 'review-in-progress', { home })).ok, true);
+  });
+});

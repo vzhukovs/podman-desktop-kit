@@ -331,6 +331,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **The state machine has a way to say "the reviewer rejected the approach".**
+  `pr-open` and `review-in-progress` now lead back to `triaged`. Until now the
+  only moves from an open pull request were to push again, which assumes the
+  design survived, and to abandon, which throws away an issue still worth doing
+  — while a maintainer objecting to the design rather than the diff is an
+  ordinary outcome of review in someone else's repository. `pdkit issue rework
+  <n> --reason <why>` leaves the pull request open and the branch untouched, and
+  starts planning again from the issue rather than from the diff that was
+  refused. The requirement set thaws, because an objection to an approach is
+  usually a requirement nobody wrote down; the identifiers keep their numbers,
+  because an R-ID means one thing forever.
 - **`pdkit issue adopt`** — work that predates the plugin is taken in rather
   than replayed. #17577 had been open for two months while its issue record read
   `new`; walking it through triage and planning to make the record agree would
