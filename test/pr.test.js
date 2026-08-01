@@ -145,6 +145,51 @@ describe('registering', () => {
   });
 });
 
+describe('a merge that happened in the browser', () => {
+  // It reaches the plugin through refresh and no other call. Until 0.16 that
+  // changed prs.json silently: state.json says where the work is, the journal
+  // says why and when, and a merge is exactly what it is read back for.
+  test('is journalled once, when the state actually changes', async () => {
+    const WEB = 4500;
+    await pr.register({ issue: WEB, number: 700, branch: 'DESKTOP-4500/one', home });
+
+    const merged = {
+      number: 700,
+      state: 'MERGED',
+      mergedAt: '2026-08-02T09:00:00Z',
+      headRefName: 'DESKTOP-4500/one',
+      baseRefName: 'main',
+      url: 'https://example/700',
+      updatedAt: '2026-08-02T09:00:00Z',
+      reviewDecision: 'APPROVED',
+      labels: [],
+      statusCheckRollup: [],
+    };
+
+    const exec = (file, args, options, callback) => {
+      const joined = args.join(' ');
+      const payload = joined.includes('reviewThreads')
+        ? { data: { repository: { pullRequest: { reviewThreads: { pageInfo: {}, nodes: [] } } } } }
+        : args.includes('reviews,comments')
+          ? { reviews: [], comments: [] }
+          : merged;
+      queueMicrotask(() => callback(null, JSON.stringify(payload), ''));
+      return { stdin: { end: () => {} } };
+    };
+
+    const config = { repo: { upstream: 'podman-desktop/podman-desktop' } };
+    await pr.refresh({ issue: WEB, number: 700, config, home, exec, peers: false });
+
+    const entries = (await readJournal({ issue: WEB }, { home })).filter((entry) => entry.event === 'pr-merged');
+    assert.equal(entries.length, 1);
+    assert.match(entries[0].detail, /#700 observed by refresh/);
+
+    // A second refresh finds the same state and has nothing to report.
+    await pr.refresh({ issue: WEB, number: 700, config, home, exec, peers: false });
+    assert.equal((await readJournal({ issue: WEB, event: 'pr-merged' }, { home })).length, 1);
+  });
+});
+
 describe('the merge rollup', () => {
   beforeEach(async () => {
     for (const [number, slice] of [[2871, 1], [2872, 2], [2873, 3]]) {
