@@ -47,3 +47,13 @@ is not available. Same questions, shorter form:
 The one thing this checklist must not do is argue with upstream ceremony. SPDX
 headers, sign-offs, scoped commits and detailed check steps look like bureaucracy
 from a minimalist standpoint, and they are not optional.
+
+## What to add here
+
+An expectation a maintainer actually stated, on a real pull request, with a
+pointer to where they said it. Not what reviewers are generally believed to
+want — this file is read as settled, so an inference recorded here becomes a
+rule nobody re-examines.
+
+The over-engineering checklist grows the same way: a question that would have
+changed a decision, not one that sounds prudent.

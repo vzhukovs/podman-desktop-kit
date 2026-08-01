@@ -10,8 +10,14 @@ review and merge order.
 ## Layer order
 
 ```
-extension-api → main → preload → renderer + ui → extensions/* → tests → website/docs
+extension-api → api → webview-api → main → preload → renderer + ui → storybook → extensions/* → tests → website/docs
 ```
+
+Kept in step with `slicing.layer_order` in the config, and `pdkit knowledge
+check` compares the two. They drifted apart once already: three packages were
+given a place in the merge order and this chain was not told, so for a whole
+stage the file that explains merge order disagreed with the code that decides
+it.
 
 This order does two things at once, and both matter:
 
