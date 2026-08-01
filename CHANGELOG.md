@@ -278,6 +278,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rather than a hundred merges, and the ones missing are the slow ones — which
     is the tail the stale threshold is about.
 
+- **The `redo` route exists** (section 10, scenario 10). It was the last of the
+  five routes with no machinery: triage recognised a reverted attempt and then
+  said it was not implemented before stage 4, which shipped in July.
+  - `lib/archaeology.js` collects what is mechanical about a previous attempt —
+    which pull request landed it, when, what it touched, what reverted it, how
+    long it lived in the base branch, what reviewers said at the time, what has
+    merged in those files since, and what could not be established.
+  - **The ordering scenario 10 puts in bold is now held by the machine.** On the
+    redo route an issue cannot leave `triaged` until `archaeology.json` exists,
+    and that file is written only from a real lookup. The guarantee is narrow on
+    purpose, in the wording of invariant 5: it means the previous attempt was
+    looked up, not that its lesson was learned.
+  - `pd-archaeologist` grew a body: the four questions in order, and the
+    instruction to quote reviewers rather than paraphrase them into agreement.
+  - Route vocabulary is one list again. `state.js` knew two values,
+    `preflight/index.js` declared four and section 4 asked for five, so
+    `multi-slice` and `redo` could not be recorded at all. `pdkit state <n> --to
+    triaged --route <r>` now records what triage decided; `invalid` is
+    deliberately not a route, because the machine already spells it `abandoned`.
+
 ### Changed
 
 - **A cross-reference from another repository is no longer a linked pull

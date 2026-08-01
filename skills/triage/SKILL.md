@@ -47,9 +47,8 @@ Act on that before analysing anything:
 
 - **an open PR** → the work exists. Report it and stop. Duplicating it is the
   most expensive possible outcome.
-- **a merged PR plus a revert** → route `redo`. The archaeology comes first:
-  what the original PR did, why it was reverted, what regressed. `redo` is not
-  implemented before stage 4 — say so and stop rather than improvising.
+- **a merged PR plus a revert** → route `redo`, and the archaeology comes
+  first. See section 5a: this is not a normal triage with extra reading.
 - **a closed PR without a merge** → read why it was closed. A maintainer who
   rejected the approach once will reject it again.
 
@@ -102,7 +101,45 @@ State one route explicitly:
 issue. Do not post it — publishing to someone else's tracker is a human action,
 and the gate refuses it anyway.
 
+## 5a. On the redo route only
+
+Work that was landed and backed out is not ordinary work with more history
+attached. The reason it was reverted is a requirement, and it was written down
+at the time — rediscovering it by re-implementing is what this route exists to
+prevent.
+
+```
+pdkit issue history <n>
+```
+
+One call brings back the attempt, the pull request that reverted it, how long
+it lived in the base branch, what reviewers said, what merged in those files
+afterwards, and what could not be established. It writes `archaeology.json`,
+and **`pdkit` refuses to leave `triaged` on this route until that file
+exists** — not as ceremony: the ordering in scenario 10 is the whole point of
+the route, and an ordering held by a sentence in a prompt is an ordering.
+
+Then dispatch `pd-archaeologist` with the issue number. It reads the facts and
+answers what they cannot: why it was reverted, what reviewers objected to,
+whether that objection still applies, and what this attempt has to do
+differently. Its report goes in `archaeology.md`.
+
+Two things to carry into the requirements, and they are easy to lose:
+
+- **The regression is a requirement too.** Whatever the revert was filed
+  against belongs in the R-set alongside the original ask, or the redo lands
+  and is reverted for the same reason.
+- **A blocking objection to the approach means the plan is different, not
+  longer.** If a reviewer said "this seems really hacky, it should not be
+  merged", re-submitting the same approach with better tests is a slower way to
+  be reverted again.
+
 ## 6. Record
 
 Render `templates/issue.md` with `pdkit render issue --issue <n> --values <f>
---path issue.md`, then `pdkit state <n> --to triaged`.
+--path issue.md`, then `pdkit state <n> --to triaged --route <route>`.
+
+The route is recorded there, not implied: `standard`, `quickfix`,
+`multi-slice` or `redo`. `invalid` is not a route — an issue that should not be
+worked on goes to `pdkit state <n> --to abandoned` with the reason, and the
+draft comment stays for a human to post.

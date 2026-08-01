@@ -200,6 +200,59 @@ describe('the route', () => {
     await transition(201, 'planned', { home });
     assert.equal((await read(201, { home })).route, 'standard');
   });
+
+  test('triage can name a route, and only a real one', async () => {
+    await transition(202, 'triaged', { home, route: 'multi-slice' });
+    assert.equal((await read(202, { home })).route, 'multi-slice');
+
+    const refused = await transition(202, 'planned', { home, route: 'sideways' });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /not a route/);
+  });
+
+  // Overwriting it with `standard` would erase the one thing that makes this
+  // issue's history legible: that the work has been tried before.
+  test('planning keeps the route triage chose', async () => {
+    assert.equal((await read(202, { home })).route, 'multi-slice');
+    await transition(202, 'planned', { home });
+    assert.equal((await read(202, { home })).route, 'multi-slice');
+  });
+});
+
+describe('the redo route cannot skip the archaeology', () => {
+  test('planning is refused until the previous attempt has been looked up', async () => {
+    await transition(203, 'triaged', { home, route: 'redo' });
+
+    const refused = await transition(203, 'planned', { home });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /the previous attempt has not been looked up/);
+    assert.match(refused.error, /pdkit issue history 203/);
+
+    // And the issue did not move.
+    assert.equal((await read(203, { home })).state, 'triaged');
+  });
+
+  test('the quickfix route is refused for the same reason', async () => {
+    const refused = await transition(203, 'quickfix', { home });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /has not been looked up/);
+  });
+
+  test('once the facts exist the route proceeds', async () => {
+    // Written by `pdkit issue history`, and only from a real lookup: prose
+    // cannot produce this file, which is what the ordering rests on.
+    await mkdir(join(home, 'issues', '203'), { recursive: true });
+    await writeFile(join(home, 'issues', '203', 'archaeology.json'), JSON.stringify({ issue: 203, attempt: null }));
+
+    const moved = await transition(203, 'planned', { home });
+    assert.equal(moved.ok, true);
+    assert.equal((await read(203, { home })).route, 'redo');
+  });
+
+  test('nothing else is held up by it', async () => {
+    await transition(204, 'triaged', { home, route: 'standard' });
+    assert.equal((await transition(204, 'planned', { home })).ok, true);
+  });
 });
 
 describe('allocation', () => {
