@@ -121,6 +121,25 @@ describe('collect', () => {
   const audit = () => collect({ issue: ISSUE, repoRoot: repo, base: 'main', home });
 
   // The finding the hook cannot make.
+  // It diffed against the literal 'main' — not even repo.base_branch — so a
+  // fork whose base branch is named anything else audited against a ref that
+  // may not exist. And a branch name is the wrong thing to diff against on a
+  // fork at all: the same defect preflight had, where a stale local copy turned
+  // three files into 805.
+  test('the base is resolved, and the configured branch is the one it starts from', async () => {
+    const report = await collect({
+      issue: ISSUE,
+      repoRoot: repo,
+      config: { repo: { base_branch: 'main', upstream_remote: 'upstream' } },
+      home,
+    });
+
+    // No upstream remote in the fixture, so it falls back to the local branch —
+    // and reports which ref it read rather than assuming one.
+    assert.equal(report.diff.base, 'main');
+    assert.ok(report.diff.files.length > 0, 'the diff was actually taken');
+  });
+
   test('a file changed outside every task’s ownership is reported', async () => {
     const report = await audit();
 

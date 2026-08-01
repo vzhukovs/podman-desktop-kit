@@ -331,6 +331,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **The audit resolves its base the way preflight does.** It diffed against the
+  literal `'main'`, not even reading `repo.base_branch`, so a fork whose base
+  branch is called something else compared against whatever that name happened
+  to resolve to — and on a fork with a stale local copy it would have repeated
+  the 805-file report that 0.11 fixed for preflight.
 - **The command that runs one codified spec runs one codified spec.** Appending
   a spec path to the repository's e2e script is not narrowing when that script
   already carries a path of its own: podman-desktop's `test:e2e:run` ends in a
