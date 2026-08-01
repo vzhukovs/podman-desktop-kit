@@ -388,6 +388,49 @@ describe('running the codified test', () => {
     assert.equal(resolved.command, 'pnpm run test:e2e:run tests/a.spec.ts');
   });
 
+  // podman-desktop's `test:e2e:run` already ends in a path. Appending our spec
+  // gave Playwright two positional filters, so all forty-four specs ran and
+  // were reported as this one — found when a three-second spec was still going
+  // after ten minutes.
+  test('a script that carries its own path is refused, not widened', async () => {
+    await writeFile(
+      join(repo, 'package.json'),
+      JSON.stringify({
+        scripts: { 'test:e2e:run': "xvfb-maybe -- npx playwright test tests/playwright/src/specs/ --grep-invert @k8s" },
+      }),
+    );
+
+    const resolved = await validation.specCommand({ repoRoot: repo, config: {}, spec: 'tests/a.spec.ts' });
+
+    assert.equal(resolved.command, null);
+    assert.match(resolved.error, /widens the run instead of narrowing it/);
+    assert.match(resolved.error, /preflight\.scripts\.e2e_spec/);
+  });
+
+  test('a repository that drives Playwright gets the runner, and only the spec', async () => {
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'echo suite' } }));
+    await writeFile(join(repo, 'playwright.config.ts'), 'export default {};\n');
+
+    try {
+      const resolved = await validation.specCommand({ repoRoot: repo, config: {}, spec: 'tests/a.spec.ts' });
+
+      assert.equal(resolved.command, 'pnpm exec playwright test tests/a.spec.ts');
+      assert.equal(resolved.runner, 'playwright');
+    } finally {
+      await rm(join(repo, 'playwright.config.ts'), { force: true });
+    }
+  });
+
+  test('a configured single-spec command wins over anything inferred', async () => {
+    const resolved = await validation.specCommand({
+      repoRoot: repo,
+      config: { preflight: { scripts: { e2e_spec: 'make e2e SPEC={spec}' } } },
+      spec: 'tests/a.spec.ts',
+    });
+
+    assert.equal(resolved.command, 'make e2e SPEC=tests/a.spec.ts');
+  });
+
   test('a repository with no e2e script refuses rather than reporting green on nothing', async () => {
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { build: 'vite build' } }));
 

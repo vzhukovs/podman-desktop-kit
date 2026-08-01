@@ -331,6 +331,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **The command that runs one codified spec runs one codified spec.** Appending
+  a spec path to the repository's e2e script is not narrowing when that script
+  already carries a path of its own: podman-desktop's `test:e2e:run` ends in a
+  directory, so Playwright got two positional filters and ran all forty-four
+  specs. Three stability runs became three full suites — noticed when a
+  three-second spec was still going after ten minutes — and `validate run` was
+  calling that the evidence for one step. Resolution order is now an explicit
+  `preflight.scripts.e2e_spec` template, then the Playwright runner directly
+  when the repository has a config for it, then the script plus the spec only if
+  that script names no path. Otherwise it refuses: a command that runs the whole
+  suite under the name of one spec is worse than no command.
 - **The issue template can hold more than one requirement.** Its table
   hard-coded a single row with the source tag baked into it, so the R-set — the
   thing every later trace hangs on — could only be written down for an issue
