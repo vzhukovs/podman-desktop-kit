@@ -306,6 +306,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`pdkit drift` finds the branch instead of measuring an empty set.** Without a
+  slice graph it now takes the branch from the registered pull request, or from
+  a local `DESKTOP-<n>/…` branch, and derives the files from the diff; `--ref`
+  and `--files` override. The module had accepted both all along and the command
+  passed neither, so on #17577 it reported "not cut yet — nothing to measure
+  from" about a branch that existed, and then closed with a line about conflicts
+  probably being mechanical. Measured properly: 21 upstream commits in those
+  files, one of them in the two the fix is about.
+- **A report that measured nothing says so.** The closing verdict was printed
+  whether or not anything had been measured, and whether or not a plan existed
+  to cite — reading, either way, as a clean bill of health.
 - **Preflight's base is a ref, not a branch name.** `repo.base_branch` names a
   branch, and on a fork the local branch of that name is a copy of the base as
   fresh as the last pull. First live run: a local `main` 491 commits behind
@@ -320,6 +331,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **`pdkit issue adopt`** — work that predates the plugin is taken in rather
+  than replayed. #17577 had been open for two months while its issue record read
+  `new`; walking it through triage and planning to make the record agree would
+  have meant writing a plan nobody planned. Adoption records the state, the pull
+  request and a required reason, marks the record `adopted`, and leaves the
+  artefacts of the states it never passed missing — because an issue with no
+  plan nobody wrote is a different thing from one whose plan was lost. Only from
+  `new`: overwriting a live record would erase the history that cannot be
+  rebuilt.
 - **A check that waits for people is named differently from one that waits for
   a machine.** Upstream's `Domain Review Status` follows the
   `domain/<area>/inreview` labels its triager bot maintains and goes green only

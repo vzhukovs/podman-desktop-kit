@@ -9,12 +9,36 @@ model: opus
 Everything here assumes the world moved while you were away, and asks whether it
 moved under the plan or merely around it.
 
+## First: does the machine know about this work at all
+
+`pdkit state <issue>`. If it says `new` while a branch and a pull request exist,
+the work predates the plugin — the common case for anything opened before it was
+installed, and the one this command is most often reached for.
+
+```
+pdkit issue adopt <n> --pr <k> --branch <b> --reason "<where this came from>"
+```
+
+Adoption records what is true and stops. It does **not** walk the issue through
+triage and planning to make the record look complete: an issue with no plan
+because nobody wrote one is a different thing from one whose plan was lost, and
+`adopted` in the record is what keeps them different. Say so in the report
+rather than treating the absent artefacts as gaps to fill — there is nothing to
+recover, and inventing a plan after the fact describes the code that exists
+instead of the requirement that was.
+
 ## Steps
 
 1. **`/pd:sync`** — fetch, and see where the fork stands. Read-only.
 
 2. **`pdkit drift <issue>`** — the upstream commits that landed since each slice
    branched and touched that slice's files.
+
+   Without a slice graph the branch comes from the registered pull request, or
+   from a local `DESKTOP-<n>/…` branch; `--ref` and `--files` override both.
+   **A report that measured nothing says so.** "No branch found" is not "no
+   drift", and the difference is the whole value of the command — read the last
+   line before believing the middle.
 
    Each slice is measured from **its own** branch point. A stacked slice
    branched from its predecessor, so drift against `main` would report the

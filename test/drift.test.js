@@ -224,3 +224,92 @@ describe('collecting drift', () => {
     assert.match(text, /a semantic conflict that merges cleanly is the dangerous one/);
   });
 });
+
+describe('an issue with no slice graph', () => {
+  // Found on #17577: a branch two months stale, and `pdkit drift` answered
+  // "not cut yet — nothing to measure from", then closed with a line about
+  // conflicts likely being mechanical. The module could take a ref and a file
+  // list; the command passed neither, so every issue without slices measured
+  // an empty set and reported it as an answer.
+  const LONE = 7404;
+  let lonely;
+  let lonelyHome;
+
+  before(async () => {
+    lonely = await initRepo('pdkit-drift-lone-');
+    lonelyHome = await mkdtemp(join(tmpdir(), 'pdkit-drift-lone-home-'));
+
+    await writeFiles(lonely, { [HANDLER]: 'export const a = 1;\n' });
+    await commitAll(lonely, 'chore: base');
+    await git(['branch', 'upstream-main'], lonely);
+
+    await git(['checkout', '-q', '-b', `DESKTOP-${LONE}/work`], lonely);
+    await writeFiles(lonely, { [HANDLER]: 'export const a = 2;\n' });
+    await commitAll(lonely, 'fix: ours');
+
+    await git(['checkout', '-q', 'upstream-main'], lonely);
+    await writeFiles(lonely, { [HANDLER]: 'export const a = 1;\n// upstream moved on\n' });
+    await commitAll(lonely, 'chore: upstream change');
+    await git(['checkout', '-q', `DESKTOP-${LONE}/work`], lonely);
+  });
+
+  after(async () => {
+    await cleanup(lonely, lonelyHome);
+  });
+
+  test('the branch is found by name, and its files come from the diff', async () => {
+    const report = await drift.collect({
+      issue: LONE,
+      repoRoot: lonely,
+      home: lonelyHome,
+      config: CONFIG,
+      upstream: 'upstream-main',
+    });
+
+    assert.equal(report.units[0].branch, `DESKTOP-${LONE}/work`);
+    assert.equal(report.units[0].commits.length, 1);
+    assert.match(report.units[0].commits[0].subject, /upstream change/);
+  });
+
+  test('an explicit ref wins over the guess', async () => {
+    const report = await drift.collect({
+      issue: LONE,
+      repoRoot: lonely,
+      home: lonelyHome,
+      config: CONFIG,
+      upstream: 'upstream-main',
+      ref: 'upstream-main',
+    });
+
+    assert.equal(report.units[0].branch, 'upstream-main');
+  });
+
+  test('with no branch at all it says nothing was measured, rather than nothing was found', async () => {
+    const report = await drift.collect({
+      issue: 9999,
+      repoRoot: lonely,
+      home: lonelyHome,
+      config: CONFIG,
+      upstream: 'upstream-main',
+    });
+
+    assert.equal(report.units[0].branch, null);
+    const text = drift.format(report);
+    assert.match(text, /no branch found for this issue/);
+    assert.match(text, /nothing was measured/);
+    assert.match(text, /not a clean bill of health/);
+  });
+
+  test('and it does not claim a plan it has not got', async () => {
+    const report = await drift.collect({
+      issue: LONE,
+      repoRoot: lonely,
+      home: lonelyHome,
+      config: CONFIG,
+      upstream: 'upstream-main',
+    });
+
+    assert.equal(report.citedAny, false);
+    assert.match(drift.format(report), /this issue cites no lines/);
+  });
+});

@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import {
   TRANSITIONS,
   GATE_ELIGIBLE,
+  adopt,
   allocateCounter,
   allocateRequirement,
   canTransition,
@@ -306,5 +307,70 @@ describe('allocation', () => {
   test('owns is recorded per task', async () => {
     await setOwns(303, 'T1', ['packages/main/src/a.ts'], { home });
     assert.deepEqual((await read(303, { home })).owns.T1, ['packages/main/src/a.ts']);
+  });
+});
+
+describe('adopting work that predates the plugin', () => {
+  // Scenario 5 assumes an issue the plugin has been carrying. The common case
+  // is the opposite: #17577 was open for two months while its issue read `new`,
+  // and walking it through the chain to make the record agree would have meant
+  // writing a plan nobody planned.
+  test('records what is true and says the artefacts were never produced', async () => {
+    const adopted = await adopt(401, {
+      state: 'pr-open',
+      pr: 17577,
+      branch: 'DESKTOP-401/work',
+      reason: 'opened before the plugin existed',
+      home,
+    });
+
+    assert.equal(adopted.ok, true);
+
+    const record = await read(401, { home });
+    assert.equal(record.state, 'pr-open');
+    assert.equal(record.route, 'standard');
+    assert.equal(record.adopted.pr, 17577);
+    assert.match(record.adopted.reason, /before the plugin existed/);
+
+    // The history says the machine met the work here. It does not claim the
+    // states in between were passed.
+    assert.equal(record.history.length, 1);
+    assert.equal(record.history[0].from, 'new');
+    assert.match(record.history[0].reason, /^adopted:/);
+
+    // And nothing was invented on the way.
+    assert.deepEqual(record.requirements.ids, []);
+    assert.deepEqual(record.owns, {});
+  });
+
+  test('the reason is required, because it is the only account of where the work came from', async () => {
+    const refused = await adopt(402, { state: 'pr-open', reason: '   ', home });
+
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /needs a reason/);
+    assert.equal((await read(402, { home })).state, 'new');
+  });
+
+  test('a live record is never adopted over', async () => {
+    await transition(403, 'triaged', { home });
+    const refused = await adopt(403, { state: 'pr-open', reason: 'looks similar', home });
+
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /already at triaged/);
+    assert.equal((await read(403, { home })).state, 'triaged', 'the record it refused to move is untouched');
+  });
+
+  test('the state and route have to be real', async () => {
+    assert.match((await adopt(404, { state: 'halfway', reason: 'x', home })).error, /not a state/);
+    assert.match((await adopt(404, { state: 'pr-open', route: 'sideways', reason: 'x', home })).error, /not a route/);
+  });
+
+  test('an adopted issue moves on like any other', async () => {
+    await adopt(405, { state: 'pr-open', reason: 'pre-existing', home });
+    const moved = await transition(405, 'review-in-progress', { home });
+
+    assert.equal(moved.ok, true);
+    // The mark stays: it is why there is no plan, and that stays true.
+    assert.ok((await read(405, { home })).adopted);
   });
 });
