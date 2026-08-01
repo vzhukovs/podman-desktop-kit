@@ -19,6 +19,12 @@ Maps merge key by key, so overriding `slicing.max_files_per_slice` leaves
 `never_rewrite` or `layer_order` assembled from two halves is a list nobody
 wrote, and both decide whether a command runs and in what order slices merge.
 
+That has a cost worth knowing about. A list `init` copied verbatim and you never
+edited stays at the value shipped that day, so a later change to the default
+never reaches you — silently, because the pinned value is still perfectly valid.
+`doctor` reports it as `config:arrays`. Delete the key to follow the default
+again, or extend it deliberately.
+
 ### The YAML subset
 
 `lib/yaml.js` reads nested maps, block and inline sequences, scalars, quotes
@@ -98,6 +104,12 @@ the shipped default through.
 | `worktrees.copy_files` | Copied into every new tree, and again after each verification reset — `git clean` takes them |
 | `quickfix.max_changed_lines`, `quickfix.max_files` | Thresholds above which a quickfix escalates back to triage |
 | `gates.push_ttl` | How fast consent goes stale. Which states a token may be issued from is not configurable — see `state.GATE_ELIGIBLE` |
+| `validation.e2e` | `prefer`, `required` or `off`. The per-issue decision is made at planning, in the plan's `e2e coverage` field |
+| `validation.e2e_stability_runs` | Consecutive green runs a new e2e test needs. The series is tied to a digest of the spec, so editing the test afterwards fails preflight rather than passing on stale runs |
+| `validation.require_evidence` | When false, `validation-evidence` skips. It exists for a repository where the application cannot be driven at all, not as a way past a step you would rather not demonstrate |
+| `validation.app.binary` | A packaged application to drive. Empty by default: `PODMAN_DESKTOP_BINARY` comes next, then `node_modules/.bin/electron .` — the development build, which is what upstream's own e2e drives |
+| `validation.app.debug_port` | Where CDP listens. `validate launch` refuses a port something else already answers on rather than fighting it |
+| `validation.app.startup_timeout` | How long to wait for `/json/version`. A process that dies before then is reported at once, not after the timeout |
 
 ### The package map
 
@@ -134,6 +146,18 @@ servers mandatory. Configure them yourself.
 
 Which agents can see a server's tools is controlled by `tools:` in
 `agents/*.md`, since plugin agents cannot declare MCP servers themselves.
+
+**Playwright attaches to an application pdkit started.** Configure the server
+with `--cdp-endpoint`; `pdkit validate launch` spawns the build with
+`--remote-debugging-port`, waits for `/json/version` and prints the endpoint.
+That is the shape upstream's own runner uses
+(`tests/playwright/src/runner/chrome-dev-tools-protocol-runner.ts`), which is
+also the answer to whether an Electron podman-desktop can be driven at all: it
+has been, in their CI, all along.
+
+"No Playwright" and "nothing to point Playwright at" are different problems.
+`doctor` reports the second separately, as `validate:app` — a perfectly
+configured server still has nothing to drive if the tree was never built.
 
 **Do not install ponytail as a `SessionStart` hook.** A hook reaches every
 agent and bypasses `tools:` scoping entirely, including `pd-implementer`, which

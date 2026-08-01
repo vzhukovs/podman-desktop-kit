@@ -28,7 +28,7 @@ broken manifest gates nothing at all.
 /pd:plan 12345        → reconnaissance, open questions, plan     [you approve]
 /pd:plan-review 12345 → adversarial review of the plan
 /pd:exec 12345        → implementation, one task per worker, receipts
-/pd:validate 12345    → evidence from the running application         (stage 5)
+/pd:validate 12345    → evidence from the running application
 /pd:audit 12345       → diff against plan, fresh context
 /pd:slice 12345       → usually one slice                        [you approve]
 /pd:preflight 12345   → deterministic gates
@@ -105,6 +105,50 @@ pdkit slice cascade --issue 12345 --from 1    rebase the dependents, verify agai
 
 Anything that stopped being green is reported, not rebased into a lie.
 
+## 3a. Validating a change against the running application
+
+Between `/pd:exec` and `/pd:audit`, and the only phase that looks at the
+application rather than at the code.
+
+```
+/pd:validate 12345    → evidence, an e2e candidate, and validation.md
+```
+
+What happens under that line:
+
+```
+pdkit validate steps  --issue 12345          requirements, Done when, e2e decision
+pdkit validate launch --issue 12345 [--build]  the app, with CDP on
+                                             → Playwright MCP attaches here
+pdkit validate attach --issue 12345 --title … --evidence shot.png --observed "4.6:1"
+pdkit validate codify --issue 12345 --spec tests/playwright/src/specs/x.spec.ts
+pdkit validate run    --issue 12345          the run PASS rests on
+pdkit e2e stability   --issue 12345          three in a row, stopping at the first red
+pdkit validate finish --issue 12345          outcome, validation.md, transition
+pdkit validate stop   --issue 12345
+```
+
+**PASS is an attached artefact, not a claim.** `attach` has no `--status`: a
+captured run produces pass or fail, a screenshot with an observation produces
+`observed`, and a step with neither is `unverified`. There is no input through
+which "I read the code and it looks right" becomes a pass.
+
+**The promise is narrower than it sounds, on purpose.** No code here can confirm
+that what appeared on screen was correct. PASS means an artefact was captured;
+whether the artefact shows the right thing stays with you and the reviewer.
+
+**`unverified` does not stop the pipeline.** Without Playwright there would be
+no way out of `implemented`, and a gate that expensive gets routed around. What
+stops the gap from vanishing is the other end: `validation-evidence` in preflight
+refuses a pull request body that does not name the undemonstrated steps under
+`Notes for reviewers`. An unverified step nobody mentions reads exactly like a
+verified one.
+
+**A new e2e test runs three times in a row before it counts**, and the series is
+tied to a digest of the spec: edit the test afterwards and preflight fails asking
+for a re-run rather than passing on a stale series. A flake carried into someone
+else's repository is the worst thing this workflow can deliver.
+
 ## 4. A pull request that has gone stale
 
 ```
@@ -166,10 +210,30 @@ A previous green preflight means nothing after a rebase.
 ## 6. Reviewing someone else's PR
 
 ```
-/pd:review-pr 2903                                                    (stage 5)
+/pd:review-pr 2903
 ```
 
-Outside the issue lifecycle entirely.
+Outside the issue lifecycle entirely. Nothing moves a state machine, and nothing
+is published — the report lands in `$PDKIT_HOME/reviews/2903.md`, and posting it
+is a human action in your own words.
+
+```
+pdkit review fetch 2903 --json      files by layer, public API, schemas, SPDX,
+                                    the threads reviewers already opened
+pdkit review render 2903 --values v.json
+```
+
+The diff is read locally, from `refs/pull/2903/head` against where that pull
+request branched. Against the tip of `main` it would carry every commit that
+landed since, and the review would ask the author about work they never did.
+
+Then four axes in parallel — architecture, API compatibility, tests, product —
+and `pd-review-synth` to dedupe and reach one verdict.
+
+Two rules, both from experience. A reviewer told to find problems will find them
+in correct code, so an empty section is a valid result. And **commit scope is
+never mentioned**: upstream does not require it, it is our own discipline, and
+`pdkit review fetch` deliberately never reports it.
 
 ## 7. Two issues at once
 
@@ -191,7 +255,7 @@ that has not landed: removing it takes the commits with it and says nothing.
 
 ## What preflight actually runs
 
-`pdkit preflight <issue>` runs eighteen checks, and on podman-desktop it takes
+`pdkit preflight <issue>` runs nineteen checks, and on podman-desktop it takes
 minutes, because it runs the repository's real scripts. Script names are
 resolved from the repository's own `package.json` — there is no `pnpm lint`
 there, and `pnpm test` drags in the e2e suite.
@@ -214,9 +278,10 @@ can go green on a diff that will not be pushed.
 
 ### The two passes
 
-Four checks read the PR body, and the body depends on preflight — `Notes for
-reviewers` is mandatory exactly when preflight flags something CI cannot judge.
-One pass cannot close that loop, so:
+Six checks read the PR body, and the body depends on preflight — `Notes for
+reviewers` is mandatory exactly when preflight flags something CI cannot judge,
+and equally when validation could not demonstrate a step. One pass cannot close
+that loop, so:
 
 ```
 pdkit preflight 12345                                   # pass 1, no body
@@ -317,6 +382,37 @@ automated away:
 2. Slice graph approval.
 3. Push confirmation — per branch, in the same turn, never carried over.
 4. Plan amendments arising from review.
+5. Anything added to `knowledge/`, whether proposed by `/pd:close` after one
+   issue or by `/pd:knowledge` over the whole base.
+
+Two more are decisions the plugin refuses to make rather than waits on:
+publishing a review of someone else's pull request, and commenting in the
+upstream tracker. Both are writes into a project that is not ours, and both are
+refused by the hook rather than gated.
+
+## Revising what the plugin thinks it knows
+
+```
+/pd:knowledge
+```
+
+`knowledge/` ships with the plugin and is read by every later issue, so an
+entry that quietly stopped being true costs more than a missing one.
+
+```
+pdkit knowledge check --json     dead paths, drifted layer order, entry shape
+pdkit knowledge export --json    the base, for a one-way push to basic-memory
+```
+
+The check earns its keep immediately: on the machine this was written on it
+found `slicing.layer_order` in `$PDKIT_HOME/config.yaml` still pinned to the
+value `pdkit init` copied at stage 0, so three layers added two stages later had
+never taken effect there. Arrays replace rather than merge — deliberately, so an
+edited list is not silently re-extended — and the cost is that an unedited copy
+freezes. `pdkit doctor` now reports that as `config:arrays`.
+
+Nothing here writes to `knowledge/`. Additions are proposed and you approve
+them: a base that grows on its own is a base people stop reading.
 
 ## Where the state lives
 

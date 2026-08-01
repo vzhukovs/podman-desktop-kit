@@ -6,11 +6,72 @@ disable-model-invocation: true
 model: opus
 ---
 
-Four agents in parallel — architecture, API compatibility, tests, product — then `pd-review-synth` to dedupe and reach a verdict.
+Outside the issue lifecycle entirely. Nothing here moves a state machine, and
+nothing here is published.
 
-Discipline, from experience: a reviewer told to find problems will find them in correct code. Do not report style. Do not ask for defensive code against impossible states. Do not suggest a further abstraction. An empty section is a valid result.
+## 1. The facts
 
-"What I could not verify" is mandatory.
+```
+pdkit review fetch <k> --json
+```
 
-> Stub. The full procedure lands with its stage — see section 12 of
-> `specs/podman-desktop-kit-architecture.md`.
+Fetches `refs/pull/<k>/head` and reads the diff locally, from where the pull
+request branched rather than from where upstream is now — against the tip it
+would carry every commit that landed since, and the review would ask the author
+about work they never did.
+
+What comes back is mechanical and already done: files by layer, whether the
+public API is touched, exported symbols that reach `extension-api.d.ts`,
+schemas changed with nothing generated beside them, added files without a
+licence header, and the threads reviewers have already opened.
+
+Read the linked issue too. Without it, `Requirement fit` in the report is
+guesswork wearing a table.
+
+## 2. Four axes, in parallel
+
+| Agent | Looking for |
+|---|---|
+| `pd-review-architecture` | does it fit existing patterns; does it duplicate a utility; right layer; dependency direction |
+| `pd-review-api-compat` | backwards compatibility, `Disposable` and leaks, schemas, the public surface |
+| `pd-review-tests` | are the claimed edge cases covered; skips, weakened assertions, `any`, `@ts-ignore`; determinism |
+| `pd-review-product` | does it do what the issue asked; i18n, a11y, contrast; error and empty states; neighbouring regressions |
+
+Each gets the diff, the facts above, and the target files. Give each the threads
+that already exist: a review repeating what somebody said a week ago reads as
+automated, and gets treated accordingly.
+
+Then `pd-review-synth` merges them — dedupe, prioritise, one verdict.
+
+## 3. The report
+
+```
+pdkit review render <k> --values <file.json>
+```
+
+Writes `reviews/<k>.md` from the template. `What I could not verify` is
+mandatory and is never empty by default: the platforms you did not exercise,
+the steps that need a human, the behaviour you could only read about.
+
+## Discipline
+
+A reviewer told to find problems will find them in correct code, and the second
+time that happens nobody reads the report. So:
+
+- do not report style;
+- do not ask for defensive code against impossible states;
+- do not suggest one more abstraction;
+- **do not mention commit scope.** Upstream does not require it — it is our own
+  discipline, and `pdkit review fetch` deliberately never reports it. Spending
+  an author's attention on a rule their project does not have is how a review
+  loses the standing to raise the ones it does.
+
+An empty section is a valid result. Two blocking findings and three empty
+sections is a better review than eleven nits.
+
+## Publishing
+
+Nobody publishes but you. The report lands in `reviews/<k>.md`; posting it is a
+human action, in your own words and under your own account. The hook refuses the
+write in any case — a review comment needs a `reply` token, and reviewing
+someone else's pull request has no issue and no state to issue one from.

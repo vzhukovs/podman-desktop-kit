@@ -36,6 +36,11 @@ model: sonnet
    the plugin and is read by every later issue; growing it quietly is how it
    stops being read.
 
+   This is the per-issue half, done while the details are still live. The pass
+   over the whole base — entries that have gone stale, paths that moved, a
+   layer chain that drifted — is `/pd:knowledge`, and it is periodic rather than
+   part of finishing anything.
+
 4. **`pdkit close <issue> --finish`** — moves the issue to `merged` and removes
    its worktrees. Removal refuses on a tree holding an unmerged branch, because
    that is the one case where tidying up loses work. `--force` only once you

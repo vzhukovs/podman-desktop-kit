@@ -49,6 +49,11 @@ The plugin ships no `.mcp.json` on purpose: a plugin-level MCP declaration would
 load for everyone, and these are meant to be optional. Configure them yourself;
 see [`docs/configuration.md`](docs/configuration.md).
 
+Playwright is the one with a setup detail worth stating here: configure it with
+`--cdp-endpoint`. `pdkit validate launch` starts the application with remote
+debugging on and prints the endpoint; the server attaches to it. That is how
+podman-desktop's own e2e suite drives the app.
+
 ## Install
 
 ```bash
@@ -94,12 +99,13 @@ Three more skills trigger by meaning rather than by slash: `package-map`,
 
 ```text
 bin/pdkit          deterministic CLI, added to PATH by the plugin
-lib/               its implementation: state machine, slicing, gates, preflight
+lib/               its implementation: state machine, slicing, gates, preflight,
+                   validation, reviews of other people's pull requests
 skills/            21 skills — the workflow surface
 agents/            14 agents — scouts, implementers, auditors, reviewers
 hooks/hooks.json   six entries; the rules live in lib/hooks/
 knowledge/         upstream constitution, package map, known traps
-templates/         plan, task, receipt, slices, PR body, review report
+templates/         plan, task, receipt, validation, slices, PR body, review report
 specs/             architecture spec, frozen versions, implementation plans
 ```
 

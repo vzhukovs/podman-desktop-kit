@@ -176,7 +176,9 @@ describe('skills only name commands that exist', () => {
       // from the stage it is waiting for.
       if (text.includes('> Stub.')) continue;
 
-      for (const [, command] of codeOnly(text).matchAll(/\bpdkit ([a-z][a-z-]*)/g)) {
+      // Digits belong in the name: `e2e` is a command, and a pattern that
+      // stopped at the first digit reported it as the non-existent `pdkit e`.
+      for (const [, command] of codeOnly(text).matchAll(/\bpdkit ([a-z][a-z0-9-]*)/g)) {
         if (!COMMANDS.includes(command)) problems.push(`${entry}: pdkit ${command}`);
       }
     }
@@ -204,7 +206,7 @@ describe('skills only name commands that exist', () => {
     // Scoped to the top-level switch: the sub-command switches inside runGate
     // and runIssue use the same syntax and are not pdkit commands.
     const body = source.slice(source.indexOf('switch (command) {'));
-    for (const [, command] of body.matchAll(/^\s{6}case '([a-z-]+)':/gm)) {
+    for (const [, command] of body.matchAll(/^\s{6}case '([a-z0-9-]+)':/gm)) {
       assert.ok(COMMANDS.includes(command), `the dispatcher handles "${command}", which COMMANDS does not list`);
     }
   });

@@ -174,6 +174,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `pdkit slice suggest --from-pr` (scenario 13, open item I).
   - Bodies for `pr-status`, `pr-sync`, `resume` and `close`.
 
+- **Stage 5 of section 12 — evidence, reviews of other people's work, and the
+  revision of what the plugin thinks it knows.**
+  - `lib/validation.js` — validation as an entity with an owner. `validated`
+    was the one state an issue could only enter by hand, because nothing
+    answered "was this validated, and by what evidence". `validation.json`, one
+    writer, rendered to `validation.md`.
+  - **PASS is an attached artefact, not a claim.** `validate attach` has no
+    `--status`: a captured run produces pass or fail through `lib/evidence.js`,
+    a screenshot produces `observed` only once it has been hashed and
+    described, and a step with neither is `unverified`. The promise is
+    deliberately narrower than the one slice verification makes — no code here
+    can confirm that what appeared on screen was right, so PASS means an
+    artefact was captured and nothing more.
+  - **The application is brought up the way upstream brings it up.** `validate
+    launch` spawns the build with `--remote-debugging-port`, waits for
+    `/json/version` and prints the endpoint Playwright MCP attaches to. That is
+    what `tests/playwright/src/runner/chrome-dev-tools-protocol-runner.ts` does,
+    which also answers the one question section 12 held open as needing a proof
+    of concept: podman-desktop has been driven over CDP in its own CI all along.
+    No packaging required — `node_modules/.bin/electron .` runs the development
+    build.
+  - **The run of the codified test is what PASS rests on.** A checklist is
+    verified once, by one person, today; a test is verified by CI on every pull
+    request that follows. `pdkit e2e stability` runs it three times in a row and
+    stops at the first red, and the series is tied to a digest of the spec.
+  - **`unverified` does not stop the pipeline, and does not vanish either.**
+    Without Playwright there would be no way out of `implemented`, and a gate
+    that expensive gets routed around. The nineteenth preflight check,
+    `validation-evidence`, refuses a pull request body that does not name the
+    undemonstrated steps under `Notes for reviewers` — an unverified step nobody
+    mentions reads exactly like a verified one.
+  - `lib/review.js` — `lib/audit.js` applied to someone else's pull request.
+    Files by layer, exported symbols that reach the public API, schemas changed
+    with nothing generated beside them, added files without a licence header,
+    and the threads reviewers already opened so four axes do not repeat a point
+    from last week. No verdict, and **no mention of commit scope**: upstream
+    does not require it, and spending an author's attention on a rule their
+    project does not have is how a review loses the standing to raise the ones
+    it does.
+  - `lib/knowledge.js` — the mechanical half of revising `knowledge/`. Dead
+    paths, `file:line` citations that point past the end of a file, entries that
+    stopped following the shape their own file declares, and a layer chain that
+    has drifted from `slicing.layer_order`.
+  - `pdkit validate steps|launch|stop|attach|codify|run|finish`,
+    `pdkit e2e stability`, `pdkit review fetch|render`,
+    `pdkit knowledge check|export`.
+  - Bodies for `validate`, `review-pr` and `knowledge`. The USAGE footer no
+    longer says anything is unimplemented.
+
 ### Changed
 
 - **A consent token now knows what it is consent for, which closed a hole.**
@@ -197,6 +246,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `review.bots_collapsed` lists the accounts that actually comment on
   podman-desktop pull requests. codecov posts a coverage table under a plain
   login, and it was being quoted in full underneath the human objection.
+- **The first run of `pdkit knowledge check` found real drift, in a config
+  rather than in prose.** `slicing.layer_order` in `$PDKIT_HOME/config.yaml` was
+  still the copy `pdkit init` wrote at stage 0, so the three layers stage 3
+  added to the merge order had never taken effect on that machine. Lists replace
+  rather than merge — deliberately — and the cost is that an unedited copy
+  freezes at the value shipped that day. `pdkit doctor` now reports it as
+  `config:arrays`, and `knowledge/package-map.md` states the current chain.
+- `pdkit doctor` gained `validate:app`: "no Playwright" and "nothing to point
+  Playwright at" are different problems, and the second is invisible until
+  validation starts and has nothing to drive.
+- `pdkit doctor` reloaded its config once the home directory is known. Every
+  check after `checkConfig` had been reading a config missing its middle layer.
+- `knowledge/review-expectations.md` gained the `## What to add here` section
+  every other file in the base has. Without it nothing stated what belonged
+  there, which is how a base grows entries nobody agreed to.
+- `fetchPullRequestHead` moved from `lib/slice.js` to `lib/repo.js`. Reviewing
+  someone else's pull request needs the same primitive `--from-pr` uses, and
+  writing a second one would have been a second answer to a settled question.
+- `render.write` takes a `root`, for the one artefact that belongs to no issue:
+  a review of someone else's pull request lands in `$PDKIT_HOME/reviews/`.
 - `pdkit doctor` checks GraphQL reachability, not only that `gh` is logged in.
   Everything this stage reads about a review is GraphQL-only, and a token
   without the scope fails mid-sync with half the feedback read.
