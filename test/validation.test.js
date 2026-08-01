@@ -14,7 +14,8 @@
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -297,6 +298,226 @@ describe('rendering', () => {
   test('rendering an issue with no record is an answer, not a crash', async () => {
     const result = await validation.render({ issue: 999_999, home });
     assert.equal(result.ok, false);
+  });
+});
+
+describe('launching the application under CDP', () => {
+  // A real process, spawned the way the real one is, answering on /json/version
+  // the way Electron does. Only the application is a stand-in — everything the
+  // code under test does (detached spawn, polling, killing) is the real thing,
+  // and a mocked spawn would only confirm what the mock believes.
+
+  /** @type {string[]} */
+  let stubs;
+
+  /**
+   * @param {string} name
+   * @param {string} body   the script, minus the shebang
+   * @returns {Promise<string>}
+   */
+  async function stub(name, body) {
+    const path = join(repo, name);
+    await writeFile(path, `#!/usr/bin/env node\n${body}`);
+    await chmod(path, 0o755);
+    stubs.push(path);
+    return path;
+  }
+
+  /** A free port, found by letting the OS pick one and handing it back. */
+  async function freePort() {
+    const server = createServer();
+    await new Promise((done) => server.listen(0, '127.0.0.1', done));
+    const { port } = server.address();
+    await new Promise((done) => server.close(done));
+    return port;
+  }
+
+  const APP = `
+const { createServer } = require('node:http');
+const port = Number(process.argv.find((a) => a.startsWith('--remote-debugging-port=')).split('=')[1]);
+const delay = Number(process.env.STUB_DELAY_MS ?? 0);
+setTimeout(() => {
+  createServer((req, res) => {
+    if (req.url === '/json/version') { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"Browser":"stub"}'); }
+    else { res.writeHead(404); res.end(); }
+  }).listen(port, '127.0.0.1');
+}, delay);
+`;
+
+  before(() => {
+    stubs = [];
+  });
+
+  beforeEach(async () => {
+    await validation.stop({ issue: ISSUE, home });
+  });
+
+  after(async () => {
+    await validation.stop({ issue: ISSUE, home });
+  });
+
+  test('the binary is resolved from config, then the environment, then the working tree', async () => {
+    const configured = await validation.resolveBinary({
+      repoRoot: repo,
+      config: { validation: { app: { binary: '/opt/podman-desktop' } } },
+      env: { PODMAN_DESKTOP_BINARY: '/from/env' },
+    });
+    assert.equal(configured.command, '/opt/podman-desktop');
+
+    const fromEnv = await validation.resolveBinary({ repoRoot: repo, config: {}, env: { PODMAN_DESKTOP_BINARY: '/from/env' } });
+    assert.equal(fromEnv.command, '/from/env');
+    assert.deepEqual(fromEnv.args, []);
+  });
+
+  test('a working tree with electron installed needs no packaged binary', async () => {
+    await mkdir(join(repo, 'node_modules', '.bin'), { recursive: true });
+    const electron = join(repo, 'node_modules', '.bin', 'electron');
+    await writeFile(electron, '#!/bin/sh\nexit 0\n');
+    await chmod(electron, 0o755);
+
+    const resolved = await validation.resolveBinary({ repoRoot: repo, config: {}, env: {} });
+
+    assert.equal(resolved.command, electron);
+    assert.deepEqual(resolved.args, ['.'], 'the development build is run as `electron .`, which is what pnpm build produces');
+
+    await rm(join(repo, 'node_modules'), { recursive: true, force: true });
+  });
+
+  test('nothing to drive is an explanation, not a stack trace', async () => {
+    const resolved = await validation.resolveBinary({ repoRoot: repo, config: {}, env: {} });
+
+    assert.equal(resolved.ok, false);
+    assert.match(resolved.error, /PODMAN_DESKTOP_BINARY/);
+  });
+
+  test('a launched application is recorded with its endpoint, and answers there', async () => {
+    const binary = await stub('app.js', APP);
+    const port = await freePort();
+
+    const result = await validation.launch({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      port,
+      config: { validation: { app: { binary } } },
+      timeoutMs: 20_000,
+    });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.app.port, port);
+    assert.equal(result.app.endpoint, `http://127.0.0.1:${port}`);
+    assert.equal(validation.alive(result.app.pid), true);
+
+    const response = await fetch(`${result.app.endpoint}/json/version`);
+    assert.equal(response.ok, true);
+
+    const record = await validation.read(ISSUE, { home });
+    assert.equal(record.app.pid, result.app.pid);
+  });
+
+  test('launching twice does not start a second copy on the same port', async () => {
+    const binary = await stub('app-twice.js', APP);
+    const port = await freePort();
+    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
+
+    const first = await validation.launch(input);
+    const second = await validation.launch(input);
+
+    assert.equal(second.ok, true, second.error);
+    assert.equal(second.alreadyRunning, true);
+    assert.equal(second.app.pid, first.app.pid);
+  });
+
+  test('a port someone else is holding is refused rather than fought over', async () => {
+    const binary = await stub('app-busy.js', APP);
+    const server = createServer((_, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"Browser":"someone else"}');
+    });
+    const port = await freePort();
+    await new Promise((done) => server.listen(port, '127.0.0.1', done));
+
+    try {
+      const result = await validation.launch({
+        issue: ISSUE,
+        home,
+        repoRoot: repo,
+        port,
+        config: { validation: { app: { binary } } },
+        timeoutMs: 5000,
+      });
+
+      assert.equal(result.ok, false);
+      assert.match(result.error, /already answering CDP/);
+    } finally {
+      await new Promise((done) => server.close(done));
+    }
+  });
+
+  test('an application that dies before CDP comes up says so, without waiting out the timeout', async () => {
+    const binary = await stub('app-dies.js', 'process.exit(7);\n');
+    const port = await freePort();
+
+    const started = Date.now();
+    const result = await validation.launch({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      port,
+      config: { validation: { app: { binary } } },
+      timeoutMs: 30_000,
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /exited before the CDP endpoint came up/);
+    assert.ok(Date.now() - started < 10_000, 'the death is the finding; waiting out 30s to report it would hide the cause');
+  });
+
+  test('an application that never answers is killed rather than left running', async () => {
+    const binary = await stub('app-silent.js', 'setInterval(() => {}, 1000);\n');
+    const port = await freePort();
+
+    const result = await validation.launch({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      port,
+      config: { validation: { app: { binary } } },
+      timeoutMs: 1500,
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /did not answer within/);
+    assert.equal((await validation.read(ISSUE, { home }))?.app ?? null, null, 'a failed launch records no running app');
+  });
+
+  test('stopping kills the process and clears the record', async () => {
+    const binary = await stub('app-stop.js', APP);
+    const port = await freePort();
+
+    const launched = await validation.launch({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      port,
+      config: { validation: { app: { binary } } },
+      timeoutMs: 20_000,
+    });
+    assert.equal(launched.ok, true, launched.error);
+
+    const stopped = await validation.stop({ issue: ISSUE, home });
+
+    assert.equal(stopped.ok, true);
+    assert.equal(stopped.stopped, true);
+    assert.equal(validation.alive(launched.app.pid), false);
+    assert.equal((await validation.read(ISSUE, { home })).app, null);
+  });
+
+  test('stopping what was never started is fine', async () => {
+    const result = await validation.stop({ issue: 999_998, home });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.stopped, false);
   });
 });
 

@@ -99,6 +99,15 @@ validation:
   e2e_stability_runs: 3
   ship_with_feature: true
   require_evidence: true       # PASS without artefacts is refused
+  # How the application is brought up under CDP. `binary` is empty on purpose:
+  # PODMAN_DESKTOP_BINARY comes next, and after it node_modules/.bin/electron .
+  # in the working tree — the development build, which is what upstream's own
+  # e2e drives when no packaged binary is set. Packaging costs minutes and
+  # proves nothing extra for validation.
+  app:
+    binary: ""
+    debug_port: 9222
+    startup_timeout: 60s
 
 tools:
   rtk:
