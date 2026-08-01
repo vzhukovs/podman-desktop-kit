@@ -320,6 +320,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **A check that has not answered is no longer read as a failure.** A
+  third-party status context spells "not yet" as `state: PENDING`, and a status
+  context always normalises to COMPLETED — so it arrived as "finished and not
+  green", which is what failure looks like everywhere else in `judge`. Twenty-
+  five seconds after #18561 opened, twenty-three jobs were in progress, nothing
+  was red, and the rollup said `fail`. Red is now required to be a conclusion
+  GitHub actually uses for red; anything unrecognised is `inconclusive` rather
+  than a broken build on somebody's pull request.
 - **`steps-to-check` reports what it measured.** It matches a phrasing rather
   than the presence of an expectation, and "it reads `ls -l /etc`" is an
   expected result it was rejecting. The vocabulary is wider, and the failure now

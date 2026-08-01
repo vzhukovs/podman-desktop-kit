@@ -202,6 +202,35 @@ describe('judging a red job', () => {
     assert.equal(pr.judge(check('CANCELLED')).verdict, 'cancelled');
   });
 
+  // Twenty-five seconds after #18561 opened: twenty-three jobs in progress,
+  // nothing red, and the rollup said `fail`. A third-party status context
+  // spells "not yet" as a state rather than by having no conclusion, and a
+  // status context always normalises to COMPLETED — so it arrived as "finished,
+  // and not green", which is what failure looks like everywhere else here.
+  test('a status context that says PENDING has not answered yet', () => {
+    assert.equal(pr.judge({ name: 'CodeRabbit', status: 'COMPLETED', conclusion: 'PENDING' }).verdict, 'pending');
+    assert.equal(pr.judge(check('QUEUED')).verdict, 'pending');
+    assert.equal(pr.judge(check('EXPECTED')).verdict, 'pending');
+  });
+
+  // Reaching "red" by elimination means every conclusion nobody thought of is
+  // reported as a broken build on somebody's pull request.
+  test('a conclusion that is not a known red is not called a failure', () => {
+    assert.equal(pr.judge(check('SOMETHING_NEW')).verdict, 'inconclusive');
+    assert.equal(pr.judge(check('FAILURE')).verdict, 'fail');
+    assert.equal(pr.judge(check('TIMED_OUT')).verdict, 'fail');
+  });
+
+  test('the rollup of a freshly opened pull request is pending, not fail', () => {
+    const jobs = [
+      { name: 'CodeRabbit', verdict: 'pending' },
+      { name: 'unit tests', verdict: 'pending' },
+      { name: 'typecheck', verdict: 'pass' },
+    ];
+
+    assert.equal(pr.rollupOf(jobs), 'pending');
+  });
+
   test('red with green peers is ours', () => {
     const verdict = pr.judge(check('FAILURE'), { peers: new Map([['Linux', [1, 2]]]) });
     assert.equal(verdict.verdict, 'fail');
