@@ -962,6 +962,48 @@ describe('--from-pr', () => {
     assert.equal(files.includes('packages/preload/src/c.ts'), false);
   });
 
+  // Found on a live pull request, and it was silent. The clone's upstream/main
+  // was two months old, so the merge base fell back to that stale tip and the
+  // "diff of the pull request" came back with 446 commits of other people's
+  // work in it. The base was a real commit on main and the diff applied
+  // cleanly; nothing looked wrong until the file count was compared with what
+  // GitHub reported.
+  test('a clone whose base branch is stale still gets the real fork point', async () => {
+    // Upstream gains work the clone has never seen, AFTER the pull request
+    // branched — so a merge base measured against the clone's copy of main
+    // would be older than where they actually branched.
+    await git(['checkout', 'main'], upstream);
+    await writeFiles(upstream, { 'packages/main/src/newer.ts': 'export const newer = 1;\n' });
+    await commitAll(upstream, 'chore: landed after the clone last fetched');
+
+    await git(['checkout', 'main'], upstream);
+    await git(['checkout', '-b', 'later-work'], upstream);
+    await writeFiles(upstream, { 'packages/ui/src/later.ts': 'export const later = 1;\n' });
+    const head = await commitAll(upstream, 'feat: branched from the newer main');
+    await git(['update-ref', 'refs/pull/9/head', head], upstream);
+    await git(['checkout', 'main'], upstream);
+
+    const fetched = await fetchPullRequestHead({
+      pr: 9,
+      repoRoot: clone,
+      config: { repo: { upstream_remote: 'upstream', base_branch: 'main' } },
+    });
+
+    const diff = await slice.sliceDiff({
+      repoRoot: clone,
+      base: fetched.base,
+      ref: fetched.ref,
+      files: ['packages/ui/src/later.ts', 'packages/main/src/newer.ts'],
+    });
+
+    assert.match(diff, /packages\/ui\/src\/later\.ts/, 'their own file is in the diff');
+    assert.equal(
+      diff.includes('packages/main/src/newer.ts'),
+      false,
+      'a commit that landed before they branched is not theirs to answer for',
+    );
+  });
+
   test('a pull request the remote does not serve is an error, not an empty slice', async () => {
     await assert.rejects(
       () => fetchPullRequestHead({ pr: 999, repoRoot: clone, config: { repo: { upstream_remote: 'upstream' } } }),
