@@ -185,3 +185,64 @@ describe('the worktree checks', () => {
     assert.match(registered.detail, /git worktree prune/);
   });
 });
+
+// Two checks that exist because of what a real run found. The first is the
+// drift `pdkit knowledge check` uncovered on this machine: an array copied by
+// `pdkit init` at stage 0 was still pinning the stage-0 value, so a decision
+// taken two stages later had never taken effect here — and nothing could have
+// noticed, because the merged value was a perfectly valid list.
+describe('the validation and config-drift checks', () => {
+  let repo;
+  let home;
+
+  before(async () => {
+    repo = await initRepo('pdkit-doctor-validate-');
+    home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-validate-home-'));
+
+    await writeFile(join(repo, 'file.txt'), 'x\n');
+    await commitAll(repo, 'chore: seed');
+  });
+
+  after(async () => {
+    await cleanup(repo, home);
+  });
+
+  test('a list that has fallen behind the shipped default is named, with the missing entries', async () => {
+    await writeFile(join(home, 'config.yaml'), 'slicing:\n  layer_order: [extension-api, main, tests]\n');
+
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+    const arrays = find(report.checks, 'config:arrays');
+
+    assert.equal(arrays.status, 'warn');
+    assert.match(arrays.detail, /slicing\.layer_order is missing/);
+    assert.match(arrays.detail, /Arrays replace rather than merge/);
+  });
+
+  test('a config that pins nothing is not warned about', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  base_branch: main\n');
+
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+
+    assert.equal(find(report.checks, 'config:arrays').status, 'ok');
+  });
+
+  test('nothing to drive is reported as its own problem, not as a missing Playwright', async () => {
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+    const app = find(report.checks, 'validate:app');
+
+    assert.equal(app.status, 'warn');
+    assert.match(app.detail, /nothing to drive|no packaged binary/);
+    assert.equal(app.level, 'optional', 'an unbuilt tree does not stop the rest of the plugin working');
+  });
+
+  test('a configured binary that is not executable is a warning that names the source', async () => {
+    await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${join(repo, 'not-executable')}\n`);
+    await writeFile(join(repo, 'not-executable'), 'x\n');
+
+    const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+    const app = find(report.checks, 'validate:app');
+
+    assert.equal(app.status, 'warn');
+    assert.match(app.detail, /validation\.app\.binary points at/);
+  });
+});
