@@ -331,6 +331,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **The issue template can hold more than one requirement.** Its table
+  hard-coded a single row with the source tag baked into it, so the R-set — the
+  thing every later trace hangs on — could only be written down for an issue
+  that had exactly one. Found while planning DESKTOP-17221, which has four.
+  `[review]` joins the tag vocabulary at the same time: a rework's strongest
+  requirement is stated by a reviewer rather than by the issue, and where a
+  requirement came from decides how much argument it takes to change it.
 - **The state machine has a way to say "the reviewer rejected the approach".**
   `pr-open` and `review-in-progress` now lead back to `triaged`. Until now the
   only moves from an open pull request were to push again, which assumes the
