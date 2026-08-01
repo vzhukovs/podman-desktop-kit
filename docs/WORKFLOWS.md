@@ -3,7 +3,7 @@
 Scenarios, in the order you are likely to hit them. Each names the commands and
 the decision points that are yours rather than the plugin's.
 
-**What works today:** scenarios 1 through 5 and 7, up to and including an open
+**What works today:** scenarios 0 through 5 and 7, up to and including an open
 pull request, its review, and coming back to it after upstream has moved.
 Everything marked *(stage N)* below is registered but still a stub — the skill
 says so rather than improvising. Publishing itself has been exercised once end
@@ -20,6 +20,34 @@ Run the second one after installing, after upgrading, and after touching
 anything under `lib/hooks/`. It is the only check that answers "is the gate
 actually on" — every unit test in the suite stays green while a plugin with a
 broken manifest gates nothing at all.
+
+## 0. Picking what to work on
+
+```
+/pd:triage             → shortlist; nothing is written and nothing moves
+pdkit issue list --label "area/terminal" --limit 20
+```
+
+`/pd:triage` without a number answers a different question from the rest of
+this file: not "how do I do this issue" but "which issue". One GraphQL request
+brings back the open backlog with the facts that say whether an issue can be
+started at all — pull requests referencing it **in this repository**, who it is
+assigned to, whether a maintainer has answered, whether a bug report carries a
+reproduction, and how long since a human last touched it.
+
+Two of those are worth spelling out, because both looked fine while being
+wrong:
+
+- **Idle time is measured from human activity, not `updatedAt`.** The stale bot
+  posting a notice moves the timestamp. Sorted on `updatedAt`, an issue whose
+  last human comment was five months ago sits at the top of the list.
+- **A cross-reference from another repository is not a linked pull request.**
+  Somebody's prototype repo can reference an upstream issue, and a merged PR
+  over there says nothing about whether the work exists here.
+
+What the listing does not do is pick. The order is over facts; whether a
+requirement is clear enough to plan against is not a fact, and that is the part
+that decides. Read the top few, then triage one.
 
 ## 1. A bug fix
 

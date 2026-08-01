@@ -223,7 +223,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bodies for `validate`, `review-pr` and `knowledge`. The USAGE footer no
     longer says anything is unimplemented.
 
+- **Scenario 6 of section 10 — the way into the cycle.** Every stage so far
+  began at `/pd:triage <issue>`, with a number somebody had already chosen.
+  Scenario 6 asks the other question, and it was the one entry in that table
+  with no route in code.
+  - `lib/backlog.js` — facts about a set of candidate issues, in the shape of
+    `lib/audit.js`: what is mechanical about "can this be started" is collected
+    once, and nothing is decided. Pull requests referencing the issue, who it is
+    assigned to, whether a maintainer answered, whether a bug report carries a
+    reproduction rather than an empty `_No response_`, which upstream template
+    the body follows, and how long since a human touched it.
+  - `pdkit issue list [--label a,b] [--limit n]` — one GraphQL request for the
+    whole batch, roughly a second for twenty issues. Not a per-issue loop:
+    `gh issue list --json comments` returns empty arrays, so the obvious shape
+    would have cost twenty round trips and still needed the second call.
+  - **The order is over facts, not a recommendation.** Blocked last, more
+    signals first, least idle next, issue number to break ties so two runs print
+    the same list. There is no `score` field: whether a requirement is clear
+    enough to plan against is not in the table, and it is the thing that
+    decides.
+  - Section 0 of the `triage` skill: without a number, shortlist. It reads the
+    top few bodies rather than all of them, says what is blocked instead of
+    dropping it, and writes nothing — no files, no state transitions.
+
 ### Changed
+
+- **A cross-reference from another repository is no longer a linked pull
+  request.** `pdkit issue fetch 18381` reported `#17 MERGED feat(podman-desktop):
+  add Enterprise Support Page prototype` — a pull request in a stranger's
+  prototype repository. Triage reads an open linked PR as "the work exists, stop"
+  and a merged one as grounds for archaeology, so this was the same expensive
+  false positive that moved dedup off text search and onto the timeline, arriving
+  by a different route. The timeline is still the authority on what references an
+  issue; it is not an authority on where the reference lives.
+- **Idle time is measured from human activity rather than `updatedAt`.** The
+  stale bot moves the timestamp, so GitHub's own recency ordering puts abandoned
+  issues at the top of a backlog listing. Bots are recognised by account type —
+  GraphQL returns the stale bot as `github-actions`, without the `[bot]` suffix
+  `threads.isBot` matches on.
+- **The issue author is not the project answering**, even when they are a
+  member. Otherwise the "a maintainer replied" signal is one a reporter can
+  raise for themselves.
 
 - **A consent token now knows what it is consent for, which closed a hole.**
   `dispatch.js` fell back to the current branch for commands with no branch of
