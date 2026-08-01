@@ -101,7 +101,11 @@ describe('a step without an artefact', () => {
     assert.equal(validation.statusOf(result.step), 'unverified');
   });
 
-  test('an artefact plus an observation is evidence, and the path is made repository-relative', async () => {
+  // The artefact is copied in beside the record rather than referenced where it
+  // lies. A screenshot taken into a temporary directory is gone by the next
+  // reboot, and one taken outside the repository produced a path of five `..`
+  // segments describing it as part of the fork.
+  test('an artefact plus an observation is evidence, and the file is kept with the record', async () => {
     const shot = join(repo, 'shot.png');
     await writeFile(shot, 'not really a png');
 
@@ -115,8 +119,34 @@ describe('a step without an artefact', () => {
     });
 
     assert.equal(validation.statusOf(result.step), 'observed');
-    assert.equal(result.step.evidence.path, 'shot.png');
+    assert.equal(result.step.evidence.path, 'validation/artefacts/V1.png');
+    assert.equal(result.step.evidence.from, shot);
     assert.match(result.step.evidence.digest, /^sha256:[0-9a-f]{64}$/);
+
+    const kept = await readFile(join(home, 'issues', String(ISSUE), 'validation', 'artefacts', 'V1.png'), 'utf8');
+    assert.equal(kept, 'not really a png');
+  });
+
+  test('an artefact outside the repository is kept too, without a path of dot-dots', async () => {
+    const elsewhere = join(tmpdir(), `pdkit-outside-${process.pid}.json`);
+    await writeFile(elsewhere, '{"targets":1}');
+
+    const result = await validation.attach({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      title: 'the window is up',
+      evidence: elsewhere,
+      observed: 'one page target',
+    });
+
+    assert.equal(result.step.evidence.path, 'validation/artefacts/V1.json');
+    assert.equal(result.step.evidence.path.includes('..'), false);
+
+    await rm(elsewhere, { force: true });
+    // Deleting the source does not touch the evidence: that is the point of
+    // keeping a copy.
+    assert.equal((await validation.evidenceIntact({ repoRoot: repo, home, issue: ISSUE, step: result.step })).ok, true);
   });
 });
 
@@ -735,10 +765,37 @@ setTimeout(() => {
   });
 
   test('stopping what was never started is fine', async () => {
-    const result = await validation.stop({ issue: 999_998, home });
+    const result = await validation.stop({ issue: 999_998, home, port: await freePort() });
 
     assert.equal(result.ok, true);
     assert.equal(result.stopped, false);
+  });
+
+  // Observed on the first live run, and the report was wrong in the direction
+  // that matters: the record had been removed while the application was still
+  // up, and `stop` said "nothing was running" about a live Electron process
+  // holding the debug port.
+  test('a lost record does not turn a running application into "nothing was running"', async () => {
+    const binary = await stub('app-orphan.js', APP);
+    const port = await freePort();
+
+    const launched = await validation.launch({
+      issue: ISSUE,
+      home,
+      repoRoot: repo,
+      port,
+      config: { validation: { app: { binary } } },
+      timeoutMs: 20_000,
+    });
+    assert.equal(launched.ok, true, launched.error);
+
+    await rm(join(home, 'issues', String(ISSUE)), { recursive: true, force: true });
+    const result = await validation.stop({ issue: ISSUE, home, port });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /still answering CDP/);
+
+    process.kill(launched.app.pid);
   });
 });
 
@@ -757,7 +814,9 @@ describe('evidence that moved after it was attached', () => {
 
     assert.equal((await validation.evidenceIntact({ repoRoot: repo, home, issue: ISSUE, step: attached.step })).ok, true);
 
-    await writeFile(shot, 'second');
+    // The kept copy, not the source — editing the original proves nothing, and
+    // this is what an auditor would open.
+    await writeFile(join(home, 'issues', String(ISSUE), 'validation', 'artefacts', 'V1.png'), 'second');
     const after = await validation.evidenceIntact({ repoRoot: repo, home, issue: ISSUE, step: attached.step });
 
     assert.equal(after.ok, false);
@@ -776,7 +835,7 @@ describe('evidence that moved after it was attached', () => {
       observed: '4.6:1',
     });
 
-    await rm(shot);
+    await rm(join(home, 'issues', String(ISSUE), 'validation', 'artefacts', 'V1.png'));
     const after = await validation.evidenceIntact({ repoRoot: repo, home, issue: ISSUE, step: attached.step });
 
     assert.equal(after.ok, false);

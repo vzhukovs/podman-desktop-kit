@@ -901,7 +901,9 @@ describe('the validation checks', () => {
 
     assert.equal((await only('validation-evidence')).status, 'pass');
 
-    await writeFile(shot, 'second');
+    // The kept copy under the issue, not the source: that copy is what an
+    // auditor opens, and editing the original proves nothing about it.
+    await writeFile(join(vHome, 'issues', String(ISSUE), 'validation', 'artefacts', 'V1.png'), 'second');
     const result = await only('validation-evidence');
 
     assert.equal(result.status, 'fail');
