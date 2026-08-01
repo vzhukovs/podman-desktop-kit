@@ -221,6 +221,46 @@ describe('judging a red job', () => {
     assert.equal(pr.judge(check('TIMED_OUT')).verdict, 'fail');
   });
 
+  // Upstream's Domain Review Status follows labels a bot maintains and goes
+  // green only when the people who own the touched areas approve. Measured
+  // across the open pull requests: `inreview` label -> IN_PROGRESS, `reviewed`
+  // -> SUCCESS. It is a review state wearing a check's clothes.
+  test('a check waiting on people is not the same word as a check waiting on a machine', () => {
+    const gating = ['Domain Review Status'];
+    const waiting = { name: 'Domain Review Status', status: 'IN_PROGRESS', conclusion: '' };
+
+    assert.equal(pr.judge(waiting, { gating }).verdict, 'awaiting-review');
+    // Without the configuration it is simply unfinished — no guessing by name.
+    assert.equal(pr.judge(waiting).verdict, 'pending');
+    // And once the reviewers approve it is an ordinary green.
+    assert.equal(pr.judge({ ...waiting, status: 'COMPLETED', conclusion: 'SUCCESS' }, { gating }).verdict, 'pass');
+  });
+
+  test('the domains come out of the labels the bot maintains', () => {
+    const domains = pr.domainsOf([
+      { name: 'domain/containers/inreview' },
+      { name: 'domain/qe/reviewed' },
+      { name: 'area/website 🌐' },
+      'domain/foundations/inreview',
+    ]);
+
+    assert.deepEqual(domains, [
+      { domain: 'containers', state: 'inreview' },
+      { domain: 'foundations', state: 'inreview' },
+      { domain: 'qe', state: 'reviewed' },
+    ]);
+    assert.deepEqual(pr.domainsOf([]), []);
+    assert.deepEqual(pr.domainsOf(undefined), []);
+  });
+
+  // A build still running is the more urgent answer; when the machines are
+  // done, what is left is the name of whoever has to look.
+  test('waiting on people outranks nothing but a finished run', () => {
+    assert.equal(pr.rollupOf([{ verdict: 'awaiting-review' }, { verdict: 'pass' }]), 'awaiting-review');
+    assert.equal(pr.rollupOf([{ verdict: 'awaiting-review' }, { verdict: 'pending' }]), 'pending');
+    assert.equal(pr.rollupOf([{ verdict: 'awaiting-review' }, { verdict: 'fail' }]), 'fail');
+  });
+
   test('the rollup of a freshly opened pull request is pending, not fail', () => {
     const jobs = [
       { name: 'CodeRabbit', verdict: 'pending' },

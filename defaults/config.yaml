@@ -141,6 +141,12 @@ review:
   # podman-desktop pull requests: coderabbit reviews, codecov posts a coverage
   # table on every PR.
   bots_collapsed: [coderabbitai, codecov, github-actions, dependabot, renovate]
+  # Checks that wait for people rather than for a machine. Upstream's
+  # `Domain Review Status` follows the domain/<area>/inreview labels its triager
+  # bot maintains, and goes green only once the reviewers who own those areas
+  # approve — so it never resolves on its own, and reporting it as `pending`
+  # tells a reader to come back later for something that is not going to happen.
+  gating_checks: ["Domain Review Status"]
   # A match EXPANDS a collapsed bot thread back to full text. It never collapses
   # anything and is never consulted for a human: dropping a security finding
   # because it lacked a configured word is the mistake the filter exists to

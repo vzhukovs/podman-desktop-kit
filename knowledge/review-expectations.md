@@ -16,6 +16,29 @@ this plugin applies to other people's PRs.
 - **A reason, when the approach is not obvious.** Two sentences in the PR body
   prevent a round trip.
 
+## How upstream routes a review, and what its red check means
+
+`podman-desktop-triager` labels every pull request by the areas its files
+belong to — `domain/<area>/inreview` — assigns the reviewers who own those
+areas, and swaps the label to `domain/<area>/reviewed` once they approve.
+
+The `Domain Review Status` check follows those labels: it sits unfinished while
+any `inreview` label remains and goes green when the last one flips. Measured
+across the open pull requests on 2026-08-01: every one carrying an `inreview`
+label had it IN_PROGRESS, the one carrying `reviewed` had it SUCCESS.
+
+Two consequences worth stating, because both are easy to read backwards:
+
+- **It is not a build.** Nothing in a diff makes it go green, and re-running it
+  achieves nothing. It is a review state expressed as a check.
+- **It will still say the same tomorrow.** Unlike a queued job, it does not
+  resolve on its own — which is why `pdkit pr list` reports it as
+  `awaiting-review` with the domains named, rather than as `pending`.
+
+Practical: touching fewer areas means fewer domains, and fewer domains means
+fewer people who must all say yes. That is the same argument as one layer per
+pull request, arriving from the labels rather than from taste.
+
 ## Review discipline for PRs we review
 
 From experience, stated plainly because it is easy to get wrong in the other

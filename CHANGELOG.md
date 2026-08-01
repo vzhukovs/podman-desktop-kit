@@ -320,6 +320,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **A check that waits for people is named differently from one that waits for
+  a machine.** Upstream's `Domain Review Status` follows the
+  `domain/<area>/inreview` labels its triager bot maintains and goes green only
+  once the owners of the touched areas approve — measured across the open pull
+  requests, an `inreview` label means IN_PROGRESS and `reviewed` means SUCCESS.
+  It never resolves on its own, so reporting it as `pending` tells a reader to
+  come back later for something that will not happen. It is `awaiting-review`
+  now, the domains are recorded from the labels, and `pdkit pr list` prints
+  `waiting:<domains>` — the answer to who is holding it.
 - **A check that has not answered is no longer read as a failure.** A
   third-party status context spells "not yet" as `state: PENDING`, and a status
   context always normalises to COMPLETED — so it arrived as "finished and not
