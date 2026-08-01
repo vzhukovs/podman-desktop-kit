@@ -700,28 +700,44 @@ describe('materialize', () => {
     await git(['reset', '--hard', 'HEAD~1'], repo);
   });
 
-  test('and leaves it to the hook when one will run', async () => {
+  // It used to leave the trailer to the hook when one was installed. The hook
+  // appends with `echo >>`, and a message made from a single -m has no blank
+  // line after the subject — so the trailer joined the subject paragraph and
+  // git read all 130 characters of it as the subject. The branch this command
+  // had just made could not pass its own sign-off check.
+  test('the trailer goes where trailers go, hook or no hook', async () => {
     const hooks = join(repo, '.fixture-hooks');
     await mkdir(hooks, { recursive: true });
-    // A hook that adds nothing: what matters is that materialize sees it and
-    // does not sign, since a second trailer is what husky rejects.
-    await writeFile(join(hooks, 'commit-msg'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    // Stands in for husky: appends a sign-off when the message has none, the
+    // way podman-desktop's commit-msg hook does.
+    await writeFile(
+      join(hooks, 'commit-msg'),
+      '#!/bin/sh\nSOB=$(git var GIT_AUTHOR_IDENT | sed -n "s/^\\(.*>\\).*$/Signed-off-by: \\1/p")\n' +
+        'grep -qs "^$SOB" "$1" || echo "$SOB" >>"$1"\n',
+      { mode: 0o755 },
+    );
     await git(['config', 'core.hooksPath', '.fixture-hooks'], repo);
 
-    const result = await slice.materialize({
-      issue: ISSUE,
-      index: 3,
-      repoRoot: repo,
-      subject: 'feat(ui): high contrast themes',
-      home,
-      config: config(),
-    });
-    assert.equal(result.ok, true, result.error);
+    try {
+      const result = await slice.materialize({
+        issue: ISSUE,
+        index: 3,
+        repoRoot: repo,
+        subject: 'feat(ui): high contrast themes',
+        home,
+        config: config(),
+      });
+      assert.equal(result.ok, true, result.error);
 
-    const message = await git(['log', '-1', '--format=%B', `DESKTOP-${ISSUE}/3-ui-contrast`], repo);
-    assert.equal(/Signed-off-by:/.test(message), false);
+      const branch = `DESKTOP-${ISSUE}/3-ui-contrast`;
+      const subject = await git(['log', '-1', '--format=%s', branch], repo);
+      const body = await git(['log', '-1', '--format=%b', branch], repo);
 
-    await git(['config', '--unset', 'core.hooksPath'], repo);
+      assert.equal(subject, 'feat(ui): high contrast themes', 'the subject is the subject, nothing appended');
+      assert.equal((body.match(/Signed-off-by:/g) ?? []).length, 1, 'exactly one, and it is in the body');
+    } finally {
+      await git(['config', '--unset', 'core.hooksPath'], repo);
+    }
   });
 
   test('a dirty tree stops it, because the mess would ride along', async () => {
