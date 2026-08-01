@@ -54,7 +54,15 @@ Do not offer to "fix" these — say what they mean and let the user decide:
   cover everything `tools.rtk.never_rewrite` lists. The gate does not depend on
   it; it narrows the surface. `docs/configuration.md` has the TOML.
 - **`mcp:playwright`** — absent means `/pd:validate` produces a checklist
-  instead of a run and never sets PASS. That is stage 5.
+  instead of a run and never sets PASS. Configure it with `--cdp-endpoint`:
+  pdkit starts the application, the server attaches to it.
+- **`validate:app`** — a different problem with a different fix. The server can
+  be configured perfectly and validation still have nothing to drive, because
+  the working tree was never built.
+- **`config:arrays`** — a list in your `config.yaml` has fallen behind the
+  shipped default. Lists replace rather than merge, so one copied by `init` and
+  never edited stays at the value shipped that day; delete the key to follow the
+  default again, or extend it deliberately.
 - **`ponytail:hooks`** — a global ponytail hook reaches every agent, including
   the implementer, which is where its disposition argues with the plan.
 
