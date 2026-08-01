@@ -395,6 +395,75 @@ describe('running the codified test', () => {
   });
 });
 
+describe('stability', () => {
+  test('three green runs in a row make a series, with three artefacts and not one summary', async () => {
+    const issue = 8807;
+    const spec = await writeSpec('stable.spec.ts', 'test("g", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.consecutive, 3);
+    assert.equal(result.performed, 3);
+
+    for (const index of [1, 2, 3]) {
+      const artefact = await readFile(join(home, 'issues', String(issue), 'validation', `e2e-${index}.md`), 'utf8');
+      assert.match(artefact, /## Output/);
+    }
+  });
+
+  test('the first red run ends the series instead of spending minutes to confirm it', async () => {
+    const issue = 8808;
+    const spec = await writeSpec('flaky.spec.ts', 'test("h", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'false' } }));
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.performed, 1);
+    assert.equal(result.consecutive, 0);
+    assert.match(result.error, /flaky test is not a stable one/);
+  });
+
+  test('a series cannot be run before a candidate exists', async () => {
+    const result = await validation.stability({ issue: 999_996, home, repoRoot: repo, runs: 3 });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /codify/);
+  });
+
+  test('a spec edited since the last series is re-digested, so the runs describe what is on disk', async () => {
+    const issue = 8809;
+    const spec = await writeSpec('edited.spec.ts', 'test("i", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+    await validation.stability({ issue, home, repoRoot: repo, runs: 1 });
+
+    await writeFile(join(repo, spec), 'test("i", () => { /* now different */ });\n');
+    const again = await validation.stability({ issue, home, repoRoot: repo, runs: 2 });
+
+    assert.equal(again.ok, true, again.error);
+    assert.equal(again.consecutive, 2, 'the run recorded against the old contents does not count towards the new series');
+    assert.equal((await validation.seriesFreshness({ issue, home, repoRoot: repo })).fresh, true);
+  });
+
+  test('a spec deleted since it was codified is refused', async () => {
+    const issue = 8810;
+    const spec = await writeSpec('vanishing.spec.ts', 'test("j", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+    await rm(join(repo, spec));
+
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /no longer in the repository/);
+  });
+});
+
 describe('finishing', () => {
   test('a passing validation moves the issue and writes the document', async () => {
     const issue = 8804;
