@@ -155,6 +155,45 @@ describe('reads', () => {
     assert.equal(prs[1].mergedAt, null);
   });
 
+  test('a cross-reference from another repository is not a linked pull request', async () => {
+    // Live on #18381: yuvalgalanti/AppDev-UX-Prototypes#17, merged, showed up
+    // as `linked: #17 MERGED` — which triage reads as "this was already done".
+    // The timeline is still the authority on what references the issue; it is
+    // just not an authority on where the reference lives.
+    const prs = await linkedPullRequests(18381, {
+      config: CONFIG,
+      exec: fakeGh(
+        timeline(
+          {
+            source: {
+              number: 17,
+              state: 'MERGED',
+              title: 'feat(podman-desktop): add Enterprise Support Page prototype',
+              url: 'https://github.com/yuvalgalanti/AppDev-UX-Prototypes/pull/17',
+              mergedAt: '2026-07-21T09:46:49Z',
+              repository: { nameWithOwner: 'yuvalgalanti/AppDev-UX-Prototypes' },
+            },
+          },
+          {
+            source: {
+              number: 18546,
+              state: 'OPEN',
+              title: 'fix: the thing',
+              url: 'https://github.com/podman-desktop/podman-desktop/pull/18546',
+              mergedAt: null,
+              repository: { nameWithOwner: 'podman-desktop/podman-desktop' },
+            },
+          },
+        ),
+      ),
+    });
+
+    assert.deepEqual(
+      prs.map((pr) => pr.number),
+      [18546],
+    );
+  });
+
   test('an issue nothing references gives an empty list, not an error', async () => {
     assert.deepEqual(await linkedPullRequests(1, { config: CONFIG, exec: fakeGh(timeline()) }), []);
     assert.deepEqual(

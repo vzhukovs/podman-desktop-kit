@@ -1,13 +1,42 @@
 ---
 name: triage
-description: "Triage an upstream podman-desktop issue: dedup, classify, draft requirements, and pick a route."
-argument-hint: "<issue-number|url>"
+description: "Triage an upstream podman-desktop issue: dedup, classify, draft requirements, and pick a route. Without an issue number, shortlist what is worth taking."
+argument-hint: "[<issue-number|url>] [--label <a,b>]"
 disable-model-invocation: true
 model: opus
 ---
 
 Decide whether planning is needed at all. Half the value of this plugin is
 here — the other half is spent by people who skipped it.
+
+## 0. No issue number? Then the question is which one
+
+Skip this section when you were given an issue. When you were not, the job is
+scenario 6: not "take this issue" but "what is there to take".
+
+`pdkit issue list [--label a,b] [--limit 20]` prints the open backlog with the
+facts that decide whether an issue **can be started**: pull requests that
+reference it in this repository, who it is assigned to, whether a maintainer
+answered, whether a bug carries a reproduction, and how long since a human —
+not the stale bot — last touched it. `·` marks the ones something blocks.
+
+That listing is an order over facts. It does not know the thing that actually
+decides, and you do:
+
+1. **Read the top few bodies, not all of them.** Three to five, with
+   `pdkit issue fetch <n>`. The listing exists so that you do not read twenty.
+2. **Judge what no grep judges** — whether the requirement is clear enough to
+   plan against, whether the reported behaviour is specific enough to verify,
+   and roughly how big it looks. A well-formatted issue that says "improve the
+   UX" is not ready; a free-hand one with a stack trace and a file path is.
+3. **Say what is blocked and why**, rather than silently dropping it. An issue
+   with an open PR is not a bad issue, it is a taken one, and the difference
+   matters when that PR goes stale.
+4. **Offer a shortlist of three at most**, each with one sentence on why it is
+   on the list and one on what is unclear about it. Then ask which to triage.
+
+Nothing here writes anything or moves any issue. Listing is a read; picking is
+the user's. When they pick, continue from section 1 with that number.
 
 ## 1. Read, and dedup before anything else
 
