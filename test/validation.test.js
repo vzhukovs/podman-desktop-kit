@@ -21,6 +21,8 @@ import { join } from 'node:path';
 
 import { capture } from '../lib/evidence.js';
 import { read as readJournal } from '../lib/journal.js';
+import * as state from '../lib/state.js';
+import { transition } from '../lib/state.js';
 import * as validation from '../lib/validation.js';
 
 const ISSUE = 8801;
@@ -298,6 +300,156 @@ describe('rendering', () => {
   test('rendering an issue with no record is an answer, not a crash', async () => {
     const result = await validation.render({ issue: 999_999, home });
     assert.equal(result.ok, false);
+  });
+});
+
+describe('what is waiting to be validated', () => {
+  test('the requirements and the plan\'s e2e decision come back together', async () => {
+    const issue = 8802;
+    await transition(issue, 'triaged', { home });
+    await state.allocateRequirement(issue, { home });
+    await state.allocateRequirement(issue, { home });
+
+    await mkdir(join(home, 'issues', String(issue)), { recursive: true });
+    await writeFile(
+      join(home, 'issues', String(issue), 'plan.md'),
+      [
+        '# PLAN: DESKTOP-8802',
+        '',
+        '- Requirements: R1, R2',
+        '- e2e coverage: required — the dialog is the whole bug',
+        '',
+        '## Tasks',
+        '',
+        '### T1: stop the dialog',
+        '- Satisfies: R1',
+        '- Owns: packages/main/src/dialog.ts',
+        '- Done when: `pnpm test:main -- dialog.spec.ts`',
+        '',
+      ].join('\n'),
+    );
+
+    const waiting = await validation.steps({ issue, home });
+
+    assert.deepEqual(waiting.requirements, ['R1', 'R2']);
+    assert.match(waiting.e2eCoverage, /^required/);
+    assert.equal(waiting.tasks[0].command, 'pnpm test:main -- dialog.spec.ts');
+    assert.deepEqual(waiting.covered, []);
+  });
+
+  test('a quickfix with no plan is answered, not refused — tracing goes by issue number there', async () => {
+    const issue = 8803;
+    await transition(issue, 'triaged', { home });
+
+    const waiting = await validation.steps({ issue, home });
+
+    assert.equal(waiting.e2eCoverage, null);
+    assert.deepEqual(waiting.tasks, []);
+  });
+});
+
+describe('running the codified test', () => {
+  test('the e2e script is resolved from the repository, never hardcoded', async () => {
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'playwright test' } }));
+
+    const resolved = await validation.specCommand({ repoRoot: repo, config: {}, spec: 'tests/a.spec.ts' });
+
+    assert.equal(resolved.script, 'test:e2e:run');
+    assert.equal(resolved.command, 'pnpm run test:e2e:run tests/a.spec.ts');
+  });
+
+  test('a repository with no e2e script refuses rather than reporting green on nothing', async () => {
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { build: 'vite build' } }));
+
+    const resolved = await validation.specCommand({ repoRoot: repo, config: {}, spec: 'tests/a.spec.ts' });
+
+    assert.equal(resolved.command, null);
+    assert.match(resolved.error, /must not report green/);
+  });
+
+  test('the run becomes the step\'s evidence and counts towards the series at once', async () => {
+    const spec = await writeSpec('run.spec.ts', 'test("e", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
+
+    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, requirement: 'R1' });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(validation.statusOf(result.step), 'pass');
+    assert.equal(result.step.requirement, 'R1');
+
+    const record = await validation.read(ISSUE, { home });
+    assert.equal(record.e2e.consecutive, 1);
+    // One execution, one artefact, counted once in both places.
+    assert.equal(record.e2e.runs[0].evidence, result.step.evidence.path);
+  });
+
+  test('a failing spec produces a failed step rather than an absent one', async () => {
+    const spec = await writeSpec('red.spec.ts', 'test("f", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'false' } }));
+
+    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec });
+
+    assert.equal(result.ok, true);
+    assert.equal(validation.statusOf(result.step), 'fail');
+    assert.equal((await validation.read(ISSUE, { home })).e2e.consecutive, 0);
+  });
+});
+
+describe('finishing', () => {
+  test('a passing validation moves the issue and writes the document', async () => {
+    const issue = 8804;
+    await transition(issue, 'triaged', { home });
+    await transition(issue, 'planned', { home });
+    await transition(issue, 'plan-approved', { home });
+    await transition(issue, 'implemented', { home });
+
+    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: 'echo ok' }) });
+    const result = await validation.finish({ issue, home });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.outcome, 'pass');
+    assert.equal(result.moved, true);
+    assert.equal((await state.read(issue, { home })).state, 'validated');
+  });
+
+  test('unverified still moves the issue — the gap is carried, not used as a wall', async () => {
+    const issue = 8805;
+    await transition(issue, 'triaged', { home });
+    await transition(issue, 'planned', { home });
+    await transition(issue, 'plan-approved', { home });
+    await transition(issue, 'implemented', { home });
+
+    await validation.attach({ issue, home, title: 'needs a real container engine' });
+    const result = await validation.finish({ issue, home });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.outcome, 'unverified');
+    assert.equal(result.moved, true);
+    assert.equal(result.gaps.length, 1);
+    assert.equal((await state.read(issue, { home })).state, 'validated');
+  });
+
+  test('a failed step does not move the issue', async () => {
+    const issue = 8806;
+    await transition(issue, 'triaged', { home });
+    await transition(issue, 'planned', { home });
+    await transition(issue, 'plan-approved', { home });
+    await transition(issue, 'implemented', { home });
+
+    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: 'exit 2' }) });
+    const result = await validation.finish({ issue, home });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.outcome, 'fail');
+    assert.equal((await state.read(issue, { home })).state, 'implemented');
+    assert.ok(result.path, 'the document is written anyway: the red run is the useful half');
+  });
+
+  test('finishing with nothing recorded is refused', async () => {
+    const result = await validation.finish({ issue: 999_997, home });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /nothing validated/);
   });
 });
 
