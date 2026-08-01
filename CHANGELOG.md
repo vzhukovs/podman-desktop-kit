@@ -298,7 +298,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     triaged --route <r>` now records what triage decided; `invalid` is
     deliberately not a route, because the machine already spells it `abandoned`.
 
+- **A twentieth preflight check, `quickfix-size`,** which measures what the
+  quickfix thresholds were always about and never blocks. Production lines and
+  test lines are counted separately: on the first live run the fix was two lines
+  and its test sixty-two, so a blocking check would have escalated a correct
+  one-line change into full planning for being properly tested.
+
 ### Changed
+
+- **Preflight's base is a ref, not a branch name.** `repo.base_branch` names a
+  branch, and on a fork the local branch of that name is a copy of the base as
+  fresh as the last pull. First live run: a local `main` 491 commits behind
+  turned a two-file diff into an 805-file one, and preflight reported four
+  blocking failures about other people's work — a licence header on a file we
+  never touched, 87 commits with the wrong sign-off, eight public API symbols.
+  Nothing looked wrong. The base now resolves to the upstream remote-tracking
+  ref when it exists, and the report prints which ref it read, at what sha and
+  from what date: that ref goes stale too, and a measurement has to say what it
+  saw.
+- **The quickfix route can reach the gate.** `preflight-green` is reachable from
+  `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
+  state — so both preflight passes went green and the gate could not be opened
+  at all. The quickfix skill now moves the issue, and says why.
+- **`steps-to-check` reports what it measured.** It matches a phrasing rather
+  than the presence of an expectation, and "it reads `ls -l /etc`" is an
+  expected result it was rejecting. The vocabulary is wider, and the failure now
+  says which forms count instead of claiming the step states no result.
 
 - **A cross-reference from another repository is no longer a linked pull
   request.** `pdkit issue fetch 18381` reported `#17 MERGED feat(podman-desktop):

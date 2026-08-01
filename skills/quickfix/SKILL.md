@@ -16,7 +16,14 @@ did not say that, this is the wrong command — go back to `/pd:triage`.
 
 ## Steps
 
-1. `pdkit branch create --issue <n> --slug <short-description>`.
+1. `pdkit branch create --issue <n> --slug <short-description>`, then
+   `pdkit state <n> --to quickfix`.
+
+   The state move is not bookkeeping. `preflight-green` is reachable from
+   `quickfix` and not from `triaged`, and the push gate is issued from
+   `preflight-green` only — so an issue left in `triaged` reaches a green
+   preflight and then cannot open the gate at all. Found on the first live run,
+   after both passes were green.
 2. Make the fix. Add or extend a test for it; "too small to test" is how a
    reviewer's first comment gets written for them.
 3. Commit with a conventional subject and one `Signed-off-by`. Squash with

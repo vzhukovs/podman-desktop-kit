@@ -498,6 +498,71 @@ describe('the artefact checks', () => {
   const body = ({ steps = '1. Build → it builds\n2. Run → it runs\n3. Restart → still fine', notes = '- Checked on macOS.', extra = '' } = {}) =>
     `### What issues does this PR fix or reference?\n\nFixes #5001\n${extra}\n\n### How to test this PR?\n\n${steps}\n\n**Notes for reviewers**\n${notes}\n\n- [ ] Tests are covering the bug fix or the new feature\n`;
 
+  // The threshold this measures had never been measured: it was a judgement
+  // made at triage, on an estimate, before any code existed.
+  describe('quickfix-size', () => {
+    test('it says nothing on any other route', async () => {
+      assert.equal((await only('quickfix-size', { route: 'standard' })).status, 'skip');
+    });
+
+    test('it reports the size and never blocks', async () => {
+      const result = await only('quickfix-size', {
+        route: 'quickfix',
+        config: { quickfix: { max_changed_lines: 20, max_files: 3 } },
+      });
+
+      assert.equal(result.blocking, false);
+      assert.equal(result.status, 'pass');
+      assert.match(result.summary, /tests excluded/);
+    });
+
+    test('a test does not count against the fix it covers', async () => {
+      // Issue #18248, live: one production line and 62 test lines. Counted
+      // together that is 64 against a threshold of 20, so a blocking version
+      // would have escalated a one-line fix into full planning for being
+      // properly tested — which is how a route meant to keep small changes
+      // small would start producing thinner tests.
+      const root = await initRepo('pdkit-qfsize-');
+
+      try {
+        await writeFiles(root, { 'packages/main/src/thing.ts': 'export const a = 1;\n' });
+        await commitAll(root, 'chore: base');
+        await gitIn(['checkout', '-q', '-b', 'work'], root);
+        await writeFiles(root, {
+          'packages/main/src/thing.ts': 'export const a = 2;\n',
+          'packages/main/src/thing.spec.ts': `${'// a long test\n'.repeat(60)}`,
+        });
+        await commitAll(root, 'fix: it');
+
+        const check = (await loadChecks(['quickfix-size']))[0];
+        const result = await check.run({
+          route: 'quickfix',
+          repoRoot: root,
+          base: 'main',
+          ref: 'work',
+          config: { quickfix: { max_changed_lines: 20, max_files: 3 } },
+        });
+
+        assert.equal(result.status, 'pass', '62 test lines must not escalate a two-line fix');
+        assert.match(result.summary, /2 line\(s\) in 1 file\(s\), plus 60 test line\(s\) in 1/);
+      } finally {
+        await cleanup(root);
+      }
+    });
+
+    test('a fix that outgrew the route warns and names the way back', async () => {
+      const result = await only('quickfix-size', {
+        route: 'quickfix',
+        config: { quickfix: { max_changed_lines: 0, max_files: 3 } },
+      });
+
+      assert.equal(result.status, 'warn');
+      assert.equal(result.blocking, false, 'a warning here must not stop a push');
+      assert.match(result.remedy, /pdkit issue escalate/);
+      assert.match(result.remedy, /nothing here decides it/);
+    });
+  });
+
   test('branch-name: a branch for another issue fails', async () => {
     const result = await only('branch-name', { issue: 9999 });
 
@@ -539,7 +604,27 @@ describe('the artefact checks', () => {
     });
 
     assert.equal(result.status, 'fail');
-    assert.match(result.summary, /no expected result/);
+    // The message says what the check can see — a phrasing — rather than
+    // claiming the step states no result. See the case below for why.
+    assert.match(result.summary, /do not read as actions with a result/);
+    assert.match(result.remedy, /An arrow always counts/);
+  });
+
+  // Found on the first live run, on a body written by hand: "it reads `ls -l
+  // /etc`" is an expected result, and the check rejected it because `reads` was
+  // not in its vocabulary. A check that matches a phrasing has to be honest
+  // about matching a phrasing, and wide enough to cover how results get written.
+  test('steps-to-check: a result stated without an arrow still counts', async () => {
+    const result = await only('steps-to-check', {
+      prBody: body({
+        steps:
+          '1. Open the container details page — the Command field reads `ls -l /etc`\n' +
+          '2. Run `podman ps -a` — it lists `multi-arg`\n' +
+          '3. Restart the app — the selection is unchanged',
+      }),
+    });
+
+    assert.equal(result.status, 'pass');
   });
 
   test('steps-to-check: it applies on the quickfix route too', async () => {

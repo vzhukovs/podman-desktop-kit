@@ -20,6 +20,7 @@ import {
   UNKNOWN_LAYER,
   buildPackageMap,
   changedFiles,
+  changedLines,
   changedPaths,
   commits,
   currentBranch,
@@ -28,8 +29,10 @@ import {
   parseTrailers,
   pickScript,
   remoteSlug,
+  resolveBase,
   scripts,
 } from '../lib/repo.js';
+import { cleanup, commitAll, git as fixtureGit, initRepo, writeFiles } from './helpers/repo-fixture.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -306,5 +309,89 @@ describe('parseTrailers', () => {
   test('an empty body has no trailers', () => {
     assert.deepEqual(parseTrailers(''), {});
     assert.deepEqual(parseTrailers(undefined), {});
+  });
+});
+
+describe('which ref the base branch means', () => {
+  // The first live run: a fork whose local `main` was 491 commits behind
+  // upstream turned a two-file diff into an 805-file one, and preflight
+  // reported four blocking failures about other people's work. Nothing looked
+  // wrong — the base was a real commit and the diff applied.
+  let origin;
+  let clone;
+
+  before(async () => {
+    origin = await initRepo('pdkit-base-origin-');
+    await writeFiles(origin, { 'a.txt': 'one\n' });
+    await commitAll(origin, 'first');
+
+    clone = await initRepo('pdkit-base-clone-');
+    await fixtureGit(['remote', 'add', 'upstream', origin], clone);
+    await fixtureGit(['fetch', '-q', 'upstream'], clone);
+    await fixtureGit(['reset', '--hard', '-q', 'upstream/main'], clone);
+
+    // Upstream moves on; the clone does not pull.
+    await writeFiles(origin, { 'b.txt': 'two\n' });
+    await commitAll(origin, 'second');
+    await fixtureGit(['fetch', '-q', 'upstream'], clone);
+  });
+
+  after(async () => {
+    await cleanup(origin, clone);
+  });
+
+  test('the remote-tracking ref wins, and says how far the local copy has fallen behind', async () => {
+    const resolved = await resolveBase({ cwd: clone, base: 'main', config: { repo: { upstream_remote: 'upstream' } } });
+
+    assert.equal(resolved.ref, 'upstream/main');
+    assert.equal(resolved.kind, 'remote');
+    assert.equal(resolved.localBehind, 1);
+    assert.ok(resolved.sha && resolved.at, 'the ref is dated, because it is only as fresh as the last fetch');
+  });
+
+  test('the diff against it is the one a reviewer would see', async () => {
+    const resolved = await resolveBase({ cwd: clone, base: 'main', config: { repo: { upstream_remote: 'upstream' } } });
+
+    // Against the stale local branch the upstream commit reads as ours.
+    assert.deepEqual(await changedFiles('main', 'upstream/main', { cwd: clone }), ['b.txt']);
+    assert.deepEqual(await changedFiles(resolved.ref, 'upstream/main', { cwd: clone }), []);
+  });
+
+  test('with no such remote it falls back to the local branch and says so', async () => {
+    const resolved = await resolveBase({ cwd: origin, base: 'main', config: { repo: { upstream_remote: 'upstream' } } });
+
+    assert.equal(resolved.ref, 'main');
+    assert.equal(resolved.kind, 'local');
+    assert.equal(resolved.localBehind, null);
+  });
+
+  test('a base that resolves nowhere is reported, not guessed at', async () => {
+    const resolved = await resolveBase({ cwd: origin, base: 'no-such-branch', config: {} });
+
+    assert.equal(resolved.kind, 'unresolved');
+    assert.equal(resolved.sha, null);
+  });
+});
+
+describe('changedLines', () => {
+  test('counts per file, and a binary file is null rather than zero', async () => {
+    const root = await initRepo('pdkit-numstat-');
+    try {
+      await writeFiles(root, { 'a.txt': 'one\n' });
+      await commitAll(root, 'first');
+      await fixtureGit(['checkout', '-q', '-b', 'work'], root);
+      await writeFiles(root, { 'a.txt': 'one\ntwo\n', 'bin.dat': '\u0000\u0001binary\u0000' });
+      await commitAll(root, 'second');
+
+      const counted = await changedLines('main', 'work', { cwd: root });
+      const text = counted.find((entry) => entry.path === 'a.txt');
+      const binary = counted.find((entry) => entry.path === 'bin.dat');
+
+      assert.equal(text.added, 1);
+      assert.equal(text.removed, 0);
+      assert.equal(binary.added, null, 'no line count is not a line count of zero');
+    } finally {
+      await cleanup(root);
+    }
   });
 });

@@ -77,7 +77,7 @@ it from the branch you are standing on.
 8. **Then, and only then:**
 
    ```
-   pdkit state <n> --to preflight-green
+   pdkit state <n> --to preflight-green    # from quickfix or slices-approved
    pdkit gate open --issue <n> --branch <b>
    git push origin <b>
    pdkit pr create --issue <n> --branch <b> --title <t> --body <file>
