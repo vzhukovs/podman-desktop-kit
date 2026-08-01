@@ -329,6 +329,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   come back later for something that will not happen. It is `awaiting-review`
   now, the domains are recorded from the labels, and `pdkit pr list` prints
   `waiting:<domains>` — the answer to who is holding it.
+- **The pull request body has a home.** It was rendered to wherever the caller
+  redirected it and stored nowhere, so the copy the second preflight pass reads
+  could drift from the one that was published. `pdkit render prBody --path
+  pr-body.md` puts it in the issue directory beside every other artefact. The
+  record itself still does not carry the body: editing a published description
+  by hand needs no local sync, and only the file preflight is pointed at has to
+  match.
 - **A check that has not answered is no longer read as a failure.** A
   third-party status context spells "not yet" as `state: PENDING`, and a status
   context always normalises to COMPLETED — so it arrived as "finished and not

@@ -4,6 +4,7 @@
 - Slice: {{slice}}
 - State: {{state}}
 - Review: {{reviewDecision}}, {{threadsOpen}} open thread(s) of {{threadsTotal}}
+- Domains: {{domains}}
 - Last activity: {{lastActivity}}
 - Refreshed: {{refreshedAt}}
 
@@ -12,12 +13,20 @@
 <!-- Rendered from prs.json by `pdkit pr render`. The verdict column is not
      yours to type, and that is the only reason it means anything.
 
-     fail          — red here and green on other open PRs: this change did it
-     inconclusive  — the same job is red on other people's PRs too. A warning,
-                     not a block: refusing to proceed over something the change
-                     did not do is how a gate teaches people to route around it
-     flake         — the same job, the same commit, two different answers
-     pending       — still running -->
+     fail            — red here and green on other open PRs: this change did it
+     inconclusive    — the same job is red on other people's PRs too, or it
+                       finished with a conclusion this plugin does not know. A
+                       warning, not a block: refusing to proceed over something
+                       the change did not do is how a gate teaches people to
+                       route around it
+     flake           — the same job, the same commit, two different answers
+     pending         — still running. It will resolve on its own
+     awaiting-review — waiting on people, and it will not. Upstream's
+                       `Domain Review Status` sits here until the owners of
+                       every `domain/<area>/inreview` label have approved; the
+                       domains are listed under Review below
+     cancelled       — the run was stopped, so it said nothing either way
+     pass            — green -->
 
 Verdict: {{ciVerdict}}
 
