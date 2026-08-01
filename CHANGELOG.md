@@ -331,6 +331,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `quickfix` and not from `triaged`, and no skill said to enter the `quickfix`
   state — so both preflight passes went green and the gate could not be opened
   at all. The quickfix skill now moves the issue, and says why.
+- **A pull request that was replaced no longer blocks its issue forever.** The
+  rollup treated every closed pull request as unfinished work, which is right
+  when a maintainer rejected it and wrong when a rework replaced it — and the
+  rework edge added in 0.14 made the second case ordinary. `pdkit pr closed
+  --superseded-by <k>` records which one took its place, and the rollup settles
+  it only once that replacement has merged. The successor's own state is the
+  fact this rests on, not the sentence in the reason field.
+- **The materialised slice signs its own commit.** Leaving the trailer to the
+  husky hook put it in the subject: the hook appends with `echo >>`, a message
+  from a single `-m` has no blank line after it, and git reads a paragraph as
+  the subject. The slice branch came out with a 130-character subject ending in
+  `Signed-off-by:` — rejected by upstream's commitlint on length and by
+  preflight's own sign-off check, one step before a push.
 - **The audit resolves its base the way preflight does.** It diffed against the
   literal `'main'`, not even reading `repo.base_branch`, so a fork whose base
   branch is called something else compared against whatever that name happened

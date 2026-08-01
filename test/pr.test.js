@@ -187,6 +187,65 @@ describe('the merge rollup', () => {
     assert.ok(entries.some((entry) => entry.event === 'pr-closed' && entry.detail.includes('split')));
   });
 
+  // A rework closes its first attempt and opens a second (0.14). Without this
+  // the superseded pull request sits in the rollup forever and the issue can
+  // never reach `merged` — and the one distinction that matters, rejected
+  // versus replaced, would live in a reason field nothing reads.
+  describe('a pull request that was replaced rather than rejected', () => {
+    const REWORK = 4400;
+
+    test('is still unfinished while its replacement is open', async () => {
+      await pr.register({ issue: REWORK, number: 17577, branch: 'DESKTOP-4400/first', home });
+      await pr.register({ issue: REWORK, number: 18562, branch: 'DESKTOP-4400/second', home });
+      await pr.markClosed({ issue: REWORK, number: 17577, supersededBy: 18562, reason: 'reworked', home });
+
+      const summary = await pr.rollup(REWORK, { home });
+
+      assert.deepEqual(summary.superseded, [], 'nothing has landed yet, so nothing is settled');
+      assert.deepEqual(summary.unfinished, [17577, 18562]);
+      assert.equal(summary.allMerged, false);
+    });
+
+    test('and settles when the replacement lands', async () => {
+      // Self-contained: the suite wipes the state between tests, and a test
+      // that leans on the previous one passes in one order and fails in another.
+      await pr.register({ issue: REWORK, number: 17577, branch: 'DESKTOP-4400/first', home });
+      await pr.register({ issue: REWORK, number: 18562, branch: 'DESKTOP-4400/second', home });
+      await pr.markClosed({ issue: REWORK, number: 17577, supersededBy: 18562, reason: 'reworked', home });
+      await pr.markMerged({ issue: REWORK, number: 18562, home });
+
+      const summary = await pr.rollup(REWORK, { home });
+
+      assert.deepEqual(summary.superseded, [17577]);
+      assert.deepEqual(summary.unfinished, []);
+      assert.equal(summary.allMerged, true, 'the work landed; the pull request that carried it first did not have to');
+    });
+
+    test('a closure that names no successor still blocks, which is the rejection case', async () => {
+      const REJECTED = 4401;
+      await pr.register({ issue: REJECTED, number: 900, branch: 'DESKTOP-4401/one', home });
+      await pr.markClosed({ issue: REJECTED, number: 900, reason: 'maintainer said no', home });
+
+      const summary = await pr.rollup(REJECTED, { home });
+
+      assert.deepEqual(summary.unfinished, [900]);
+      assert.equal(summary.allMerged, false);
+    });
+
+    test('and a successor that was itself closed settles nothing', async () => {
+      const CHAIN = 4402;
+      await pr.register({ issue: CHAIN, number: 910, branch: 'DESKTOP-4402/one', home });
+      await pr.register({ issue: CHAIN, number: 911, branch: 'DESKTOP-4402/two', home });
+      await pr.markClosed({ issue: CHAIN, number: 910, supersededBy: 911, home });
+      await pr.markClosed({ issue: CHAIN, number: 911, reason: 'abandoned too', home });
+
+      const summary = await pr.rollup(CHAIN, { home });
+
+      assert.deepEqual(summary.superseded, []);
+      assert.equal(summary.allMerged, false);
+    });
+  });
+
   test('an issue with no pull requests has not finished', async () => {
     assert.equal((await pr.rollup(9999, { home })).allMerged, false);
   });
