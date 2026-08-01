@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { start, stop } from '../lib/active.js';
+import { record as recordAttempt, unblock as unblockTask } from '../lib/attempts.js';
 import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
@@ -117,6 +118,34 @@ describe('completing a task', () => {
     assert.match(decision.reason, /report it rather than editing/);
   });
 
+  // Twice, "fix it and capture again" is the right advice. The third time it is
+  // the advice that built the loop, and the hook has to say something else.
+  test('at the ceiling the refusal stops being about the receipt', async () => {
+    await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run({ exitCode: 1 }), home });
+    for (let i = 0; i < 3; i += 1) {
+      await recordAttempt({ issue: ISSUE, taskId: 'T1', exitCode: 1, home });
+    }
+
+    const decision = await complete();
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'attempts');
+    assert.match(decision.reason, /is blocked: 3 failed captures/);
+    assert.match(decision.reason, /pdkit task unblock/);
+  });
+
+  test('and an unblock puts the ordinary refusal back', async () => {
+    await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run({ exitCode: 1 }), home });
+    for (let i = 0; i < 3; i += 1) {
+      await recordAttempt({ issue: ISSUE, taskId: 'T1', exitCode: 1, home });
+    }
+    await unblockTask({ issue: ISSUE, taskId: 'T1', reason: 'plan amended: A1', home });
+
+    const decision = await complete();
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'receipt');
+    assert.match(decision.reason, /valid receipt for a command that failed/);
+  });
+
   test('acceptance is journalled with the agent’s own task id', async () => {
     await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run(), home });
     await complete();
@@ -154,6 +183,18 @@ describe('re-anchoring', () => {
 
     assert.match(decision.message, /recent/);
     assert.ok(decision.message.split('\n').length < 20, 'the summary should stay small enough to be worth injecting');
+  });
+
+  // A fresh session is exactly where a blocked task gets tried a fourth time:
+  // the three failures are in the context that just went away.
+  test('a blocked task survives the restart that lost the reason it is blocked', async () => {
+    for (let i = 0; i < 3; i += 1) {
+      await recordAttempt({ issue: ISSUE, taskId: 'T1', exitCode: 1, home });
+    }
+
+    const decision = await startSession();
+    assert.match(decision.message, /tried {3}: 3 of 3 failed capture\(s\) — BLOCKED/);
+    assert.match(decision.message, /pdkit task unblock/);
   });
 
   // An empty session should not open with plugin noise: the first thing a user

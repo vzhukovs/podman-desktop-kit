@@ -74,6 +74,28 @@ things:
   a finding about the plan; report it rather than editing `Done when` into
   something that passes.
 
+## The third failure is not a fourth try
+
+Every failed capture is counted, from the capture itself — `pdkit task
+attempts --issue <n>` reads it back. At `exec.max_attempts` (three by default)
+the task is **blocked**: the completion hook refuses it and `pdkit task start`
+will not pick it up again.
+
+That refusal is the point of the mechanism, so do not route around it. The
+question it forces is a real one: what changed between the second attempt and
+the third? If the honest answer is "nothing, I tried harder", the plan is
+wrong rather than the code — and a wrong plan is amended, not retried.
+
+The way past is a sentence a human writes:
+
+```
+pdkit task unblock --issue <n> --task T1 --reason "<what is different this time>"
+```
+
+Report the block and what you learned from the three failures. Do not compose
+the reason yourself — the count restarts there, and in six weeks that line is
+the only record of why anyone expected a fourth attempt to differ.
+
 ## Then
 
 `pdkit state <n> --to implemented`.

@@ -401,6 +401,44 @@ Completing a task without one is refused. So is completing one whose receipt
 records a non-zero exit: that receipt is valid, and what it proves is that the
 work is not done.
 
+Those failures are counted, and the count comes from the captures rather than
+from anyone's account of them:
+
+```
+pdkit task attempts --issue 12345
+pdkit task unblock --issue 12345 --task T1 --reason "plan amended: A1 splits the fixture"
+```
+
+At `exec.max_attempts` — three by default, zero switches it off — the task is
+blocked. The completion hook refuses it, `pdkit task start` will not pick it up,
+and a new session says so in its first lines, which is where it matters most:
+three failures live in the context a restart just discarded.
+
+The reason on `unblock` is required, and it is the whole mechanism. Twice,
+"fix it and try again" is right. The third time it is the advice that built the
+loop, and the question worth forcing is what changed between the second attempt
+and the third. If nothing did, the plan is wrong rather than the code.
+
+## Calibrating the thresholds
+
+Four numbers in `config.yaml` were common sense: two quickfix bounds, the stale
+window, and the attempt ceiling. `pdkit stats` measures the population they are
+about — what upstream actually merges:
+
+```
+pdkit stats --limit 100
+pdkit stats --limit 100 --author <you>    # once you have merged pull requests
+```
+
+It prints distributions of files changed, lines changed, time to merge and how
+long open pull requests stay quiet, then puts each configured value beside what
+the population did. It recommends nothing and writes nothing.
+
+Read the sampling window it prints. `gh pr list` orders by creation date, so a
+hundred merged pull requests are the last few weeks of work rather than a
+hundred merges — which under-represents slow ones precisely because they are
+slow, and that is the tail the stale threshold is about.
+
 ## Decision points that stay yours
 
 The plugin stops and waits at exactly four places, and none of them can be

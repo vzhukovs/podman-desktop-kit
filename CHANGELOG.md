@@ -246,6 +246,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     top few bodies rather than all of them, says what is blocked instead of
     dropping it, and writes nothing — no files, no state transitions.
 
+- **A task stops being retried after it has failed enough times** (open item G,
+  the idea is flow-next's). Every failed capture of `Done when` is counted, and
+  at `exec.max_attempts` — three by default — the task is blocked.
+  - `lib/attempts.js` derives the count from the journal rather than storing
+    it. Storing would mean either a second writer for `state.json`, which
+    invariant 1 forbids, or a new state file for one integer; the journal is
+    append-only by construction and already records what happened.
+  - What increments it is a capture with a non-zero exit and nothing else — the
+    same input that decides everything else about completion. There is no
+    parameter an agent could use to claim a fresh start.
+  - Three places refuse a blocked task, because there are three ways past it:
+    the completion hook (with a different message from a plain red receipt),
+    `pdkit task start`, and the session summary — a restart is exactly where the
+    three failures fall out of context and a fourth attempt begins.
+  - `pdkit task attempts` reads it back; `pdkit task unblock --reason` restarts
+    the count. The reason is required and never defaulted: it is the only record
+    of why anyone expected the next attempt to differ.
+- **`pdkit stats` measures the population the guessed thresholds are about**
+  (open item L, and the fourth PoC question). Distributions of files changed,
+  lines changed, time to merge and how long open pull requests stay quiet, with
+  each configured value stated against what upstream actually merged. It
+  recommends nothing and writes nothing.
+  - The first run says the quickfix bounds are not the narrow case they were
+    meant to be: 71% of merged pull requests change three files or fewer, and
+    40% fit in twenty lines. Time to merge is p90 two days, which makes a
+    fourteen-day stale window generous — 20 of 78 open pull requests are past
+    it.
+  - The sampling window is printed beside the numbers. `gh pr list` orders by
+    creation date, so a hundred merged pull requests are eleven days of work
+    rather than a hundred merges, and the ones missing are the slow ones — which
+    is the tail the stale threshold is about.
+
 ### Changed
 
 - **A cross-reference from another repository is no longer a linked pull
