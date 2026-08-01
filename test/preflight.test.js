@@ -11,7 +11,7 @@
 // Commands run against a fixture repository with npm scripts that echo and
 // exit, so the checks are exercised for real rather than mocked.
 
-import { test, describe, before, after } from 'node:test';
+import { test, describe, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -20,7 +20,9 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { cleanup, commitAll, git as gitIn, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
+import { capture } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
+import * as validation from '../lib/validation.js';
 import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
@@ -111,13 +113,20 @@ describe('the runner', () => {
       const withoutBody = (await run({ ...prepared, prBody: null }, checks)).results[0];
 
       // Either it has nothing to say about this diff, or it defers. What it
-      // must never do is pass on a body it has not seen.
-      assert.notEqual(withoutBody.status, 'fail', `${id} should not fail merely for lack of a body`);
+      // must never do is pass on a body it has not seen — and it must never
+      // fail *because* the body is absent, which is what `skip` is for.
       if (withoutBody.status === 'pass') {
         assert.match(
           withoutBody.summary,
-          /nothing|untouched|no requirements/,
+          /nothing|untouched|no requirements|no e2e test/,
           `${id} passed without a body for a reason that is not "nothing to check"`,
+        );
+      }
+      if (withoutBody.status === 'fail') {
+        assert.doesNotMatch(
+          withoutBody.summary,
+          /\bbody\b/i,
+          `${id} failed for lack of a body rather than deferring; that is what skip is for`,
         );
       }
     }
@@ -177,14 +186,32 @@ describe('the runner', () => {
     assert.equal((await run(await context(), [fixed('c', 'fail', true)])).ok, false);
   });
 
-  test('the checks deferred to later stages skip rather than pass', async () => {
+  test('the e2e checks pass only because this diff carries no test, and say so', async () => {
+    // They used to be stubs returning `skip`. Now they answer, and the answer
+    // on a diff with no spec in it has to name that reason — a bare `pass` here
+    // would be indistinguishable from a check that examined a test and liked it.
     const report = await run(await context());
 
     for (const id of ['e2e-stability', 'e2e-environment']) {
       const result = report.results.find((entry) => entry.id === id);
-      assert.equal(result.status, 'skip', `${id} must not report a pass for work it did not do`);
-      assert.match(result.summary, /stage 5/);
+      assert.equal(result.status, 'pass', id);
+      assert.match(result.summary, /no e2e test in this diff/, id);
     }
+  });
+
+  test('validation-evidence fails an unvalidated issue on the standard route', async () => {
+    const report = await run(await context(), await loadChecks(['validation-evidence']));
+
+    assert.equal(report.results[0].status, 'fail');
+    assert.match(report.results[0].summary, /nothing was validated/);
+  });
+
+  test('validation-evidence skips the quickfix route, which does not validate at all', async () => {
+    const prepared = await context();
+    const report = await run({ ...prepared, route: 'quickfix' }, await loadChecks(['validation-evidence']));
+
+    assert.equal(report.results[0].status, 'skip');
+    assert.match(report.results[0].summary, /quickfix/);
   });
 
   test('slice-standalone skips on work that was never sliced, and says that is why', async () => {
@@ -782,5 +809,183 @@ describe('a sliced issue', () => {
     assert.match(report.results[0].summary, /did not pass its standalone build/);
 
     await writeFile(path, original);
+  });
+});
+
+// The three checks that read validation.json. Between them they carry the one
+// decision of stage 5 that is not about code: `unverified` does not stop the
+// pipeline, so the only thing keeping an undemonstrated step from disappearing
+// is that a pull request body which does not mention it will not pass here.
+describe('the validation checks', () => {
+  const ISSUE = 5001;
+  const SPEC = 'tests/playwright/src/specs/dialog.spec.ts';
+
+  let vHome;
+
+  const body = (notes) =>
+    `### How to test this PR?\n\n1. Build → it builds\n\n**Notes for reviewers**\n${notes}\n\n- [ ] Tests\n`;
+
+  /**
+   * @param {string} id
+   * @param {object} overrides
+   */
+  async function only(id, overrides = {}) {
+    const checks = (await loadChecks()).filter((check) => check.id === id);
+    const prepared = await prepare({ issue: ISSUE, repoRoot: repo, home: vHome });
+    const report = await run({ ...prepared, ...overrides }, checks);
+    return report.results[0];
+  }
+
+  before(async () => {
+    vHome = await mkdtemp(join(tmpdir(), 'pdkit-preflight-validation-'));
+  });
+
+  // Each test starts from an issue that has validated nothing. Sharing a record
+  // would mean a failed step recorded in one test decided the outcome of the
+  // next, and the check reads the worst step by design.
+  beforeEach(async () => {
+    await rm(join(vHome, 'issues'), { recursive: true, force: true });
+  });
+
+  after(async () => {
+    await rm(vHome, { recursive: true, force: true });
+    await rm(join(repo, 'tests'), { recursive: true, force: true });
+  });
+
+  test('a step with an artefact passes without needing anything in the body', async () => {
+    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: 'echo ok' }) });
+
+    const result = await only('validation-evidence');
+
+    assert.equal(result.status, 'pass');
+    assert.match(result.summary, /every one with an artefact/);
+  });
+
+  test('a step with no artefact defers while there is no body, and fails once there is one without notes', async () => {
+    await validation.attach({ issue: ISSUE, home: vHome, title: 'needs a real container engine' });
+
+    const deferred = await only('validation-evidence');
+    assert.equal(deferred.status, 'skip', 'no body yet is not a verdict');
+
+    const failed = await only('validation-evidence', { prBody: '### How to test this PR?\n\n1. Build → it builds\n' });
+    assert.equal(failed.status, 'fail');
+    assert.match(failed.summary, /could not be demonstrated/);
+
+    const named = await only('validation-evidence', {
+      prBody: body('The container-engine scenario was not exercised: no engine on this machine.'),
+    });
+    assert.equal(named.status, 'pass');
+    assert.match(named.summary, /named in Notes for reviewers/);
+  });
+
+  test('a failed step fails the check, and the remedy points at the change rather than the record', async () => {
+    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: 'exit 4' }) });
+
+    const result = await only('validation-evidence', { prBody: body('everything checked') });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.remedy, /fix the change, not the record/);
+  });
+
+  test('an artefact edited after it was attached stops counting as evidence', async () => {
+    const shot = join(repo, 'evidence.png');
+    await writeFile(shot, 'first');
+    await validation.attach({
+      issue: ISSUE,
+      home: vHome,
+      repoRoot: repo,
+      title: 'contrast',
+      evidence: shot,
+      observed: '4.6:1',
+    });
+
+    assert.equal((await only('validation-evidence')).status, 'pass');
+
+    await writeFile(shot, 'second');
+    const result = await only('validation-evidence');
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /no longer match what was attached/);
+
+    await rm(shot);
+  });
+
+  test('e2e-stability: a spec in the diff with no series recorded fails', async () => {
+    await writeFiles(repo, { [SPEC]: 'test("dialog", async () => {});\n' });
+
+    const result = await only('e2e-stability', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /no series was recorded/);
+  });
+
+  test('e2e-stability: fewer runs than required fails, and three in a row passes', async () => {
+    await writeFiles(repo, { [SPEC]: 'test("dialog", async () => {});\n' });
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ name: 'root', scripts: { ...SCRIPTS, 'test:e2e:run': 'true' } }, null, 2));
+
+    await validation.codify({ issue: ISSUE, home: vHome, repoRoot: repo, spec: SPEC });
+    await validation.stability({ issue: ISSUE, home: vHome, repoRoot: repo, runs: 2, config: { repo: { package_manager: 'npm' } } });
+
+    const short = await only('e2e-stability', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+    assert.equal(short.status, 'fail');
+    assert.match(short.summary, /2 of 3 consecutive/);
+
+    await validation.stability({ issue: ISSUE, home: vHome, repoRoot: repo, runs: 3, config: { repo: { package_manager: 'npm' } } });
+
+    const full = await only('e2e-stability', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+    assert.equal(full.status, 'pass');
+    assert.match(full.summary, /passed \d+ times in a row/);
+
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ name: 'root', scripts: SCRIPTS }, null, 2));
+  });
+
+  test('e2e-stability: a spec edited after the series fails rather than passing on a stale run', async () => {
+    await writeFiles(repo, { [SPEC]: 'test("dialog", async () => {});\n' });
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ name: 'root', scripts: { ...SCRIPTS, 'test:e2e:run': 'true' } }, null, 2));
+
+    await validation.codify({ issue: ISSUE, home: vHome, repoRoot: repo, spec: SPEC });
+    await validation.stability({ issue: ISSUE, home: vHome, repoRoot: repo, runs: 3, config: { repo: { package_manager: 'npm' } } });
+    assert.equal((await only('e2e-stability', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] })).status, 'pass');
+
+    await writeFiles(repo, { [SPEC]: 'test("dialog", async () => { /* edited */ });\n' });
+    const result = await only('e2e-stability', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /changed after the runs were recorded/);
+
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ name: 'root', scripts: SCRIPTS }, null, 2));
+  });
+
+  test('e2e-environment: a test that needs a container engine must say so in the body', async () => {
+    await writeFiles(repo, {
+      [SPEC]: 'test.skip(process.env.TEST_PODMAN_MACHINE !== "true", "needs a machine");\n',
+    });
+
+    const deferred = await only('e2e-environment', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+    assert.equal(deferred.status, 'skip');
+
+    const failed = await only('e2e-environment', {
+      changed: [{ status: 'A', path: SPEC }],
+      changedFiles: [SPEC],
+      prBody: '### How to test this PR?\n\n1. Build → it builds\n',
+    });
+    assert.equal(failed.status, 'fail');
+    assert.match(failed.summary, /container engine/);
+
+    const named = await only('e2e-environment', {
+      changed: [{ status: 'A', path: SPEC }],
+      changedFiles: [SPEC],
+      prBody: body('This spec skips without TEST_PODMAN_MACHINE, so CI will not exercise it.'),
+    });
+    assert.equal(named.status, 'pass');
+  });
+
+  test('e2e-environment: a test that needs nothing special passes', async () => {
+    await writeFiles(repo, { [SPEC]: 'test("dialog", async () => { await page.click("#ok"); });\n' });
+
+    const result = await only('e2e-environment', { changed: [{ status: 'A', path: SPEC }], changedFiles: [SPEC] });
+
+    assert.equal(result.status, 'pass');
+    assert.match(result.summary, /none needing anything special/);
   });
 });
