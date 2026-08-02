@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
-import { GATE_PROBES, diagnose, gateSelftest } from '../lib/doctor.js';
+import { GATE_PROBES, diagnose, gateSelftest, rtkExcludedCommands, rtkHookInstalled } from '../lib/doctor.js';
 import { create } from '../lib/worktree.js';
 
 let plugin;
@@ -244,5 +244,56 @@ describe('the validation and config-drift checks', () => {
 
     assert.equal(app.status, 'warn');
     assert.match(app.detail, /validation\.app\.binary points at/);
+  });
+});
+
+// Section 8.2. Both of these were reported green while being wrong on a real
+// machine: rtk was installed with no hook, so it compressed nothing and saved
+// nothing, and the exclusion list had been written to ~/.config/rtk/ while rtk
+// 0.44.0 on macOS reads ~/Library/Application Support/rtk/ — so `git push`,
+// `git commit` and `gh pr` were all being rewritten while the check said they
+// were excluded. Both are parsed from rtk's own answers now.
+describe('reading what rtk says about itself', () => {
+  // Verbatim from `rtk init --show` 0.44.0 with nothing installed.
+  const INERT = [
+    '[rtk] /!\\ No hook installed — run `rtk init -g` for automatic token savings',
+    'rtk Configuration:',
+    '',
+    '[--] Hook: not found',
+    '[--] RTK.md: not found',
+    '[warn] settings.json: exists but RTK hook not configured',
+  ].join('\n');
+
+  const ACTIVE = ['rtk Configuration:', '', '[ok] Hook: ~/.claude/hooks/rtk-rewrite.sh', '[ok] RTK.md: ~/.claude/RTK.md'].join('\n');
+
+  test('an installed hook and an absent one are told apart', () => {
+    assert.equal(rtkHookInstalled(ACTIVE), true);
+    assert.equal(rtkHookInstalled(INERT), false);
+  });
+
+  // The whole point of the rewrite. "I could not tell" must not read as "yes",
+  // because that is precisely how the old check stayed green.
+  test('an unreadable answer is null, never true', () => {
+    assert.equal(rtkHookInstalled('some future format nobody here has seen'), null);
+    assert.equal(rtkHookInstalled(''), null);
+  });
+
+  test('the exclusion list is read from what rtk reports as effective', () => {
+    const config = [
+      'Config: /Users/someone/Library/Application Support/rtk/config.toml',
+      '',
+      '[hooks]',
+      'exclude_commands = [',
+      '    "git push",',
+      '    "git commit",',
+      ']',
+    ].join('\n');
+
+    assert.deepEqual(rtkExcludedCommands(config), ['git push', 'git commit']);
+  });
+
+  test('an empty list is a list, and no block at all is not', () => {
+    assert.deepEqual(rtkExcludedCommands('[hooks]\nexclude_commands = []'), []);
+    assert.equal(rtkExcludedCommands('[hooks]\ntransparent_prefixes = []'), null);
   });
 });
