@@ -51,16 +51,42 @@ describe('capture', () => {
   // Section 8.2: what makes a receipt evidence rather than a claim is that the
   // output was not compressed on its way here.
   //
-  // Asserted from inside the child process on purpose. The previous version of
-  // this test compared EVIDENCE_ENV against a constant this module declares
-  // itself, which is why it stayed green while the variable was named
-  // RTK_DISABLE — a name rtk has never heard of. A module agreeing with itself
-  // proves nothing about the process it starts.
-  test('rtk is disabled for the run', async () => {
+  // The guarantee is the spawn, not the variable. capture() starts the process
+  // from Node, so a rewriter that works by hooking Claude Code's Bash tool
+  // never sees the command — which is just as well, because rtk 0.44.0 ignores
+  // RTK_DISABLED on every path there is. So what is asserted here is bulk:
+  // output no compressor would leave alone, arriving whole.
+  test('output a compressor would fold arrives whole', async () => {
+    const lines = 500;
+    const result = await capture({ command: `for i in $(seq 1 ${lines}); do echo "ok $i"; done` });
+
+    assert.equal(result.stdout.split('\n').filter(Boolean).length, lines);
+    assert.match(result.stdout, /^ok 1\n/);
+    assert.match(result.stdout, new RegExp(`ok ${lines}\\n$`));
+    assert.equal(result.complete, true);
+  });
+
+  // The command is handed to the shell as written. A layer that rewrote it —
+  // `pnpm test` into `rtk pnpm test`, say — would have to change this string,
+  // and the receipt would then name a command nobody ran.
+  test('the command is run and recorded exactly as given', async () => {
+    const command = 'printf "%s\\n" one two three | tail -2';
+    const result = await capture({ command });
+
+    assert.equal(result.command, command);
+    assert.equal(result.stdout, 'two\nthree\n');
+  });
+
+  // Asserted from inside the child process on purpose. An earlier version
+  // compared EVIDENCE_ENV against a constant this module declares itself, which
+  // is why it stayed green while the variable was named RTK_DISABLE — a name
+  // rtk has never heard of. A module agreeing with itself proves nothing about
+  // the process it starts. It still proves nothing about rtk, which is why the
+  // two tests above exist.
+  test('the rtk bypass variable reaches the child process', async () => {
     const result = await capture({ command: 'echo "seen=$RTK_DISABLED"' });
 
     assert.equal(result.stdout.trim(), 'seen=1');
-    assert.equal(EVIDENCE_ENV.RTK_DISABLED, '1');
     assert.equal(EVIDENCE_ENV.RTK_DISABLE, undefined, 'RTK_DISABLE is not a variable rtk reads');
   });
 
