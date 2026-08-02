@@ -840,6 +840,69 @@ setTimeout(() => {
 
     process.kill(launched.app.pid);
   });
+
+  // Found by leaving one behind. An application that holds the port and answers
+  // nothing is not the same as a free port, and until 0.22 the difference cost
+  // a full startup_timeout of silence and a message blaming the build.
+  test('a port held by something that never answers is refused, and quickly', async () => {
+    const port = await freePort();
+    const wedged = createServer(() => {
+      // Accept, and never reply. This is what a dying Electron does.
+    });
+    await new Promise((done) => wedged.listen(port, '127.0.0.1', done));
+
+    try {
+      const started = Date.now();
+      const result = await validation.launch({
+        issue: ISSUE,
+        home,
+        repoRoot: repo,
+        port,
+        config: { validation: { app: { binary: await stub('never-used.js', APP) } } },
+        timeoutMs: 60_000,
+      });
+
+      assert.equal(result.ok, false);
+      assert.match(result.error, new RegExp(`holds port ${port} without answering`));
+      assert.match(result.error, /lsof/);
+      // The point of the whole change: it must not wait out the launch budget.
+      assert.ok(Date.now() - started < 20_000, `took ${Date.now() - started}ms`);
+    } finally {
+      await new Promise((done) => wedged.close(done));
+    }
+  });
+
+  // The relaunch caveat, which is only worth printing the second time round.
+  test('a second launch is marked as a relaunch, and the first is not', async () => {
+    const binary = await stub('relaunch.js', APP);
+    const port = await freePort();
+    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
+
+    const first = await validation.launch(input);
+    assert.equal(first.ok, true, first.error);
+    assert.equal(first.relaunch, false, 'nothing can be holding a window that never existed');
+
+    await validation.stop({ issue: ISSUE, home, port });
+
+    const second = await validation.launch(input);
+    assert.equal(second.ok, true, second.error);
+    assert.equal(second.relaunch, true, 'survives stop, which clears app but not the count');
+
+    await validation.stop({ issue: ISSUE, home, port });
+  });
+
+  // Linux is the only platform this can be answered on, and only in one
+  // direction. Refusing on macOS or Windows because no variable proves a
+  // desktop would break the platform that works to guess about the others.
+  test('a Linux session with no display is named, and the other platforms are left alone', () => {
+    assert.match(validation.displayProblem({}, 'linux'), /DISPLAY/);
+    assert.match(validation.displayProblem({}, 'linux'), /xvfb-run/);
+    assert.equal(validation.displayProblem({ DISPLAY: ':0' }, 'linux'), null);
+    assert.equal(validation.displayProblem({ WAYLAND_DISPLAY: 'wayland-0' }, 'linux'), null);
+    assert.equal(validation.displayProblem({}, 'darwin'), null);
+    assert.equal(validation.displayProblem({}, 'win32'), null);
+  });
+
 });
 
 describe('evidence that moved after it was attached', () => {
