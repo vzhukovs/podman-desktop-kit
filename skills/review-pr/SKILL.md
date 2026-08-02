@@ -52,10 +52,15 @@ Then `pd-review-synth` merges them — dedupe, prioritise, one verdict.
 ## 3. The report
 
 ```
-pdkit review render <k> --values <file.json>
+pdkit review render <k> --values <file.json> --reveal
 ```
 
-Writes `reviews/<k>.md` from the template. `What I could not verify` is
+Writes `reviews/<k>.md` from the template, and opens it in the file manager.
+`--reveal` is on here because the report lands under `$PDKIT_HOME`, which is
+outside the repository and outside whatever window is already open — printing
+the path and leaving a copy-paste between finishing a review and reading it is
+the wrong last step. Where there is no desktop it says so on one line and the
+render still succeeds; drop the flag if you would rather it stayed quiet. `What I could not verify` is
 mandatory and is never empty by default: the platforms you did not exercise,
 the steps that need a human, the behaviour you could only read about.
 
