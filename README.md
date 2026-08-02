@@ -43,7 +43,6 @@ absent:
 |---|---|---|
 | Playwright | `/pd:validate` | validation produces a human checklist instead of evidence, and does not mark PASS |
 | context7 | dependency-bump route | changelog lookups fall back to grep |
-| ponytail | `pd-plan-critic`, `pd-review-architecture` | those two agents use the built-in over-engineering checklist |
 
 The plugin ships no `.mcp.json` on purpose: a plugin-level MCP declaration would
 load for everyone, and these are meant to be optional. Configure them yourself;

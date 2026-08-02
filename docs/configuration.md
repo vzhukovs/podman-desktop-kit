@@ -35,7 +35,7 @@ loaded and is missing a key, and the loss would surface later as a wrong
 decision somewhere unrelated.
 
 One departure from YAML 1.1: `on` and `off` stay strings, because the config
-uses them as enum members next to `auto` (`tools.ponytail.enabled: auto | on | off`).
+uses them as enum members next to `auto` (`mcp.playwright: auto | on | off`).
 
 ## `$PDKIT_HOME`
 
@@ -142,7 +142,6 @@ servers mandatory. Configure them yourself.
 |---|---|---|
 | Playwright | `/pd:validate` | a human checklist instead of evidence, and no PASS is recorded |
 | context7 | dependency bumps | changelog lookups fall back to grep |
-| ponytail | `pd-plan-critic`, `pd-review-architecture` | the checklist in `knowledge/review-expectations.md` |
 
 Which agents can see a server's tools is controlled by `tools:` in
 `agents/*.md`, since plugin agents cannot declare MCP servers themselves.
@@ -159,29 +158,41 @@ has been, in their CI, all along.
 `doctor` reports the second separately, as `validate:app` — a perfectly
 configured server still has nothing to drive if the tree was never built.
 
-**Do not install ponytail as a `SessionStart` hook.** A hook reaches every
-agent and bypasses `tools:` scoping entirely, including `pd-implementer`, which
-must follow the plan literally rather than minimize it. `/pd:doctor` warns when
-it finds such a hook.
+## Always-on adapters: rtk and ponytail
 
-## Output rewriters
+The plugin configures neither, and the `tools:` block that used to is gone —
+`tools.rtk` in 0.18, `tools.ponytail` in 0.19. Both were measured against this
+workflow rather than judged by their descriptions; sections 8.1 and 8.2 of the
+spec carry the numbers. In short:
 
-The plugin configures none, and `tools.rtk` was removed from the shipped config
-in 0.18. The measurement is in section 8.2 of the spec; the short version is that
-a rewriter of that kind hooks the `Bash` tool only, so it never sees `Read`,
-`Grep` or `Glob`, and it does not compress `pnpm test`, `pnpm typecheck` or
-`node --test` — which is where this workflow's output actually is.
+- **rtk** rewrites `Bash` commands to compress their output. Its hook matches
+  `Bash` and nothing else, so `Read`, `Grep` and `Glob` never reach it — and it
+  does not compress `pnpm test`, `pnpm typecheck` or `node --test`, which is
+  where this workflow's output actually is.
+- **ponytail** serves a disposition over MCP. It is written for whoever writes
+  the code — "before any code", "ship the lazy version", "code first, then at
+  most three short lines" — and the two agents that pulled it review instead of
+  writing. Its `full` ruleset also argues against test frameworks and against
+  producing a report, both of which this plugin requires.
 
-**The gate does not care whether you took that advice.** One installed for
-another project rewrites commands here too, because its hook is global. So
-`lib/hooks/command-parse.js` unwraps `rtk git push` — along with `sudo`,
-`env`, `nice` and the rest — before any rule is applied, and
-`/pd:doctor --gate-selftest` probes that exact form. If you do install one, run
+**Neither decision protects you from having them installed**, and that is the
+part worth keeping straight.
+
+A rewriter installed for another project rewrites commands here too, because its
+hook is global. So `lib/hooks/command-parse.js` unwraps `rtk git push` — along
+with `sudo`, `env`, `nice` and the rest — before any rule is applied, and
+`/pd:doctor --gate-selftest` probes that exact form. If you install one, run
 that self-test.
+
+Likewise, **do not install ponytail as a `SessionStart` hook.** A hook reaches
+every agent and bypasses `tools:` scoping entirely, including `pd-implementer`,
+which must follow the plan literally rather than minimize it. `/pd:doctor` warns
+when it finds one, under `ponytail:hooks`, and that check is unaffected by the
+removal — it is about what is on your machine, not about what the plugin uses.
 
 Receipts are unaffected either way. `lib/evidence.js` spawns the command itself
 from Node, so no hook on the `Bash` tool is consulted and nothing sits between
 the command and the output that lands in the receipt.
 
-If `tools.rtk` is still in your own `$PDKIT_HOME/config.yaml`, `/pd:doctor`
-says so under `config:gates`. Delete it — nothing reads it.
+If either key is still in your own `$PDKIT_HOME/config.yaml`, `/pd:doctor` says
+so under `config:gates`. Delete them — nothing reads them.
