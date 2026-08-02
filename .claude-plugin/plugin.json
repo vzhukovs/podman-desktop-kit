@@ -1,4 +1,5 @@
 {
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "pd",
   "displayName": "Podman Desktop Kit",
   "version": "0.1.0",
