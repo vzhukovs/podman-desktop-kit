@@ -409,9 +409,10 @@ describe('the report', () => {
         title: 'feat(main): add a thing',
         verdict: 'APPROVE_WITH_NITS',
         confidence: 'medium — Windows behaviour was not exercised',
-        requirement: 'R1',
-        covered: 'yes',
-        where: 'packages/main/src/added.ts:1',
+        requirementFit: [
+          '| R1 — the thing runs | yes | `packages/main/src/added.ts:1` |',
+          '| R2 — it is licensed | no | nowhere: the file has no SPDX header |',
+        ],
         blocking: '_None._',
         shouldFix: '- The new file has no SPDX header.',
         nits: '_None._',
@@ -427,5 +428,11 @@ describe('the report', () => {
     assert.match(document, /## What I could not verify/);
     assert.match(document, /no Windows machine here/);
     assert.equal(/\{\{/.test(document), false, 'every placeholder is filled: render.js throws otherwise');
+
+    // An issue has as many requirements as it has, and the table has to hold
+    // all of them. One row of three placeholders meant the second requirement
+    // had to be smuggled inside the first row's last cell.
+    assert.match(document, /^\| R1 — the thing runs \| yes \|/m);
+    assert.match(document, /^\| R2 — it is licensed \| no \|/m);
   });
 });

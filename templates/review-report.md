@@ -5,9 +5,15 @@ Confidence: {{confidence}} <!-- high | medium | low — and why -->
 
 ## Requirement fit
 
+<!-- One row per requirement, pipes and all: an array of
+     `| requirement | covered | where |` strings, or one string with newlines
+     between the rows. Not three placeholders — an issue with eight
+     requirements is the normal case, not the awkward one. The comment sits
+     above the table rather than inside it: a comment between the delimiter row
+     and the body ends the table in most renderers. -->
 | Issue requirement | Covered | Where |
 |-------------------|---------|-------|
-| {{requirement}} | {{covered}} | {{where}} |
+{{requirementFit}}
 
 ## Blocking (correctness, compatibility, data loss)
 {{blocking}}
