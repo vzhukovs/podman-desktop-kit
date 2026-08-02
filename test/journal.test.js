@@ -151,3 +151,38 @@ describe('read', () => {
     await rm(empty, { recursive: true, force: true });
   });
 });
+
+// `--since` filters by string comparison against an ISO timestamp, and that
+// detail used to reach the command line: `1h` sorted above every date so the
+// whole journal came back, `24h` sorted below every date so nothing did. Two
+// opposite wrong answers, neither of them an error.
+describe('what --since accepts', () => {
+  const { resolveSince } = journal;
+  const NOW = Date.parse('2026-08-02T12:00:00Z');
+
+  test('a date is taken as written', () => {
+    assert.deepEqual(resolveSince('2026-08-01', NOW), { ok: true, at: '2026-08-01' });
+    assert.deepEqual(resolveSince('2026-08-01T09:30:00Z', NOW), { ok: true, at: '2026-08-01T09:30:00Z' });
+  });
+
+  test('an age becomes the timestamp it means', () => {
+    assert.equal(resolveSince('2h', NOW).at, '2026-08-02T10:00:00Z');
+    assert.equal(resolveSince('90m', NOW).at, '2026-08-02T10:30:00Z');
+    assert.equal(resolveSince('7d', NOW).at, '2026-07-26T12:00:00Z');
+    assert.equal(resolveSince('1w', NOW).at, '2026-07-26T12:00:00Z');
+  });
+
+  // The two that were wrong, now right, and in opposite directions from before.
+  test('the two that used to answer wrongly now answer', () => {
+    assert.equal(resolveSince('1h', NOW).at, '2026-08-02T11:00:00Z');
+    assert.equal(resolveSince('24h', NOW).at, '2026-08-01T12:00:00Z');
+  });
+
+  test('anything else is refused by name rather than compared as text', () => {
+    for (const bad of ['yesterday', '24', 'last week', '', 'tomorrow', '2h ago']) {
+      const result = resolveSince(bad, NOW);
+      assert.equal(result.ok, false, `${bad} should not be accepted`);
+      assert.match(result.error, /expected a date .* or an age/);
+    }
+  });
+});

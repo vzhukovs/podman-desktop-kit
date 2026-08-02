@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { handle } from '../lib/hooks/dispatch.js';
+import * as journal from '../lib/journal.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
 
@@ -282,5 +283,32 @@ describe('writes that belong to a pull request rather than a branch', () => {
     const decision = await handle(bash('gh issue comment 17221 --body "any update?"'));
     assert.equal(decision.block, true);
     assert.match(decision.reason, /human action/);
+  });
+});
+
+// Until 0.23 a refusal left no trace anywhere. That made the two failures
+// section 13 cares about indistinguishable after the fact: a gate that fired,
+// and a gate that was never wired to fire. An empty journal meant both.
+describe('a refusal is written down', () => {
+  test('a blocked push reaches the journal, with the rule and the command', async () => {
+    const before = (await journal.read({ event: 'denied' }, { home })).length;
+
+    const decision = await handle(bash('git push origin main'));
+    assert.equal(decision.block, true);
+
+    const entries = await journal.read({ event: 'denied' }, { home });
+    assert.equal(entries.length, before + 1);
+    assert.match(entries.at(-1).detail, /^push: git push origin main/);
+  });
+
+  // Every Bash call goes through this handler. An entry per `ls` would bury the
+  // few that matter under a session of noise.
+  test('an allowed command writes nothing', async () => {
+    const before = (await journal.read({ event: 'denied' }, { home })).length;
+
+    assert.equal((await handle(bash('git status'))).block, false);
+    assert.equal((await handle(bash('pnpm test:unit'))).block, false);
+
+    assert.equal((await journal.read({ event: 'denied' }, { home })).length, before);
   });
 });
