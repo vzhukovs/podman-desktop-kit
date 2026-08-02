@@ -38,15 +38,34 @@ let home;
 let calls;
 
 /**
- * A stand-in for execFile that answers each `gh` call from a queue.
+ * A stand-in for execFile that answers each `gh` call by what it asked for.
  *
- * @param {string[]} responses
+ * Deliberately not a positional queue any more. How many times `collect` calls
+ * gh depends on how many issues the pull request references, and a queue makes
+ * that count part of the fixture. Worse, a queue answers whatever was asked
+ * with whatever is next: `body` was missing from the fields the real `pr view`
+ * requests, and every test here passed anyway, because the fixture handed over
+ * a body nobody had asked for.
+ *
+ * @param {{pull?: string, threads?: string, discussion?: string, issue?: (number: string) => string}} [responses]
  */
-function fakeGh(responses) {
-  const queue = [...responses];
+function fakeGh(responses = {}) {
+  const answer = (args) => {
+    const kind = args.slice(0, 2).join(' ');
+
+    // Two different `pr view` calls: the pull request itself, and the reviews
+    // and comments that are not in a thread. They differ by --json alone.
+    if (kind === 'pr view') {
+      return args.includes('reviews,comments') ? (responses.discussion ?? DISCUSSION) : (responses.pull ?? PULL);
+    }
+    if (kind === 'issue view') return (responses.issue ?? ISSUE)(args[2]);
+    if (kind === 'api graphql') return responses.threads ?? THREADS;
+    return '{}';
+  };
+
   return (file, args, options, callback) => {
     calls.push({ file, args });
-    const stdout = queue.shift() ?? '{}';
+    const stdout = answer(args);
     queueMicrotask(() => callback(null, stdout, ''));
     return { stdin: { end: () => {} } };
   };
@@ -103,6 +122,16 @@ const THREADS = JSON.stringify({
 
 const DISCUSSION = JSON.stringify({ reviews: [], comments: [] });
 
+/** What `gh issue view --json` returns for an issue the pull request names. */
+const ISSUE = (number) =>
+  JSON.stringify({
+    number: Number(number),
+    title: `the issue behind #${PR}`,
+    state: 'OPEN',
+    url: `https://github.com/podman-desktop/podman-desktop/issues/${number}`,
+    body: 'Users cannot do the thing.',
+  });
+
 before(async () => {
   upstream = await initRepo('pdkit-review-upstream-');
   home = await initRepo('pdkit-review-home-');
@@ -150,7 +179,7 @@ function collect(overrides = {}) {
     repoRoot: clone,
     config: CONFIG,
     home,
-    exec: fakeGh([PULL, THREADS, DISCUSSION]),
+    exec: fakeGh(),
     ...overrides,
   });
 }
@@ -216,6 +245,89 @@ describe('the mechanical half', () => {
     assert.deepEqual(report.references, [17221, 17000]);
   });
 
+  // The regression this whole group exists for. `body` was never among the
+  // fields `pr view --json` was asked for, so `pull.body` was always undefined
+  // and every pull request came back referencing nothing. It threw nothing and
+  // logged nothing; the old fixture answered by position and handed over a body
+  // regardless of what had been requested, so the tests agreed.
+  test('the body is actually among the fields requested, not merely parsed', async () => {
+    await collect();
+
+    const [view] = calls;
+    const fields = view.args[view.args.indexOf('--json') + 1].split(',');
+    assert.ok(fields.includes('body'), 'a body that is never fetched cannot name an issue');
+    assert.ok(fields.includes('closingIssuesReferences'), 'what GitHub will actually close is authoritative');
+  });
+
+  test('what GitHub will close is taken over what the body claims', async () => {
+    const pull = JSON.stringify({
+      ...JSON.parse(PULL),
+      body: 'Part of #17000.',
+      closingIssuesReferences: [{ number: 16802 }],
+    });
+
+    const report = await collect({ exec: fakeGh({ pull }) });
+
+    assert.deepEqual(report.references, [16802, 17000], 'the closing reference leads; "part of" still counts');
+  });
+
+  // Upstream's pull request template has a "What issues does this PR fix or
+  // reference?" heading, and contributors fill it with a bare number. That is
+  // neither a closing keyword nor a closing reference, so both other sources
+  // miss it — found on PR #18464, whose body says exactly this and nothing more.
+  test('a bare number under the template heading counts as a reference', async () => {
+    const pull = JSON.stringify({
+      ...JSON.parse(PULL),
+      body: [
+        '### What does this PR do?',
+        'Backend slice of the thing.',
+        '',
+        '### What issues does this PR fix or reference?',
+        '<!-- Include any related issues from Podman Desktop repository. -->',
+        '#16802',
+        '',
+        '### How to test this PR?',
+        'Unrelated prose mentioning #99999.',
+      ].join('\n'),
+    });
+
+    const report = await collect({ exec: fakeGh({ pull }) });
+
+    assert.deepEqual(report.references, [16802]);
+    assert.equal(report.references.includes(99999), false, 'only that one section is read for bare numbers');
+  });
+
+  test('the referenced issue comes back read, not just numbered', async () => {
+    const report = await collect();
+
+    assert.deepEqual(report.issues.map((issue) => issue.number), [17221, 17000]);
+    assert.match(report.issues[0].body, /Users cannot do the thing/);
+    assert.match(review.format(report), /#17221 the issue behind #2903/);
+  });
+
+  test('an issue that cannot be read leaves the rest of the facts standing', async () => {
+    const issue = () => {
+      throw new Error('gh: issue not found');
+    };
+
+    const report = await collect({ exec: fakeGh({ issue }) });
+
+    assert.deepEqual(report.references, [17221, 17000]);
+    assert.equal(report.issues[0].title, null);
+    assert.equal(report.diff.files.length, 3);
+    assert.match(review.format(report), /could not be read/);
+  });
+
+  test('a pull request naming no issue says so, rather than leaving the table to the diff', async () => {
+    const pull = JSON.stringify({ ...JSON.parse(PULL), body: 'No issue for this one.' });
+
+    const report = await collect({ exec: fakeGh({ pull }) });
+
+    assert.deepEqual(report.references, []);
+    assert.deepEqual(report.issues, []);
+    assert.match(review.format(report), /no issue referenced/);
+  });
+
   test('commit scope is never reported: upstream does not require it', async () => {
     const report = await collect();
     const text = review.format(report);
@@ -260,7 +372,7 @@ describe('what reviewers already said', () => {
       },
     });
 
-    const report = await collect({ exec: fakeGh([PULL, escalating, DISCUSSION]) });
+    const report = await collect({ exec: fakeGh({ threads: escalating }) });
 
     assert.equal(report.feedback.threads[0].collapsed, false);
     assert.deepEqual(report.feedback.threads[0].escalated, ['security']);

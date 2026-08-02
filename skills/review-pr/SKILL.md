@@ -23,10 +23,16 @@ about work they never did.
 What comes back is mechanical and already done: files by layer, whether the
 public API is touched, exported symbols that reach `extension-api.d.ts`,
 schemas changed with nothing generated beside them, added files without a
-licence header, and the threads reviewers have already opened.
+licence header, the threads reviewers have already opened, and **the linked
+issue with its text** — read from `closingIssuesReferences` first, then from
+keywords in the body, then from the bare number under upstream's "What issues
+does this PR fix or reference?" heading.
 
-Read the linked issue too. Without it, `Requirement fit` in the report is
-guesswork wearing a table.
+Hand that issue to the four axes. Without it, `Requirement fit` is the diff
+agreeing with itself: a table that finds nothing missing because it was built
+from the same source it is checking. When `references` comes back empty the
+report says so out loud, and that is a fact about the pull request worth
+raising rather than a gap to paper over.
 
 ## 2. Four axes, in parallel
 
