@@ -3,7 +3,9 @@
 Traps that cost time once and should not cost it twice. Each entry says what it
 looks like, why it is a trap, and how it is now caught.
 
-> Stub. Entries are harvested by `/pd:close` as issues finish.
+> Three entries so far, and it grows one issue at a time: `/pd:close` proposes
+> additions from what a finished issue actually cost. Short is the intended
+> state, not an unfinished one — see "What to add here".
 
 ## RunOptions: internal-looking type that is public API
 

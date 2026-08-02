@@ -3,7 +3,10 @@
 Observed expectations of podman-desktop maintainers, and the review discipline
 this plugin applies to other people's PRs.
 
-> Stub. Harvested from real review threads as they accumulate.
+> Harvested from real review threads as they accumulate, so every claim here is
+> something a maintainer said on a pull request rather than something reviewers
+> are generally believed to want. It grows slowly on purpose — see "What to add
+> here".
 
 ## What maintainers ask for
 
