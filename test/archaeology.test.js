@@ -65,15 +65,28 @@ function fakeGh(data, calls = []) {
       answer({
         data: { repository: { pullRequest: { reviewThreads: { pageInfo: {}, nodes: data.views?.[numberOf(args)]?.threads ?? [] } } } },
       });
+      // Same reason: the discussion query selects `pullRequest(number: $number)`
+      // too. It moved off `pr view --json reviews,comments` in 0.20, because
+      // that call reports an app account as a plain login and every bot it did
+      // not know by name arrived looking like a person.
+    } else if (joined.includes('reviews(first:')) {
+      const view = data.views?.[numberOf(args)] ?? {};
+      answer({
+        data: {
+          repository: {
+            pullRequest: {
+              reviews: { nodes: view.reviews ?? [] },
+              comments: { nodes: view.comments ?? [] },
+            },
+          },
+        },
+      });
     } else if (joined.includes('pullRequest(number: $number)')) {
       answer({ data: { repository: { pullRequest: { timelineItems: { nodes: data.prTimelines?.[numberOf(args)] ?? [] } } } } });
     } else if (joined.includes('issue(number: $number)')) {
       answer({ data: { repository: { issue: { timelineItems: { nodes: data.issueTimeline ?? [] } } } } });
     } else if (args[0] === 'pr' && args[1] === 'view') {
-      const view = data.views?.[Number(args[2])] ?? {};
-      // `pr view --json reviews,comments` is the discussion call; anything else
-      // is the detail call.
-      answer(args.includes('reviews,comments') ? { reviews: view.reviews ?? [], comments: view.comments ?? [] } : view);
+      answer(data.views?.[Number(args[2])] ?? {});
     } else {
       answer({});
     }

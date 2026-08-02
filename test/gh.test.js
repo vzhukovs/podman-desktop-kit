@@ -347,28 +347,65 @@ describe('reading a pull request', () => {
   // Straight from PR #17577: both open threads are the bot's, and the reason
   // the PR is blocked is a review body plus a top-level comment. Reading only
   // threads would report two bot findings and no human ones.
-  test('review submissions and top-level comments are read too', async () => {
-    const { reviews, comments } = await discussion(17577, {
-      config: CONFIG,
-      exec: fakeGh(
-        JSON.stringify({
-          reviews: [
-            { author: { login: 'coderabbitai' }, state: 'COMMENTED', body: '', submittedAt: '2026-05-20T12:05:19Z' },
-            { author: { login: 'vancura' }, state: 'APPROVED', body: '', submittedAt: '2026-05-21T10:38:58Z' },
-            { author: { login: 'benoitf' }, state: 'CHANGES_REQUESTED', body: 'please split this', submittedAt: '2026-06-05T05:58:37Z' },
-          ],
-          comments: [{ author: { login: 'jiridostal' }, body: 'any update?', createdAt: '2026-06-02T09:06:38Z' }],
-        }),
-      ),
+  /** The GraphQL shape `discussion` reads, with the author types GitHub reports. */
+  const discussionPage = () =>
+    JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviews: {
+              nodes: [
+                { author: { login: 'coderabbitai', __typename: 'Bot' }, state: 'COMMENTED', body: '', submittedAt: '2026-05-20T12:05:19Z' },
+                { author: { login: 'vancura', __typename: 'User' }, state: 'APPROVED', body: '', submittedAt: '2026-05-21T10:38:58Z' },
+                {
+                  author: { login: 'copilot-pull-request-reviewer', __typename: 'Bot' },
+                  state: 'COMMENTED',
+                  body: 'Copilot was unable to review this pull request.',
+                  submittedAt: '2026-06-01T00:00:00Z',
+                },
+                { author: { login: 'benoitf', __typename: 'User' }, state: 'CHANGES_REQUESTED', body: 'please split this', submittedAt: '2026-06-05T05:58:37Z' },
+              ],
+            },
+            comments: { nodes: [{ author: { login: 'jiridostal', __typename: 'User' }, body: 'any update?', createdAt: '2026-06-02T09:06:38Z' }] },
+          },
+        },
+      },
     });
+
+  test('review submissions and top-level comments are read too', async () => {
+    const { reviews, comments } = await discussion(17577, { config: CONFIG, exec: fakeGh(discussionPage()) });
 
     // The empty COMMENTED review is the wrapper around inline threads and says
     // nothing; the empty APPROVED one says everything it needs to in its state.
     assert.deepEqual(
       reviews.map((review) => `${review.author}:${review.state}`),
-      ['vancura:APPROVED', 'benoitf:CHANGES_REQUESTED'],
+      ['vancura:APPROVED', 'copilot-pull-request-reviewer:COMMENTED', 'benoitf:CHANGES_REQUESTED'],
     );
     assert.deepEqual(comments.map((comment) => comment.author), ['jiridostal']);
+  });
+
+  // The reason this call moved to GraphQL. `gh pr view --json reviews` answers
+  // `{"login": "copilot-pull-request-reviewer"}` — no `[bot]` suffix, no type —
+  // so on PR #18556 a review from an app was counted as the only human on it.
+  test('the account type comes back, so a bot nobody listed is still a bot', async () => {
+    const { reviews, comments } = await discussion(17577, { config: CONFIG, exec: fakeGh(discussionPage()) });
+
+    const byLogin = Object.fromEntries(reviews.map((review) => [review.author, review.isBotAccount]));
+    assert.equal(byLogin['copilot-pull-request-reviewer'], true, 'not in bots_collapsed, and still recognised');
+    assert.equal(byLogin.vancura, false);
+    assert.equal(byLogin.benoitf, false);
+    assert.equal(comments[0].isBotAccount, false);
+  });
+
+  test('it asks GraphQL for the type, and asks once', async () => {
+    await discussion(17577, { config: CONFIG, exec: fakeGh(discussionPage()) });
+
+    assert.equal(calls.length, 1, 'reviews and comments must describe the same moment');
+    assert.deepEqual(calls[0].args.slice(0, 2), ['api', 'graphql']);
+    assert.ok(
+      calls[0].args.some((arg) => arg.includes('__typename')),
+      'without it GitHub reports every app account as a plain login',
+    );
   });
 
   test('a resolved thread is still reported, and replies are counted', async () => {
