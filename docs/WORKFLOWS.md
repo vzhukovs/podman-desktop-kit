@@ -4,10 +4,15 @@ Scenarios, in the order you are likely to hit them. Each names the commands and
 the decision points that are yours rather than the plugin's.
 
 **What works today:** scenarios 0 through 5 and 7, up to and including an open
-pull request, its review, and coming back to it after upstream has moved.
-Everything marked *(stage N)* below is registered but still a stub — the skill
-says so rather than improvising. Publishing itself has been exercised once end
-to end; replying to a live review has not (see the plan for stage 4).
+pull request, its review, and coming back to it after upstream has moved. No
+skill is a stub any more; every command named below exists and is tested.
+
+**What has been proven against a live repository is narrower**, and the
+difference is worth knowing before trusting a step. One issue has gone the whole
+way — but by the `quickfix` route, and driven through `bin/pdkit` rather than
+through `/pd:*` in a Claude Code session, so no hook has yet fired on a real
+tool call. Publishing was exercised once end to end; replying to a live review
+has not. Section 13 of the spec keeps the full list.
 
 ## Before anything
 

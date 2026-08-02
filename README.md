@@ -5,10 +5,16 @@ A Claude Code plugin for working upstream issues in
 issue, plan it, implement it, slice the result into atomic pull requests, and
 carry those PRs through review.
 
-> **Status: skeleton.** The file layout and command surface are in place; the
-> `pdkit` implementation is not. See
+> **Status: stages 0–5 implemented, one route proven end to end.** Issue #18248
+> went from triage to a merged-ready upstream pull request
+> ([#18561](https://github.com/podman-desktop/podman-desktop/pull/18561)) — but
+> by the `quickfix` route, and by calling `bin/pdkit` directly rather than
+> through `/pd:*` in a Claude Code session. So the hooks have never fired on a
+> real tool call, and the `standard` route — plan, exec with receipts, audit,
+> slicing into N pull requests — has never been run against a live issue. See
 > [`specs/podman-desktop-kit-architecture.md`](specs/podman-desktop-kit-architecture.md)
-> for the design and section 12 for the delivery order.
+> section 13 for the honest list of what that leaves untested, and section 12
+> for the delivery order.
 
 ## Why this exists
 
