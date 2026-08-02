@@ -50,9 +50,9 @@ Do not offer to "fix" these — say what they mean and let the user decide:
 - **`package-map:layers`** — `packages/api`, `packages/webview-api` and
   `storybook` belong to no layer. That decides merge order for slices, and the
   decision belongs to stage 3.
-- **`rtk:readonly`** — rtk is installed and its `exclude_commands` does not
-  cover everything `tools.rtk.never_rewrite` lists. The gate does not depend on
-  it; it narrows the surface. `docs/configuration.md` has the TOML.
+- **`config:gates`** — a key the plugin stopped reading is still in a personal
+  config, where it looks like a setting somebody chose. The detail names the key
+  and the version that retired it.
 - **`mcp:playwright`** — absent means `/pd:validate` produces a checklist
   instead of a run and never sets PASS. Configure it with `--cdp-endpoint`:
   pdkit starts the application, the server attaches to it.

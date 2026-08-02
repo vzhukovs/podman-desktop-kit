@@ -49,8 +49,9 @@ describe('parse', () => {
     assert.ok(commands.some((c) => c.program === 'git' && c.args[0] === 'push'));
   });
 
-  // The rtk case from spec section 8.2. A rewriter that turns `git push` into
-  // `rtk git push` must not become a way past the gate.
+  // Spec section 8.2. The plugin configures no rewriter, but one installed for
+  // another project hooks the Bash tool globally, and a wrapper that turns
+  // `git push` into `rtk git push` must not become a way past the gate.
   test('unwraps wrapper programs and records what was stripped', () => {
     const [command] = parse('rtk git push origin main');
     assert.equal(command.program, 'git');

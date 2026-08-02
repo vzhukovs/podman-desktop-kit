@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
-import { GATE_PROBES, diagnose, gateSelftest, rtkExcludedCommands, rtkHookInstalled } from '../lib/doctor.js';
+import { GATE_PROBES, RETIRED_KEYS, diagnose, gateSelftest } from '../lib/doctor.js';
 import { create } from '../lib/worktree.js';
 
 let plugin;
@@ -247,53 +247,39 @@ describe('the validation and config-drift checks', () => {
   });
 });
 
-// Section 8.2. Both of these were reported green while being wrong on a real
-// machine: rtk was installed with no hook, so it compressed nothing and saved
-// nothing, and the exclusion list had been written to ~/.config/rtk/ while rtk
-// 0.44.0 on macOS reads ~/Library/Application Support/rtk/ — so `git push`,
-// `git commit` and `gh pr` were all being rewritten while the check said they
-// were excluded. Both are parsed from rtk's own answers now.
-describe('reading what rtk says about itself', () => {
-  // Verbatim from `rtk init --show` 0.44.0 with nothing installed.
-  const INERT = [
-    '[rtk] /!\\ No hook installed — run `rtk init -g` for automatic token savings',
-    'rtk Configuration:',
-    '',
-    '[--] Hook: not found',
-    '[--] RTK.md: not found',
-    '[warn] settings.json: exists but RTK hook not configured',
-  ].join('\n');
-
-  const ACTIVE = ['rtk Configuration:', '', '[ok] Hook: ~/.claude/hooks/rtk-rewrite.sh', '[ok] RTK.md: ~/.claude/RTK.md'].join('\n');
-
-  test('an installed hook and an absent one are told apart', () => {
-    assert.equal(rtkHookInstalled(ACTIVE), true);
-    assert.equal(rtkHookInstalled(INERT), false);
+// `pdkit init` copies the shipped config whole, so a key retired afterwards
+// survives in personal configs looking like a setting somebody chose. Both
+// entries got there that way: `gates.require_states` in 0.6, `tools.rtk` in
+// 0.18 when the output rewriter was measured and dropped.
+describe('retired config keys', () => {
+  test('every entry names the version and says what to do', () => {
+    assert.ok(RETIRED_KEYS.length >= 2);
+    for (const entry of RETIRED_KEYS) {
+      assert.match(entry.key, /^[\w.]+$/);
+      assert.match(entry.why, /no longer read \(deleted in \d+\.\d+\)/, `${entry.key} does not say when`);
+    }
   });
 
-  // The whole point of the rewrite. "I could not tell" must not read as "yes",
-  // because that is precisely how the old check stayed green.
-  test('an unreadable answer is null, never true', () => {
-    assert.equal(rtkHookInstalled('some future format nobody here has seen'), null);
-    assert.equal(rtkHookInstalled(''), null);
+  test('a config carrying one is warned about, by name', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-retired-'));
+
+    try {
+      await writeFile(join(home, 'config.yaml'), 'tools:\n  rtk:\n    enabled: auto\n');
+      const report = await diagnose({ home, pluginRoot: process.cwd() });
+      const gates = find(report.checks, 'config:gates');
+
+      assert.equal(gates.status, 'warn');
+      assert.match(gates.detail, /tools\.rtk is no longer read/);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
   });
 
-  test('the exclusion list is read from what rtk reports as effective', () => {
-    const config = [
-      'Config: /Users/someone/Library/Application Support/rtk/config.toml',
-      '',
-      '[hooks]',
-      'exclude_commands = [',
-      '    "git push",',
-      '    "git commit",',
-      ']',
-    ].join('\n');
+  // The shipped defaults must not themselves carry a key the plugin retired,
+  // which is the mistake that would make this check warn for everybody at once.
+  test('the shipped defaults carry none of them', async () => {
+    const report = await diagnose({ home: await mkdtemp(join(tmpdir(), 'pdkit-doctor-clean-')), pluginRoot: process.cwd() });
 
-    assert.deepEqual(rtkExcludedCommands(config), ['git push', 'git commit']);
-  });
-
-  test('an empty list is a list, and no block at all is not', () => {
-    assert.deepEqual(rtkExcludedCommands('[hooks]\nexclude_commands = []'), []);
-    assert.equal(rtkExcludedCommands('[hooks]\ntransparent_prefixes = []'), null);
+    assert.equal(find(report.checks, 'config:gates').status, 'ok');
   });
 });

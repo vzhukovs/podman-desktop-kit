@@ -20,7 +20,8 @@
 <!-- Verbatim. Not summarized, not trimmed to the interesting part, not
      reformatted. The auditor's ability to distinguish "the tests passed" from
      "the agent believes the tests passed" depends entirely on this block being
-     the real thing. Captured with rtk disabled for the same reason. -->
+     the real thing. `pdkit` spawns the command itself for the same reason:
+     nothing sits between it and this block. -->
 {{output}}
 
 ## Files changed

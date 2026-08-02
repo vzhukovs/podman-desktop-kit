@@ -118,13 +118,15 @@ validation:
     debug_port: 9222
     startup_timeout: 60s
 
+# There is no `tools.rtk` block, and its absence is a decision rather than an
+# omission. The output rewriter was measured on this workflow and dropped: the
+# commands it compresses are the ones this plugin is told to reach through Read,
+# Grep and Glob, and the ones it does not compress — `pnpm test`, `pnpm
+# typecheck`, `node --test` — are where the bulk of the output is. See §8.2.
+#
+# The gate still unwraps `rtk git push`, and every other wrapper form, because
+# not configuring a program is not the same as it not being installed.
 tools:
-  rtk:
-    enabled: auto              # auto | on | off
-    readonly_only: true
-    never_rewrite:
-      [git push, git commit, git reset, git rebase, git cherry-pick, gh pr, gh issue, gh api]
-    bypass_for_receipts: true  # evidence is captured with rtk disabled
   ponytail:
     enabled: auto
     mode: full                 # never ultra

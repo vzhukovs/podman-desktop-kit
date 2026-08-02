@@ -86,7 +86,7 @@ describe('supported subset', () => {
   });
 
   // Written under its key rather than beside it. The shipped config uses this
-  // shape for tools.rtk.never_rewrite, so it is not a hypothetical.
+  // shape for quickfix.forbid_paths, so it is not a hypothetical.
   test('an inline sequence indented under its key', () => {
     assert.deepEqual(parse('tools:\n  never_rewrite:\n    [git push, gh pr]\n  enabled: auto'), {
       tools: { never_rewrite: ['git push', 'gh pr'], enabled: 'auto' },
