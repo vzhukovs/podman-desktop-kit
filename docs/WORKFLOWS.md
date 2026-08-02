@@ -372,7 +372,8 @@ Refused without a token, and refused the same way whether you type it or an
 agent does:
 
 - `git push` in any shape — chained behind `&&`, in a subshell, in a command
-  substitution, named by absolute path, or wrapped by a rewriter such as `rtk`
+  substitution, named by absolute path, or behind a wrapper (`env`, `sudo`,
+  `nice`, or a command rewriter someone has installed globally)
 - `gh pr create|edit|merge|review`, `gh issue create|comment|close`
 - `gh api` with a mutating method, and `gh api graphql` carrying a mutation
 

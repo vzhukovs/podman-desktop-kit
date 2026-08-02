@@ -35,7 +35,7 @@ loaded and is missing a key, and the loss would surface later as a wrong
 decision somewhere unrelated.
 
 One departure from YAML 1.1: `on` and `off` stay strings, because the config
-uses them as enum members next to `auto` (`tools.rtk.enabled: auto | on | off`).
+uses them as enum members next to `auto` (`tools.ponytail.enabled: auto | on | off`).
 
 ## `$PDKIT_HOME`
 
@@ -164,90 +164,24 @@ agent and bypasses `tools:` scoping entirely, including `pd-implementer`, which
 must follow the plan literally rather than minimize it. `/pd:doctor` warns when
 it finds such a hook.
 
-## rtk
+## Output rewriters
 
-If you use rtk, order matters: **set up the gate first, then enable rtk.** rtk
-rewrites commands before execution, and the gate decides from the parsed
-command. `lib/hooks/command-parse.js` canonicalizes wrapped forms, and
-`test/command-parse.test.js` covers them — but verify with
-`/pd:doctor --gate-selftest` before trusting the combination.
+The plugin configures none, and `tools.rtk` was removed from the shipped config
+in 0.18. The measurement is in section 8.2 of the spec; the short version is that
+a rewriter of that kind hooks the `Bash` tool only, so it never sees `Read`,
+`Grep` or `Glob`, and it does not compress `pnpm test`, `pnpm typecheck` or
+`node --test` — which is where this workflow's output actually is.
 
-Keep `tools.rtk.readonly_only: true`. Commands whose output becomes a receipt
-never reach rtk at all — see "What actually protects receipts" below.
+**The gate does not care whether you took that advice.** One installed for
+another project rewrites commands here too, because its hook is global. So
+`lib/hooks/command-parse.js` unwraps `rtk git push` — along with `sudo`,
+`env`, `nice` and the rest — before any rule is applied, and
+`/pd:doctor --gate-selftest` probes that exact form. If you do install one, run
+that self-test.
 
-### What it saves, measured
+Receipts are unaffected either way. `lib/evidence.js` spawns the command itself
+from Node, so no hook on the `Bash` tool is consulted and nothing sits between
+the command and the output that lands in the receipt.
 
-Worth knowing before you spend an evening on it. Measured on rtk 0.44.0 against
-this project's own repositories, in bytes of output:
-
-| Command | raw | via rtk | saved |
-|---|---|---|---|
-| `git status` (large repo) | 351 | 111 | 68% |
-| `ls -la` | 5073 | 1796 | 65% |
-| `rg -n <pattern> lib/` | 24040 | 13564 | 44% |
-| `git diff HEAD~1 HEAD` | 2320 | 1901 | 18% |
-| `git diff --stat` | 1468 | 1467 | 0% |
-| `git log --oneline -20` | 1416 | 1416 | 0% |
-| `cat` → `rtk read` | 29902 | 29902 | 0% |
-
-rtk's own counter across that sample: 6.5% overall.
-
-And the ones it does not rewrite at all: `pnpm test`, `pnpm typecheck`,
-`npm test`, `node --test`, `node bin/pdkit …`. Check any command yourself with
-`rtk hook check "<command>"`.
-
-So the savings are real and they are in navigation — `ls`, `git status`, `rg`.
-They are not in test output, which is where the bulk of a long session's bash
-traffic tends to be. Percentages, not multiples.
-
-### Setting it up
-
-rtk installs its own hook, globally, and patches `~/.claude/settings.json`.
-The plugin does not do this for you, and `/pd:doctor` only reports what it
-finds:
-
-```bash
-rtk init -g          # installs ~/.claude/hooks/rtk-rewrite.sh, prompts before patching
-rtk init --show      # what is installed
-```
-
-**Do not skip that first line.** rtk installed with no hook answers
-`rtk --version` perfectly and rewrites nothing: no compression, no savings, no
-error message. `/pd:doctor` reports this as `rtk:hook` and it is the most likely
-thing to be wrong.
-
-Then exclude the commands the plugin needs to see unrewritten. **Put them in the
-file `rtk config` names on its first line** — that is `~/Library/Application
-Support/rtk/config.toml` on macOS, and `~/.config/rtk/config.toml` is *not* read
-there:
-
-```bash
-rtk config           # first line is the path; the rest is what rtk has in effect
-```
-
-```toml
-[hooks]
-exclude_commands = [
-  "git push", "git commit", "git reset", "git rebase", "git cherry-pick",
-  "gh pr", "gh issue", "gh api",
-]
-```
-
-That list is `tools.rtk.never_rewrite` from the plugin config. `/pd:doctor`
-compares it against what `rtk config` reports as effective, rather than against
-a file at a path the plugin guessed — guessing that path is how every one of
-these commands came to be rewritten while the check reported them excluded.
-
-### What actually protects receipts
-
-The exclusion list **narrows the surface; it is not what holds.**
-
-What holds for the gate is that it parses the command it is given, `rtk git push`
-included, and `/pd:doctor --gate-selftest` probes exactly that form.
-
-What holds for receipts is the spawn. `lib/evidence.js` starts the process
-itself, from Node, so a rewriter that works by hooking the `Bash` tool is never
-consulted. `RTK_DISABLED=1` is also set on every capture, but do not rely on it:
-rtk 0.44.0 ignores it on every path there is — direct invocation, `rtk hook
-claude`, and `rtk hook check` all behave identically with it and without. It is
-kept as a second lock and because a future version would read it.
+If `tools.rtk` is still in your own `$PDKIT_HOME/config.yaml`, `/pd:doctor`
+says so under `config:gates`. Delete it — nothing reads it.
