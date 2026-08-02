@@ -29,6 +29,7 @@ import {
   parseTrailers,
   pickScript,
   remoteSlug,
+  resolveRepoRoot,
   resolveBase,
   scripts,
 } from '../lib/repo.js';
@@ -393,5 +394,54 @@ describe('changedLines', () => {
     } finally {
       await cleanup(root);
     }
+  });
+});
+
+// The shipped config cannot know whose fork somebody cloned, so `repo.fork`
+// ships empty and `pdkit init` fills it from the remote. That makes "not set
+// yet" a third state, distinct from "set to something that disagrees" — and
+// reporting the first as the second is what sent a new user looking for a
+// setting they had got wrong rather than one they had not made.
+describe('a fork slug that has not been set yet', () => {
+  let repo;
+
+  const CONFIG = (fork) => ({
+    repo: { upstream: 'podman-desktop/podman-desktop', fork, upstream_remote: 'upstream', fork_remote: 'origin' },
+  });
+
+  before(async () => {
+    repo = await initRepo('pdkit-resolve-');
+    await fixtureGit(['remote', 'add', 'origin', 'git@github.com:jdoe/podman-desktop.git'], repo);
+    await fixtureGit(['remote', 'add', 'upstream', 'https://github.com/podman-desktop/podman-desktop.git'], repo);
+  });
+
+  after(async () => {
+    await cleanup(repo);
+  });
+
+  test('empty is reported as unset, not as a mismatch against nothing', async () => {
+    const result = await resolveRepoRoot({ cwd: repo, config: CONFIG('') });
+
+    assert.deepEqual(result.unset, ['repo.fork']);
+    assert.equal(result.matches, false);
+    assert.match(result.problems[0], /repo\.fork is not set yet/);
+    assert.equal(/expected\s*$/.test(result.problems[0]), false, 'never "expected " with nothing after it');
+  });
+
+  test('a slug that disagrees is a mismatch, and is not called unset', async () => {
+    const result = await resolveRepoRoot({ cwd: repo, config: CONFIG('someone-else/podman-desktop') });
+
+    assert.deepEqual(result.unset, []);
+    assert.match(result.problems[0], /is jdoe\/podman-desktop, expected someone-else/);
+  });
+
+  test('the matching slug leaves nothing to report', async () => {
+    const result = await resolveRepoRoot({ cwd: repo, config: CONFIG('jdoe/podman-desktop') });
+
+    assert.equal(result.matches, true);
+    assert.deepEqual(result.problems, []);
+    assert.deepEqual(result.unset, []);
+    // What init reads to fill the key.
+    assert.equal(result.remotes.origin, 'jdoe/podman-desktop');
   });
 });

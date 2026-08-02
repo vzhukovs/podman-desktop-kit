@@ -63,10 +63,39 @@ pdkit init          # creates the directory, copies the config, builds the map
 pdkit doctor        # says what is missing and what degrades because of it
 ```
 
-`init` refuses a repository whose remotes do not match `repo.upstream` and
-`repo.fork` unless you pass `--force`. Initializing against the wrong clone
-writes a package map for a workspace nothing else will act on, and every later
-command inherits it.
+**One clone, two remotes — not two clones.** The upstream repository is never
+checked out separately; diffs against `main` come from `upstream/main` in the
+same clone. So the requirement is:
+
+```
+origin    git@github.com:<you>/podman-desktop.git       your fork
+upstream  https://github.com/podman-desktop/podman-desktop.git
+```
+
+**`repo.fork` is not something you type.** It ships empty, because a config file
+that ships to everyone cannot know whose fork you cloned, and `init` reads it
+from the `origin` remote and writes it into `$PDKIT_HOME/config.yaml`:
+
+```
+  fork        : jdoe/podman-desktop (read from the "origin" remote)
+```
+
+That file, rather than a `.pdkit.yaml` in the checkout, is deliberate: worktrees
+are separate directories and an untracked file in the main checkout is not in
+any of them, so a fork configured there would silently revert to the default in
+every issue worktree — where the work actually happens.
+
+Two ways this can go wrong, both refused rather than guessed:
+
+- **No `origin`.** Nothing to read; add the remote or set `repo.fork` by hand.
+- **`origin` is upstream itself.** You cloned the project rather than a fork.
+  Adopting it would aim every push at podman-desktop, and the consent gate would
+  be guarding a branch in somebody else's repository.
+
+`init` still refuses a repository whose remotes *disagree* with a fork slug that
+is already set, unless you pass `--force`. A key with no value is what init is
+for; a key with the wrong value means the map would be built for a workspace
+nothing else will act on, and every later command would inherit it.
 
 The config is **copied** from `defaults/config.yaml` rather than generated, so
 the comments explaining each decision come with it. An existing file is kept;
@@ -90,7 +119,8 @@ the shipped default through.
 
 | Key | Effect |
 |---|---|
-| `repo.upstream`, `repo.fork` | Checked against the git remotes by `init` and `doctor` |
+| `repo.upstream` | Checked against the git remotes by `init` and `doctor` |
+| `repo.fork` | The same, but ships empty and is filled by `init` from the `fork_remote` URL. Set it by hand only to override what the clone says |
 | `repo.upstream_remote`, `repo.fork_remote` | Which remote names carry them |
 | `repo.path` | Optional. Work on this repository regardless of the working directory |
 | `state.root` | Where `$PDKIT_HOME` lives, unless the environment says otherwise |

@@ -16,7 +16,12 @@ version: 1
 
 repo:
   upstream: podman-desktop/podman-desktop
-  fork: vzhukovs/podman-desktop
+  # Empty on purpose: this file ships to everyone and cannot know whose fork you
+  # cloned. `pdkit init` reads it from the `fork_remote` URL and writes it into
+  # your $PDKIT_HOME/config.yaml — you are standing in the answer when you run
+  # it, so there is nothing to type. Until then every command says the key is
+  # not set rather than pretending somebody else's fork is yours.
+  fork: ""
   upstream_remote: upstream
   fork_remote: origin
   base_branch: main

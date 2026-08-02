@@ -71,8 +71,16 @@ endpoint it found, not merely that a server exists — see
 
 ## Install
 
+**One clone, two remotes.** Upstream is never checked out separately — diffs
+against `main` come from `upstream/main` in the same clone.
+
 ```bash
-# from a local checkout
+# fork podman-desktop on GitHub first, then
+git clone git@github.com:<you>/podman-desktop.git
+cd podman-desktop
+git remote add upstream https://github.com/podman-desktop/podman-desktop.git
+
+# the plugin, from a local checkout
 claude --plugin-dir /path/to/podman-desktop-kit
 
 # or as a marketplace
@@ -80,7 +88,17 @@ claude --plugin-dir /path/to/podman-desktop-kit
 /plugin install pd@podman-desktop-kit
 ```
 
-Then run `/pd:doctor` to check your environment.
+```bash
+pdkit init                      # state directory, config, package map
+pdkit doctor                    # what is missing and what degrades without it
+pdkit doctor --gate-selftest    # the only check that answers "is the gate on"
+```
+
+`init` reads your fork's name from the `origin` remote and writes it into
+`$PDKIT_HOME/config.yaml` — there is nothing to configure by hand before running
+it, and nothing to type that the clone does not already know. Run the self-test
+after installing and after any upgrade: every unit test in the suite stays green
+while a plugin whose manifest did not load gates nothing at all.
 
 ## Commands
 
