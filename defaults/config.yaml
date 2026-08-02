@@ -118,20 +118,23 @@ validation:
     debug_port: 9222
     startup_timeout: 60s
 
-# There is no `tools.rtk` block, and its absence is a decision rather than an
-# omission. The output rewriter was measured on this workflow and dropped: the
-# commands it compresses are the ones this plugin is told to reach through Read,
-# Grep and Glob, and the ones it does not compress — `pnpm test`, `pnpm
-# typecheck`, `node --test` — are where the bulk of the output is. See §8.2.
+# There is no `tools:` block at all, and its absence is a decision rather than
+# an omission. Both third-party adapters it used to configure were measured on
+# this workflow and dropped (§8.1, §8.2):
 #
-# The gate still unwraps `rtk git push`, and every other wrapper form, because
-# not configuring a program is not the same as it not being installed.
-tools:
-  ponytail:
-    enabled: auto
-    mode: full                 # never ultra
-    scope: [pd-plan-critic, pd-review-architecture]
-    warn_if_global_hooks: true
+#   rtk       compresses the commands this plugin is told to reach through Read,
+#             Grep and Glob, and not `pnpm test`, `pnpm typecheck` or
+#             `node --test`, which is where the output actually is.
+#   ponytail  serves a disposition written for whoever writes the code. Both
+#             agents that pulled it review rather than write, its `full` ruleset
+#             argues against test frameworks and against the report format they
+#             must produce, and the two rungs that do apply are in
+#             knowledge/review-expectations.md, phrased for this repository.
+#
+# Neither removal weakens anything, because neither was load-bearing. The gate
+# still unwraps `rtk git push` and every other wrapper form, and `/pd:doctor`
+# still warns about a global ponytail hook — not configuring a program is not
+# the same as nobody having it installed.
 
 journal:
   path: journal/
