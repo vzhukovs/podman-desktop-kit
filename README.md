@@ -54,10 +54,20 @@ The plugin ships no `.mcp.json` on purpose: a plugin-level MCP declaration would
 load for everyone, and these are meant to be optional. Configure them yourself;
 see [`docs/configuration.md`](docs/configuration.md).
 
-Playwright is the one with a setup detail worth stating here: configure it with
-`--cdp-endpoint`. `pdkit validate launch` starts the application with remote
-debugging on and prints the endpoint; the server attaches to it. That is how
-podman-desktop's own e2e suite drives the app.
+Playwright is the one with a setup detail worth stating here. `pdkit validate
+launch` starts the application with remote debugging on and prints the endpoint;
+the server attaches to it, which is how podman-desktop's own e2e suite drives
+the app. One command, once per machine:
+
+```bash
+claude mcp add playwright -s user -- \
+  npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222
+```
+
+`-s user` matters: the default scope is keyed by the directory you ran it in,
+and every issue worktree is a different directory. `/pd:doctor` reports the
+endpoint it found, not merely that a server exists — see
+[`docs/configuration.md`](docs/configuration.md).
 
 ## Install
 

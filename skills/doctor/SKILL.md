@@ -53,9 +53,13 @@ Do not offer to "fix" these — say what they mean and let the user decide:
 - **`config:gates`** — a key the plugin stopped reading is still in a personal
   config, where it looks like a setting somebody chose. The detail names the key
   and the version that retired it.
-- **`mcp:playwright`** — absent means `/pd:validate` produces a checklist
-  instead of a run and never sets PASS. Configure it with `--cdp-endpoint`:
-  pdkit starts the application, the server attaches to it.
+- **`mcp:playwright`** — three outcomes, not two. Absent means `/pd:validate`
+  produces a checklist instead of a run and never sets PASS. Present without
+  `--cdp-endpoint`, or aimed at a port other than `validation.app.debug_port`,
+  is a warning: the server is healthy and looking at a browser of its own, which
+  reads as working until a validation run finds nothing there. The detail
+  carries the command to fix it, `-s user` included — local scope is keyed by
+  directory and no worktree would see it.
 - **`validate:app`** — a different problem with a different fix. The server can
   be configured perfectly and validation still have nothing to drive, because
   the working tree was never built.
