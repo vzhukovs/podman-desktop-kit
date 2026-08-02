@@ -45,7 +45,11 @@ after(async () => {
  */
 async function base(entries) {
   await rm(dir, { recursive: true, force: true });
-  await mkdtemp(join(tmpdir(), 'pdkit-knowledge-'));
+  // No mkdtemp here. There used to be one, and its result was never assigned:
+  // every call created a temp directory, dropped the handle, and then wrote to
+  // the path it had just deleted — which works only because writeFiles mkdirs.
+  // One orphan per test, and the suite runs this per test: 1313 of them had
+  // accumulated in /var/folders before anyone counted.
   await writeFiles(dir, entries);
 }
 

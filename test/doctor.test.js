@@ -278,9 +278,14 @@ describe('retired config keys', () => {
   // The shipped defaults must not themselves carry a key the plugin retired,
   // which is the mistake that would make this check warn for everybody at once.
   test('the shipped defaults carry none of them', async () => {
-    const report = await diagnose({ home: await mkdtemp(join(tmpdir(), 'pdkit-doctor-clean-')), pluginRoot: process.cwd() });
+    const clean = await mkdtemp(join(tmpdir(), 'pdkit-doctor-clean-'));
 
-    assert.equal(find(report.checks, 'config:gates').status, 'ok');
+    try {
+      const report = await diagnose({ home: clean, pluginRoot: process.cwd() });
+      assert.equal(find(report.checks, 'config:gates').status, 'ok');
+    } finally {
+      await rm(clean, { recursive: true, force: true });
+    }
   });
 });
 

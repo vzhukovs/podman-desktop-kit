@@ -638,8 +638,29 @@ setTimeout(() => {
 }, delay);
 `;
 
+  /** Every application this block started, so none outlives the run. */
+  /** @type {number[]} */
+  let spawned;
+
+  /**
+   * launch(), remembering the pid.
+   *
+   * `validation.stop` can only stop what the record holds, and the record holds
+   * one application — the last one. Tests that launch on different ports left
+   * every earlier process running: 240 of them were still alive before anyone
+   * looked, holding ports and filling the process table.
+   *
+   * @param {object} input
+   */
+  async function launch(input) {
+    const result = await validation.launch(input);
+    if (result.app?.pid) spawned.push(result.app.pid);
+    return result;
+  }
+
   before(() => {
     stubs = [];
+    spawned = [];
   });
 
   beforeEach(async () => {
@@ -648,6 +669,13 @@ setTimeout(() => {
 
   after(async () => {
     await validation.stop({ issue: ISSUE, home });
+    for (const pid of spawned) {
+      try {
+        process.kill(pid);
+      } catch {
+        // Already gone, which is the usual case and the desired one.
+      }
+    }
   });
 
   test('the binary is resolved from config, then the environment, then the working tree', async () => {
@@ -688,7 +716,7 @@ setTimeout(() => {
     const binary = await stub('app.js', APP);
     const port = await freePort();
 
-    const result = await validation.launch({
+    const result = await launch({
       issue: ISSUE,
       home,
       repoRoot: repo,
@@ -714,8 +742,8 @@ setTimeout(() => {
     const port = await freePort();
     const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
 
-    const first = await validation.launch(input);
-    const second = await validation.launch(input);
+    const first = await launch(input);
+    const second = await launch(input);
 
     assert.equal(second.ok, true, second.error);
     assert.equal(second.alreadyRunning, true);
@@ -732,7 +760,7 @@ setTimeout(() => {
     await new Promise((done) => server.listen(port, '127.0.0.1', done));
 
     try {
-      const result = await validation.launch({
+      const result = await launch({
         issue: ISSUE,
         home,
         repoRoot: repo,
@@ -753,7 +781,7 @@ setTimeout(() => {
     const port = await freePort();
 
     const started = Date.now();
-    const result = await validation.launch({
+    const result = await launch({
       issue: ISSUE,
       home,
       repoRoot: repo,
@@ -771,7 +799,7 @@ setTimeout(() => {
     const binary = await stub('app-silent.js', 'setInterval(() => {}, 1000);\n');
     const port = await freePort();
 
-    const result = await validation.launch({
+    const result = await launch({
       issue: ISSUE,
       home,
       repoRoot: repo,
@@ -789,7 +817,7 @@ setTimeout(() => {
     const binary = await stub('app-stop.js', APP);
     const port = await freePort();
 
-    const launched = await validation.launch({
+    const launched = await launch({
       issue: ISSUE,
       home,
       repoRoot: repo,
@@ -822,7 +850,7 @@ setTimeout(() => {
     const binary = await stub('app-orphan.js', APP);
     const port = await freePort();
 
-    const launched = await validation.launch({
+    const launched = await launch({
       issue: ISSUE,
       home,
       repoRoot: repo,
@@ -853,7 +881,7 @@ setTimeout(() => {
 
     try {
       const started = Date.now();
-      const result = await validation.launch({
+      const result = await launch({
         issue: ISSUE,
         home,
         repoRoot: repo,
@@ -878,13 +906,13 @@ setTimeout(() => {
     const port = await freePort();
     const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
 
-    const first = await validation.launch(input);
+    const first = await launch(input);
     assert.equal(first.ok, true, first.error);
     assert.equal(first.relaunch, false, 'nothing can be holding a window that never existed');
 
     await validation.stop({ issue: ISSUE, home, port });
 
-    const second = await validation.launch(input);
+    const second = await launch(input);
     assert.equal(second.ok, true, second.error);
     assert.equal(second.relaunch, true, 'survives stop, which clears app but not the count');
 
