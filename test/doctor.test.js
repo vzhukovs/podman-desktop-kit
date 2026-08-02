@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
-import { GATE_PROBES, RETIRED_KEYS, diagnose, gateSelftest } from '../lib/doctor.js';
+import { GATE_PROBES, RETIRED_KEYS, diagnose, gateSelftest, mcpServers, playwrightCdp } from '../lib/doctor.js';
 import { create } from '../lib/worktree.js';
 
 let plugin;
@@ -281,5 +281,56 @@ describe('retired config keys', () => {
     const report = await diagnose({ home: await mkdtemp(join(tmpdir(), 'pdkit-doctor-clean-')), pluginRoot: process.cwd() });
 
     assert.equal(find(report.checks, 'config:gates').status, 'ok');
+  });
+});
+
+// Section 8.4 claimed this check verified the endpoint. Until 0.21 it verified
+// the name: a Playwright server started without `--cdp-endpoint` launches a
+// browser of its own, never sees the application pdkit started, and reported
+// `connected` exactly like one wired correctly.
+describe('reading what claude mcp list says', () => {
+  // Verbatim shapes: a URL server, a stdio server, and a name with spaces.
+  const LISTING = [
+    'Checking MCP server health…',
+    '',
+    'claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected',
+    'context7: https://mcp.context7.com/mcp (HTTP) - ✔ Connected',
+    'playwright: npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222 - ✔ Connected',
+  ].join('\n');
+
+  test('the command line survives, not just the name', () => {
+    const found = mcpServers(LISTING);
+
+    assert.equal(found.get('playwright'), 'npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222');
+    assert.equal(found.get('context7'), 'https://mcp.context7.com/mcp (HTTP)');
+    assert.equal(found.get('claude.ai google drive'), 'https://drivemcp.googleapis.com/mcp/v1');
+    assert.equal(found.has('checking mcp server health…'), false, 'the banner is not a server');
+  });
+
+  test('a server aimed at the configured port is the only green case', () => {
+    assert.equal(playwrightCdp('npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222', 9222).ok, true);
+    assert.match(playwrightCdp('npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222', 9222).detail, /attaches to/);
+  });
+
+  // The failure that started this: connected, healthy, and looking at a browser
+  // of its own.
+  test('no --cdp-endpoint is a warning that names the command to run', () => {
+    const result = playwrightCdp('npx @playwright/mcp@latest', 9222);
+
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /browser of its own/);
+    assert.match(result.detail, /--cdp-endpoint http:\/\/127\.0\.0\.1:9222/);
+  });
+
+  test('the right flag on the wrong port is caught too, with both numbers', () => {
+    const result = playwrightCdp('npx @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9333', 9222);
+
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /9333/);
+    assert.match(result.detail, /9222/);
+  });
+
+  test('the flag is read in both spellings', () => {
+    assert.equal(playwrightCdp('mcp --cdp-endpoint=http://127.0.0.1:9222', 9222).ok, true);
   });
 });
