@@ -173,8 +173,32 @@ command. `lib/hooks/command-parse.js` canonicalizes wrapped forms, and
 `/pd:doctor --gate-selftest` before trusting the combination.
 
 Keep `tools.rtk.readonly_only: true`. Commands whose output becomes a receipt
-run with rtk disabled: a compressed test log is a claim, not evidence, and
-receipts exist precisely to be more than claims.
+never reach rtk at all — see "What actually protects receipts" below.
+
+### What it saves, measured
+
+Worth knowing before you spend an evening on it. Measured on rtk 0.44.0 against
+this project's own repositories, in bytes of output:
+
+| Command | raw | via rtk | saved |
+|---|---|---|---|
+| `git status` (large repo) | 351 | 111 | 68% |
+| `ls -la` | 5073 | 1796 | 65% |
+| `rg -n <pattern> lib/` | 24040 | 13564 | 44% |
+| `git diff HEAD~1 HEAD` | 2320 | 1901 | 18% |
+| `git diff --stat` | 1468 | 1467 | 0% |
+| `git log --oneline -20` | 1416 | 1416 | 0% |
+| `cat` → `rtk read` | 29902 | 29902 | 0% |
+
+rtk's own counter across that sample: 6.5% overall.
+
+And the ones it does not rewrite at all: `pnpm test`, `pnpm typecheck`,
+`npm test`, `node --test`, `node bin/pdkit …`. Check any command yourself with
+`rtk hook check "<command>"`.
+
+So the savings are real and they are in navigation — `ls`, `git status`, `rg`.
+They are not in test output, which is where the bulk of a long session's bash
+traffic tends to be. Percentages, not multiples.
 
 ### Setting it up
 
@@ -187,8 +211,19 @@ rtk init -g          # installs ~/.claude/hooks/rtk-rewrite.sh, prompts before p
 rtk init --show      # what is installed
 ```
 
-Then exclude the commands the plugin needs to see unrewritten, in
-`~/.config/rtk/config.toml`:
+**Do not skip that first line.** rtk installed with no hook answers
+`rtk --version` perfectly and rewrites nothing: no compression, no savings, no
+error message. `/pd:doctor` reports this as `rtk:hook` and it is the most likely
+thing to be wrong.
+
+Then exclude the commands the plugin needs to see unrewritten. **Put them in the
+file `rtk config` names on its first line** — that is `~/Library/Application
+Support/rtk/config.toml` on macOS, and `~/.config/rtk/config.toml` is *not* read
+there:
+
+```bash
+rtk config           # first line is the path; the rest is what rtk has in effect
+```
 
 ```toml
 [hooks]
@@ -198,15 +233,21 @@ exclude_commands = [
 ]
 ```
 
-That list is `tools.rtk.never_rewrite` from the plugin config, and
-`/pd:doctor` warns about any entry missing from the TOML. It matches the file
-as text rather than parsing it — enough for a warning, and a second parser in
-a zero-dependency project would not be.
+That list is `tools.rtk.never_rewrite` from the plugin config. `/pd:doctor`
+compares it against what `rtk config` reports as effective, rather than against
+a file at a path the plugin guessed — guessing that path is how every one of
+these commands came to be rewritten while the check reported them excluded.
 
-Two things worth being clear about. The exclusion list **narrows the surface;
-it is not what holds.** What holds is that the gate parses the command it is
-given, `rtk git push` included, and `/pd:doctor --gate-selftest` probes exactly
-that form. And receipts bypass rtk through `RTK_DISABLED=1`, set by
-`lib/evidence.js` on every capture — the variable name is rtk's own, confirmed
-against its documentation, because a bypass with a misspelled variable does
-nothing and does it silently.
+### What actually protects receipts
+
+The exclusion list **narrows the surface; it is not what holds.**
+
+What holds for the gate is that it parses the command it is given, `rtk git push`
+included, and `/pd:doctor --gate-selftest` probes exactly that form.
+
+What holds for receipts is the spawn. `lib/evidence.js` starts the process
+itself, from Node, so a rewriter that works by hooking the `Bash` tool is never
+consulted. `RTK_DISABLED=1` is also set on every capture, but do not rely on it:
+rtk 0.44.0 ignores it on every path there is — direct invocation, `rtk hook
+claude`, and `rtk hook check` all behave identically with it and without. It is
+kept as a second lock and because a future version would read it.
