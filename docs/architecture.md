@@ -92,8 +92,10 @@ Stated rather than discovered later:
   blind spots shared with the model that wrote the code.
 - Slicing a finished diff is expensive. That is why the plan carries a slice
   hypothesis.
-- `Reverts cleanly` is a textual check: the patch comes off. Whether the build
-  survives a revert costs another full run per slice, and is not claimed.
+- `Patch comes off` is a textual check, and named for it: the diff applies in
+  reverse. Whether the build survives a revert is measured at +100% per slice
+  (+26% narrowed to typecheck) and is deliberately not bought — the revert that
+  matters happens weeks later, against a tree that has moved.
 - Stacked PRs are fragile, which is why independent slices are the default.
 - Consent fatigue is real. The gate prints the PR body and branch list rather
   than a yes/no prompt, because that is the thing worth reading.

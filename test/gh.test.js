@@ -21,6 +21,7 @@ import {
   checkRunsForCommit,
   createPullRequest,
   discussion,
+  failedJobLog,
   fetchIssue,
   headRef,
   linkedPullRequests,
@@ -275,6 +276,113 @@ describe('reading a pull request', () => {
     assert.equal(sampled, 2, 'our own PR must not be part of its own baseline');
     assert.deepEqual(red.get('Windows'), [18550, 18486]);
     assert.equal(red.has('Linux'), false, 'a green job has no business in the failure map');
+  });
+
+  // The verdict says whose the red is; only the log says what broke, and that
+  // is the half scenario 9 leaves to a reader.
+  describe('the log behind a failed job', () => {
+    const JOB = 'https://github.com/podman-desktop/podman-desktop/actions/runs/26822485130/job/79279993554';
+
+    test('the job id comes out of the URL and the repository is named', async () => {
+      const log = await failedJobLog(JOB, { config: CONFIG, exec: fakeGh('Windows\tRun tests\terror TS2345\n') });
+
+      assert.equal(log.available, true);
+      assert.equal(log.jobId, '79279993554');
+      assert.deepEqual(calls[0].args, [
+        'run',
+        'view',
+        '--repo',
+        'podman-desktop/podman-desktop',
+        '--job',
+        '79279993554',
+        '--log-failed',
+      ]);
+    });
+
+    // Measured on #18590: `##[error]Process completed with exit code 100` sits
+    // 50 lines from the end of a 245-line log, and everything after it is the
+    // runner removing credentials. A tail showed all cleanup and no failure.
+    test('the window is anchored on the error, not on the end of the file', async () => {
+      const lines = [
+        ...Array.from({ length: 100 }, (_, index) => `build line ${index + 1}`),
+        'AssertionError: expected true to be false',
+        '##[error]Process completed with exit code 100.',
+        'Removing credentials',
+        'Cleaning up orphan processes',
+        ...Array.from({ length: 40 }, (_, index) => `post job ${index + 1}`),
+      ];
+
+      const log = await failedJobLog(JOB, { config: CONFIG, exec: fakeGh(`${lines.join('\n')}\n`), lines: 10 });
+
+      assert.equal(log.anchor, 'error');
+      assert.match(log.lines.join('\n'), /AssertionError/, 'the output that led to the failure is the point');
+      assert.doesNotMatch(log.lines.join('\n'), /post job/, 'the cleanup after a failure is not the failure');
+      // The marker sits at the end of the window rather than anywhere in it:
+      // what precedes it is the evidence, what follows it is housekeeping.
+      assert.ok(
+        log.lines.slice(-3).some((line) => line.includes('##[error]')),
+        'the window ends at the failure, not somewhere near it',
+      );
+      // Both ends counted, and nothing unaccounted for: a window silent about
+      // what came after implies the log ended where it stopped.
+      assert.ok(log.dropped > 0 && log.trailing > 0);
+      assert.equal(log.dropped + log.lines.length + log.trailing, lines.length);
+    });
+
+    test('with no error marker it takes the end, and says that is what it did', async () => {
+      const lines = Array.from({ length: 120 }, (_, index) => `line ${index + 1}`);
+      const log = await failedJobLog(JOB, { config: CONFIG, exec: fakeGh(`${lines.join('\n')}\n`), lines: 40 });
+
+      assert.equal(log.anchor, 'tail', 'a tail and a window around the failure are worth different amounts');
+      assert.equal(log.lines.length, 40);
+      assert.equal(log.lines.at(-1), 'line 120');
+      assert.equal(log.dropped, 80);
+      assert.equal(log.trailing, 0);
+    });
+
+    // Every line of a job carries the same job name, step name and timestamp.
+    // Sixty characters of it per line push the failure off the right edge.
+    test('the prefix every line shares is stripped', async () => {
+      const log = await failedJobLog(JOB, {
+        config: CONFIG,
+        exec: fakeGh(
+          'podman desktop\tUNKNOWN STEP\t2026-08-05T08:32:16.6090489Z ##[error]Process completed with exit code 100.\n',
+        ),
+      });
+
+      assert.deepEqual(log.lines, ['##[error]Process completed with exit code 100.']);
+    });
+
+    // codecov and the domain review bot publish a target URL that is not a run.
+    // "Unavailable" without the reason reads as a fetch that failed.
+    test('a status context that is not an Actions job says so', async () => {
+      const log = await failedJobLog('https://app.codecov.io/gh/podman-desktop/podman-desktop/pull/18561', {
+        config: CONFIG,
+        exec: fakeGh(''),
+      });
+
+      assert.equal(log.available, false);
+      assert.match(log.reason, /not a GitHub Actions job/);
+      assert.equal(calls.length, 0, 'nothing to fetch means nothing is fetched');
+    });
+
+    test('gh refusing is reported, not thrown — logs expire and a report that lost one is still a report', async () => {
+      const log = await failedJobLog(JOB, {
+        config: CONFIG,
+        exec: fakeGh('', Object.assign(new Error('exit 1'), { code: 1 })),
+      });
+
+      assert.equal(log.available, false);
+      assert.equal(log.jobId, '79279993554');
+      assert.match(log.reason, /gh run failed/);
+    });
+
+    test('a red job with no failed step is distinguished from a fetch that failed', async () => {
+      const log = await failedJobLog(JOB, { config: CONFIG, exec: fakeGh('\n  \n') });
+
+      assert.equal(log.available, false);
+      assert.match(log.reason, /no failed-step log/);
+    });
   });
 
   test('every run against a commit is read, not just the latest', async () => {

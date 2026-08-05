@@ -4,12 +4,15 @@
 - Source: {{source}}
 - Verified: {{verifiedAt}}
   <!-- This table is rendered from slices.json by `pdkit slice render`. The
-       Standalone and Reverts columns come from runs pdkit performed itself;
-       there is no way to type them in, which is the only reason they mean
-       anything. Reverts cleanly is a TEXTUAL check — the patch comes off. It
-       does not claim the build survives the revert. -->
+       Standalone and Patch-comes-off columns come from runs pdkit performed
+       itself; there is no way to type them in, which is the only reason they
+       mean anything.
 
-| # | Branch | Layer | Base | Files | R-IDs | Standalone | Reverts cleanly |
+       `Patch comes off` is named for what it measures: the diff applies in
+       reverse. It is not a claim that the build survives a revert, and it is
+       not going to become one — measured, section 13, item H. -->
+
+| # | Branch | Layer | Base | Files | R-IDs | Standalone | Patch comes off |
 |---|--------|-------|------|-------|-------|------------|-----------------|
 {{rows}}
 

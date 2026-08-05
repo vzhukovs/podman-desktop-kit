@@ -95,8 +95,11 @@ stands up alone. If it does not — either re-cut, or write "groundwork for #N"
 in the PR body and admit it here. Upstream does not accept dead code staged for
 a future PR, and hiding it does not make it land faster.
 
-`Reverts cleanly` is a textual check: the patch comes off. It is not a claim
-that the build survives the revert, and the template says so.
+`Patch comes off` is a textual check, and the column is named for it: the diff
+applies in reverse. It is not a claim that the build survives a revert, and it
+is not going to become one — proving that costs a second full verify per slice,
+and it would prove it against the tree of today rather than the one the revert
+will meet.
 
 ## Then
 

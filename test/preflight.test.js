@@ -676,6 +676,42 @@ describe('the artefact checks', () => {
     assert.match(result.summary, /not drafted yet/);
   });
 
+  // Scenario 7: the diff is mechanical and the risk is one level down, in
+  // transitive dependents that unit tests on one platform never load.
+  test('ci-blind-spots: a moved lockfile is a blind spot', async () => {
+    const result = await only('ci-blind-spots', {
+      changedFiles: ['pnpm-lock.yaml', 'packages/main/package.json'],
+      prBody: '### How to test this PR?\n\n1. Start it → it starts\n',
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /dependency changes/);
+    assert.match(result.remedy, /pnpm why/);
+  });
+
+  // A package.json edited on its own installs exactly what was installed
+  // before. Asking about it would price the gate at a paragraph per renamed
+  // script, and a gate that is expensive to pass is one people route around.
+  test('ci-blind-spots: package.json without the lockfile is not one', async () => {
+    const result = await only('ci-blind-spots', {
+      changedFiles: ['packages/main/package.json'],
+      prBody: '### How to test this PR?\n\n1. Start it → it starts\n',
+    });
+
+    assert.equal(result.status, 'pass');
+  });
+
+  // The remedy used to ask about the platform whatever the finding was. A
+  // remedy that names the wrong thing gets answered with the wrong thing.
+  test('ci-blind-spots: the remedy asks about what was actually hit', async () => {
+    const result = await only('ci-blind-spots', {
+      changedFiles: ['pnpm-lock.yaml'],
+      prBody: '### How to test this PR?\n\n1. Start it → it starts\n',
+    });
+
+    assert.doesNotMatch(result.remedy, /name the platform you checked on/);
+  });
+
   // A warning, because every one of these is sometimes correct. Blocking
   // would train people to route around the gate.
   test('debug-leftovers: warns without blocking', async () => {

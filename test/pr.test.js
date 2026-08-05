@@ -422,6 +422,70 @@ describe('judging a red job', () => {
   });
 });
 
+// The measurement answers whose the red is. The log answers what broke, and
+// that is the part scenario 9 leaves to whoever reads the report.
+describe('the logs behind a red run', () => {
+  const job = (name, verdict) => ({
+    name,
+    workflow: 'pr-check',
+    conclusion: verdict === 'pass' ? 'SUCCESS' : 'FAILURE',
+    verdict,
+    peers: [],
+    url: `https://github.com/podman-desktop/podman-desktop/actions/runs/1/job/${name.length}`,
+  });
+
+  const record = (...jobs) => ({ ci: { verdict: 'fail', checkedAt: null, jobs } });
+
+  /** Records every call so the count is assertable, and answers with a log. */
+  function fakeGh(stdout) {
+    const calls = [];
+    const exec = (file, args, options, callback) => {
+      calls.push(args);
+      queueMicrotask(() => callback(null, stdout, ''));
+      return { stdin: { end: () => {} } };
+    };
+    return { calls, exec };
+  }
+
+  const CONFIG = { repo: { upstream: 'podman-desktop/podman-desktop' } };
+
+  test('only the jobs the measurement says are ours', async () => {
+    const { calls, exec } = fakeGh('Windows\tRun tests\tAssertionError\n');
+
+    const logs = await pr.failureLogs(record(job('Windows', 'fail'), job('Linux', 'inconclusive'), job('macOS', 'flake'), job('website', 'pass')), {
+      config: CONFIG,
+      exec,
+    });
+
+    // inconclusive describes someone else's problem and flake is already the
+    // finding: fetching either spends a request to produce reading nobody
+    // should act on.
+    assert.equal(calls.length, 1);
+    assert.deepEqual(logs.map((entry) => entry.job), ['Windows']);
+    assert.equal(logs[0].available, true);
+    assert.deepEqual(logs[0].lines, ['Windows\tRun tests\tAssertionError']);
+  });
+
+  test('a green run costs nothing', async () => {
+    const { calls } = fakeGh('');
+    const logs = await pr.failureLogs({ ci: { verdict: 'pass', jobs: [job('Windows', 'pass')] } }, { config: CONFIG });
+
+    assert.deepEqual(logs, []);
+    assert.equal(calls.length, 0);
+  });
+
+  // Nothing here reaches prs.json. A log expires, and a stale copy stored
+  // beside the verdict would carry the verdict's standing.
+  test('the record is not written to', async () => {
+    const { exec } = fakeGh('boom\n');
+    const before = await pr.read(ISSUE, { home });
+
+    await pr.failureLogs(record(job('Windows', 'fail')), { config: CONFIG, exec });
+
+    assert.deepEqual(await pr.read(ISSUE, { home }), before);
+  });
+});
+
 describe('refreshing from GitHub', () => {
   /**
    * A fake gh that answers each call by matching its argv.
@@ -577,6 +641,35 @@ describe('staleness and rendering', () => {
     // looked at, and calling it stale would be wrong about who is waiting.
     const fresh = pr.staleness(record({ review: { lastActivityAt: '2026-07-30T00:00:00Z' } }), { now });
     assert.equal(fresh.stale, false);
+  });
+
+  // Every field on a dashboard row is what the last refresh saw. A sweep of ten
+  // pull requests was measured at 37 seconds (item K), so nobody refreshes
+  // before every glance — which makes an old row ordinary, not exceptional.
+  test('a row says how old the reading behind it is', () => {
+    const at = (when, now) => pr.reading(record({ refreshedAt: when }), { now: new Date(now) });
+
+    assert.equal(at('2026-07-31T00:00:00Z', '2026-07-31T00:00:20Z').label, 'just now');
+    assert.equal(at('2026-07-31T00:00:00Z', '2026-07-31T00:12:00Z').label, '12m');
+    assert.equal(at('2026-07-31T00:00:00Z', '2026-07-31T05:00:00Z').label, '5h');
+    assert.equal(at('2026-07-28T00:00:00Z', '2026-07-31T00:00:00Z').label, '3d');
+  });
+
+  test('never read is not the same as read a moment ago', () => {
+    const never = pr.reading(record({ refreshedAt: null }));
+
+    assert.equal(never.label, 'never');
+    assert.equal(never.at, null);
+    // Old, because nothing behind the row was ever measured — the strongest
+    // form of what the flag is for.
+    assert.equal(never.old, true);
+  });
+
+  test('past a few hours the row is flagged, not only counted', () => {
+    const now = new Date('2026-07-31T12:00:00Z');
+
+    assert.equal(pr.reading(record({ refreshedAt: '2026-07-31T11:00:00Z' }), { now }).old, false);
+    assert.equal(pr.reading(record({ refreshedAt: '2026-07-31T02:00:00Z' }), { now }).old, true);
   });
 
   test('a merged pull request is never stale', () => {

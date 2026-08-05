@@ -304,6 +304,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and its test sixty-two, so a blocking check would have escalated a correct
   one-line change into full planning for being properly tested.
 
+- **`pdkit pr ci` reads the failure, not only the verdict** (section 10,
+  scenario 9). The measurement says whose the red job is; what broke was left to
+  be inferred from the job's name, which is the reasoning-instead-of-reading
+  this plugin exists to replace. `gh.failedJobLog` fetches `--log-failed` for
+  the jobs the measurement calls ours — `inconclusive` describes someone else's
+  problem and `flake` is already the finding, so neither pays for a request.
+  - **The window is anchored on `##[error]`, and that is a measurement.** The
+    first version took the tail; on #18590 the marker sits fifty lines from the
+    end of a 245-line log and everything after it is the runner removing
+    credentials, so the tail showed all cleanup and no failure, confidently. The
+    real cause was `E: Package 'qemu-user-static' has no installation
+    candidate` — infrastructure, and nothing a reading of the diff would find.
+  - **What is outside the window is counted at both ends.** A window that
+    reports what it cut from the front and stays silent about the back implies
+    the log ended where it stopped. When there is no marker to anchor on, the
+    report says the window is the end of the file and may not be the failure.
+  - Nothing is stored in `prs.json`. A log expires, and a stale copy beside the
+    verdict would carry the verdict's standing — the freshness problem slices
+    answered with a digest rather than by keeping more.
+
+- **`pdkit journal conflict`** — the one entry a person writes by hand. Section
+  2.3 has carried `event:conflict-semantic` in its example since 0.1 and
+  `/pd:resume` has told the model to "journal the resolution" for as long as it
+  has had a body, with nothing on the command line that could write one. An
+  unexecutable instruction is worse than an absent one: it reads, in review, as
+  a discipline being kept.
+  - A conflict is the only thing in the cycle nothing can observe. A receipt is
+    a capture, a slice verdict is a run, a merge is an API answer — each closed
+    to agents precisely because a machine produces it. What upstream rewrote
+    under a plan is visible only to whoever resolved it.
+  - **The vocabulary is closed instead of the command being general.** Two event
+    names and no third: a `journal write --event <anything>` would let
+    `preflight-green` be typed beside the one preflight measured, and a reader
+    cannot tell a typed event from a produced one. `--resolution` is required
+    for the reason `task unblock` and `issue adopt` require theirs, and an
+    unknown issue number is refused — the journal is append-only, so a mistyped
+    entry is not one anything takes back.
+
+- **Scenarios 7 and 8 are struck from the coverage table, by measurement.** Both
+  promised machinery that did not exist; the question was whether to build it,
+  and the upstream population answered.
+  - **Dependency bumps are dependabot's job here.** Of 200 merged pull requests,
+    88 are bots (dependabot alone: 84). Of the 112 human ones, exactly three
+    concern dependencies, and all three touch two or three files — `quickfix` by
+    the plugin's own thresholds. A fifth route for 2.7% of human pull requests,
+    each already served by an existing route, is a key with no work behind it.
+    What stays is the part that fires for anyone: a pull request that moves the
+    lockfile is a CI blind spot whether or not it meant to be a bump, and
+    `dep-bump` remains a *nature* on triage, which describes the issue rather
+    than the way of doing it.
+  - **There is no mass refactor across independent packages to slice.** In the
+    same sample the largest human pull request is 32 files and lives inside one
+    layer; so do the mechanical ones — biome formatting, typo sweeps — which is
+    exactly how `slice draft` already groups. `max_files_per_slice` turns a big
+    set into a conversation, and proposing a graph by hand was never blocked.
+    Per-package slicing and "equivalence of build output" are struck.
+  - `context7` keeps its place among the optional servers, but its justification
+    is rebuilt: it stood on scenario 7. A rationale resting on a struck scenario
+    is the same defect as a config key nothing reads.
+
+- **The live-run section of the spec now carries its own evidence.** Written
+  after the first run, it went three versions calling the `standard` route
+  unexercised — while that route had run end to end the following day, along
+  with validation, slicing and materialization. A section that understates does
+  the thing it exists to prevent. Rewritten from the journal and the artefacts,
+  with a proof column per row, and a rule for removing a row that matches the
+  rule for adding one: a journal entry, or an artefact you can point at.
+
+- **The dashboard says how old each reading is.** Every field of a `pdkit pr
+  list` row is what the last refresh saw, and a verdict read three days ago
+  printed exactly like one read a second ago. `read:<age>`, with `←` past six
+  hours. It stopped being a corner case when the sweep was measured: ten pull
+  requests cost 37 seconds, so refreshing everything before every glance is
+  precisely what nobody does.
+
+- **Item K is closed by measurement, and the answer it proposed is refuted.**
+  `pr refresh` costs 3 GraphQL points and 2.3s on a green pull request, 4 and
+  7.2s on a red one; a sweep of ten is 32 points against an hourly budget of
+  5000. The suspicion the item existed for — that the dashboard would hit the
+  limit — is not confirmed by a wide margin, so no cache was introduced. The
+  conditional refetch keyed on `updatedAt` that the spec proposed for that day
+  turns out to be wrong on its own terms: **CI completion does not move
+  `updatedAt`.** Measured across ten open upstream PRs, all eight with recent
+  runs finished CI two to thirty-seven minutes *after* their `updatedAt`, so
+  that refetch would skip exactly the pull requests whose verdict just changed.
+
+- **Item H is closed by measurement, and the honest form is deliberately not
+  bought.** The verify command costs 152s on a warm tree (`test:unit` 85s,
+  `typecheck` 36s, `test:main` 24s, `lint:check` 3s, `typecheck:main` 3s), so
+  reverting and re-running it is +100% per slice, or +26% narrowed to typecheck.
+  Affordable, and still the wrong purchase: a revert lands weeks after the merge
+  against a tree that has moved, so a build proved green on the day of slicing
+  answers about a tree that will not exist. What does not decay is whether the
+  diff is self-contained enough to come off, which is what the check measures.
+  - **The column is renamed to `Patch comes off`.** The caveat lived in an HTML
+    comment while a green ✅ rendered under a header reading `Reverts cleanly`.
+    A comment is not visible in what a person reads, and the tick claimed more
+    than the check did — the defect fixed in `steps-to-check` and in the config
+    arrays message, in a third place.
+
+- **`ci-blind-spots` knows about the dependency graph** (section 10, scenario
+  7). A lockfile moving is the one change whose risk lives a level below the
+  diff, in transitive dependents that unit tests on one platform never load, and
+  it passed the blind-spot check in silence. Keyed on `pnpm-lock.yaml`,
+  `pnpm-workspace.yaml`, `.npmrc` and `patches/` rather than on `package.json`:
+  a manifest edited on its own installs exactly what was installed before, and
+  asking about it would price the gate at a paragraph per renamed script.
+  - The remedy is now per area. It asked about the platform whatever the finding
+    was, and a remedy that names the wrong thing gets answered with the wrong
+    thing — after which the check passes on a note about nothing.
+
 ### Changed
 
 - **`pdkit drift` finds the branch instead of measuring an empty set.** Without a

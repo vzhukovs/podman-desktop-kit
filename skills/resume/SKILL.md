@@ -53,10 +53,24 @@ instead of the requirement that was.
    every conflict:
 
    - **mechanical** — imports, formatting, a moved file, a rename. Resolve it,
-     and journal the resolution.
+     and journal the resolution:
+
+     ```
+     pdkit journal conflict --issue <n> [--slice <i>] --kind mechanical \
+       --file <path> [--commit <upstream sha>] --resolution "<what you took and why>"
+     ```
+
    - **semantic** — upstream rewrote what the plan stood on. **Stop.** Read the
      new commits, produce an amendment (`pdkit amendment new`), and get it
-     approved before touching anything else.
+     approved before touching anything else. Journal it with
+     `--kind semantic --amendment A<k>` once the amendment exists.
+
+   This is the one entry a person writes by hand, and the reason is that nothing
+   can observe it. A receipt is a capture, a slice verdict is a run, a merge is
+   an API answer — each of those is closed to you precisely because a machine
+   produces it. What upstream rewrote under the plan is visible only to whoever
+   resolved it, and an unwritten resolution is gone: six months later the diff
+   shows what was chosen and nothing shows why.
 
    The hint from step 2 is a hint. The dangerous semantic conflict is the one
    that merges cleanly: git is satisfied, the build is green, and the code now

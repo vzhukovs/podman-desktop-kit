@@ -225,10 +225,19 @@ that satisfies only the original one lands and is reverted for the same reason.
 What the dashboard tells you, and what it deliberately does not:
 
 ```
+pdkit pr list                        every row, and how old its reading is
 pdkit pr refresh 17577               read GitHub into prs.json
-pdkit pr ci 17577                    the CI verdict, measured
+pdkit pr ci 17577                    the CI verdict, plus the failure text
 pdkit pr threads 17577               bots collapsed, threads mapped to slices
 ```
+
+**`pr list` is local, and every row says when it was last read** — `read:3d`,
+with `←` past six hours. A sweep of ten pull requests was measured at 32 GraphQL
+points and 37 seconds, so nobody refreshes everything before every glance; that
+makes an old row the normal case, and a verdict from three days ago used to
+print exactly like one from a second ago. Refreshing by "what looks recently
+touched" does not work either: CI finishing does not move a pull request's
+`updatedAt` — measured, eight of eight.
 
 **A red job has two possible meanings and they are measured apart.** `fail` is
 red here and green on other people's open pull requests. `inconclusive` is the
@@ -237,6 +246,12 @@ proceed over something the change did not do teaches people to work around the
 gate. `flake` is the same job answering twice on one commit. A `pending` job
 prints its age: a check stuck IN_PROGRESS since June is a finding about the
 pull request, not about CI.
+
+**And for the jobs that are yours, the log comes with the verdict.** The window
+is anchored on the runner's `##[error]`, so what precedes it is the output that
+led there — measured because a plain tail showed credential cleanup and no
+failure. The other verdicts do not fetch one: `inconclusive` describes someone
+else's problem and `flake` is already the finding. `--no-logs` for the sweep.
 
 **Threads are not the whole of the feedback.** Review submissions and top-level
 comments come back too, and on a stale PR that is usually where the blocking
@@ -532,3 +547,16 @@ pdkit journal --issue 12345   # why it got there
 `state.json` knows *where*; the journal knows *why*. "Why is slice #2 stacked
 rather than branched from main" is recoverable six months later only from the
 journal, which is append-only and never rewritten.
+
+Almost every entry is written by whatever produced the fact. The exception is a
+conflict, because nothing can observe one:
+
+```
+pdkit journal conflict --issue 12345 --kind semantic --file packages/main/src/plugin/exec.ts \
+  --commit a3f21e --resolution "upstream replaced the callback the plan built on" --amendment A1
+```
+
+Two event names, `conflict-mechanical` and `conflict-semantic`, and no way to
+name a third. A command that wrote any event would let `preflight-green` be
+typed beside the one preflight measured, and a reader cannot tell a typed event
+from a produced one.

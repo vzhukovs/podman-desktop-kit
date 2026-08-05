@@ -152,6 +152,71 @@ describe('read', () => {
   });
 });
 
+// A conflict is the one thing in the cycle no measurement can produce, and
+// /pd:resume has been telling the model to journal one since before there was
+// anything that could write it.
+describe('conflict entries', () => {
+  const { conflictEntry } = journal;
+
+  const ok = { kind: 'mechanical', file: 'packages/main/src/plugin/exec.ts', resolution: 'took upstream import order' };
+
+  test('reads back as the line section 2.3 shows', () => {
+    const entry = conflictEntry({
+      kind: 'semantic',
+      file: 'exec.ts',
+      commit: 'a3f21e',
+      resolution: 'upstream replaced the callback the plan built on',
+      amendment: 'A1',
+    });
+
+    assert.equal(entry.ok, true);
+    assert.equal(entry.event, 'conflict-semantic');
+    assert.equal(entry.detail, 'exec.ts (upstream a3f21e) — upstream replaced the callback the plan built on; plan amended A1');
+  });
+
+  test('the commit and the amendment are optional, and absent means absent', () => {
+    const entry = conflictEntry(ok);
+
+    assert.equal(entry.event, 'conflict-mechanical');
+    assert.equal(entry.detail, 'packages/main/src/plugin/exec.ts — took upstream import order');
+  });
+
+  // The whole vocabulary. A caller that could name the event would be able to
+  // write `preflight-green` beside the one preflight measured, and the reader
+  // cannot tell a typed event from a produced one.
+  test('no third kind, whatever it is called', () => {
+    for (const kind of ['', 'both', 'preflight-green', 'mechanical-ish', 'MECHANICAL']) {
+      const result = conflictEntry({ ...ok, kind });
+      assert.equal(result.ok, false, `${kind} should not be a kind`);
+      assert.match(result.error, /expected mechanical or semantic/);
+    }
+  });
+
+  test('a resolution is required, and whitespace is not one', () => {
+    for (const resolution of [undefined, '', '   ']) {
+      const result = conflictEntry({ ...ok, resolution });
+      assert.equal(result.ok, false);
+      assert.match(result.error, /--resolution/);
+    }
+  });
+
+  test('a file is required: a conflict happened somewhere', () => {
+    const result = conflictEntry({ ...ok, file: '' });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /--file/);
+  });
+
+  // An A-ID is cited from the plan, the slices and the reply that told the
+  // reviewer what changed. A made-up one is a citation to nothing.
+  test('an amendment that is not an A-ID is refused', () => {
+    for (const amendment of ['1', 'A', 'amendment 1', 'A1.2']) {
+      const result = conflictEntry({ ...ok, amendment });
+      assert.equal(result.ok, false, `${amendment} should not pass as an A-ID`);
+      assert.match(result.error, /A-ID/);
+    }
+  });
+});
+
 // `--since` filters by string comparison against an ISO timestamp, and that
 // detail used to reach the command line: `1h` sorted above every date so the
 // whole journal came back, `24h` sorted below every date so nothing did. Two
