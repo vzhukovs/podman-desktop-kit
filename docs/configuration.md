@@ -171,7 +171,7 @@ servers mandatory. Configure them yourself.
 | Server | Used by | Absent |
 |---|---|---|
 | Playwright | `/pd:validate` | a human checklist instead of evidence, and no PASS is recorded |
-| context7 | dependency bumps | changelog lookups fall back to grep |
+| context7 | questions about someone else's library, in planning and in review | the answer comes from the model's own knowledge of that library's versions, which goes out of date without saying so |
 
 Which agents can see a server's tools is controlled by `tools:` in
 `agents/*.md`, since plugin agents cannot declare MCP servers themselves.
