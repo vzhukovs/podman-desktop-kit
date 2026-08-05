@@ -342,6 +342,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     unknown issue number is refused — the journal is append-only, so a mistyped
     entry is not one anything takes back.
 
+- **Scenarios 12 and 13 and the machine half of `redo` were dry-run on real
+  upstream pull requests**, which read without a single write to GitHub. Four
+  findings, none of them reachable by a unit test — the same proportion the
+  first live run produced in 0.11.
+  - **`--from-pr` substituted the diff source in `slice suggest` alone**, so a
+    proposal drafted from a published pull request was checked against
+    `main...HEAD` and refused a file at a time. A flag that redirects the source
+    in one command of a chain is not half a feature; it is a feature that does
+    not work. The refusal also learned to name the cause: when *no* proposed
+    file is in the diff, that is a different finding from one file missing.
+  - **Preflight took its ref from whatever was checked out.** The base came from
+    the graph on stage 3, the ref did not — correct only because the flow runs
+    preflight from the slice's own worktree. Run from anywhere else, every file
+    check read an unrelated change and said nothing, because `HEAD` always
+    resolves. Found as a green report saying "the public API declaration is
+    untouched" about a slice whose only file is `extension-api.d.ts`. A slice
+    with no branch yet is now refused rather than measured, and so is an empty
+    diff: every check passes on nothing, and the gate would open on a branch
+    with nothing on it.
+  - **`slice materialize` reported "nothing to commit" for a commit the
+    repository's own pre-commit hook refused.** Two different failures arriving
+    as one sentence, asserting a cause that was never measured. Live: the patch
+    applied and staged, and husky ran `pnpm install`, which refused to purge
+    `node_modules` without a TTY on a checkout whose lockfile did not match.
+  - **A revert was recognised only when its title started with the word.**
+    Upstream wrote `fix(renderer): revert extension details summary card…`, so
+    on issue #17873 the pair was never established, the fallback took the newest
+    merge — an unrelated feature — and the report named the wrong pull request as
+    the attempt, quoted reviewers from it, and concluded "merged and nothing
+    reverts it". A revert is now recognised by what it says it reverts; the body
+    comes from queries that already ran, so nothing costs an extra request.
+
 - **Scenarios 7 and 8 are struck from the coverage table, by measurement.** Both
   promised machinery that did not exist; the question was whether to build it,
   and the upstream population answered.

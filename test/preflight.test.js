@@ -864,6 +864,69 @@ describe('a sliced issue', () => {
     assert.deepEqual(prepared.changedFiles, [API]);
   });
 
+  // The base came from the graph and the ref was whatever happened to be
+  // checked out, which is right only because the flow runs preflight from the
+  // slice's own worktree. Found by dry-running scenario 13: a graph cut from a
+  // published pull request, `--slice 1`, and a green report about a diff the
+  // slice had nothing to do with.
+  test('the ref is the slice branch, not whatever is checked out', async () => {
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    await gitIn(['checkout', 'main'], sliced);
+
+    try {
+      const prepared = await on({ slice: 2 });
+
+      assert.equal(prepared.ref, `DESKTOP-${ISSUE}/2-main-exec`);
+      assert.deepEqual(prepared.changedFiles, [EXEC], 'standing on main must not empty the diff');
+      assert.equal(prepared.problem, null);
+    } finally {
+      await gitIn(['checkout', was], sliced);
+    }
+  });
+
+  // The flow materializes before it runs preflight, so no branch means the run
+  // is out of order. Reporting on HEAD instead answers a question nobody asked.
+  test('a slice with no branch yet is refused rather than measured', async () => {
+    const branch = `DESKTOP-${ISSUE}/2-main-exec`;
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    const sha = await gitIn(['rev-parse', branch], sliced);
+    await gitIn(['checkout', 'main'], sliced);
+    await gitIn(['branch', '-D', branch], sliced);
+
+    try {
+      const missing = await on({ slice: 2 });
+
+      assert.match(missing.problem ?? '', /has no branch/);
+      assert.match(missing.problem ?? '', /materialize/);
+      assert.deepEqual(missing.changedFiles, [], 'nothing is measured once the run is refused');
+    } finally {
+      await gitIn(['branch', branch, sha], sliced);
+      await gitIn(['checkout', was], sliced);
+    }
+  });
+
+  // An empty diff passes every file check trivially, so the report comes out
+  // green and the gate opens on a branch with nothing on it. Reached in
+  // practice by a materialize whose commit the repository's pre-commit hook
+  // refused: the branch was created, and empty.
+  test('a slice branch with nothing on it is refused, not called green', async () => {
+    const branch = `DESKTOP-${ISSUE}/2-main-exec`;
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    const sha = await gitIn(['rev-parse', branch], sliced);
+    await gitIn(['checkout', 'main'], sliced);
+    await gitIn(['branch', '-f', branch, `DESKTOP-${ISSUE}/1-api`], sliced);
+
+    try {
+      const empty = await on({ slice: 2 });
+
+      assert.match(empty.problem ?? '', /nothing lies between/);
+      assert.deepEqual(empty.changedFiles, []);
+    } finally {
+      await gitIn(['branch', '-f', branch, sha], sliced);
+      await gitIn(['checkout', was], sliced);
+    }
+  });
+
   test('slice-standalone passes on a fresh green verification', async () => {
     const report = await run(await on(), await loadChecks(['slice-standalone']));
 

@@ -25,6 +25,7 @@ import {
   fetchIssue,
   headRef,
   linkedPullRequests,
+  revertOf,
   peerCheckFailures,
   pullRequest,
   replyToThread,
@@ -154,6 +155,51 @@ describe('reads', () => {
     assert.equal(prs[0].isRevert, false);
     assert.equal(prs[1].isRevert, true);
     assert.equal(prs[1].mergedAt, null);
+  });
+
+  // Measured on issue #17873: the pull request that backed out the attempt is
+  // titled `fix(renderer): revert extension details summary card to vertical…`.
+  // The word is there and it is not first, so the pair was never established,
+  // the fallback took the newest merge — an unrelated feature — and the report
+  // said "merged and nothing reverts it".
+  test('a revert is recognised by what it says it reverts, not by its first word', () => {
+    const shapes = [
+      { title: 'Revert "fix: the thing"', body: '', isRevert: true, reverts: null },
+      { title: 'revert(renderer): restore the sidebar', body: '', isRevert: true, reverts: null },
+      { title: 'fix(renderer): revert the summary card', body: 'Revert PR #17976.\nRestore the layout.', isRevert: true, reverts: 17976 },
+      { title: 'chore: undo it', body: 'This reverts commit 7569abdde12.', isRevert: true, reverts: null },
+      // The word appears and nothing is being undone. A title test that matched
+      // anywhere would call this a revert.
+      { title: 'chore: remove file filter and revert placeholder', body: '', isRevert: false, reverts: null },
+      { title: 'feat(main): add a thing', body: 'Closes #17873', isRevert: false, reverts: null },
+    ];
+
+    for (const shape of shapes) {
+      const answer = revertOf(shape);
+      assert.equal(answer.isRevert, shape.isRevert, shape.title);
+      assert.equal(answer.reverts, shape.reverts, shape.title);
+    }
+  });
+
+  test('the number a revert names travels with it', async () => {
+    const prs = await linkedPullRequests(17873, {
+      config: CONFIG,
+      exec: fakeGh(
+        timeline({
+          source: {
+            number: 18323,
+            state: 'MERGED',
+            title: 'fix(renderer): revert extension details summary card to vertical',
+            url: 'u',
+            mergedAt: '2026-07-17T00:00:00Z',
+            body: 'Revert PR #17976.',
+          },
+        }),
+      ),
+    });
+
+    assert.equal(prs[0].isRevert, true);
+    assert.equal(prs[0].reverts, 17976, 'without this the pair cannot be established');
   });
 
   test('a cross-reference from another repository is not a linked pull request', async () => {
