@@ -256,6 +256,72 @@ describe('the redo route cannot skip the archaeology', () => {
   });
 });
 
+// Measured on #18284: a real, reproducible bug in podman-desktop whose cause is
+// a version skew between the podman client and the machine it drives. Nothing
+// in this repository to change, and a reproduction, a detector and a workaround
+// to publish. Walking it through the machine as it stood produced "not finished
+// — no pull request was ever opened", which is true and about nothing.
+describe('an issue whose deliverable is an answer, not a diff', () => {
+  const captured = async (issue) => {
+    await mkdir(join(home, 'issues', String(issue), 'validation'), { recursive: true });
+    await writeFile(join(home, 'issues', String(issue), 'validation', 'V1.md'), '# RECEIPT V1\n');
+  };
+
+  test('answered is refused while nothing has been captured', async () => {
+    await transition(601, 'triaged', { home, route: 'standard' });
+
+    const refused = await transition(601, 'answered', { home, reason: 'client/server skew' });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /nothing captured/);
+    assert.match(refused.error, /pdkit validate attach/);
+    assert.equal((await read(601, { home })).state, 'triaged');
+  });
+
+  test('and refused without a reason once it has been', async () => {
+    await captured(601);
+
+    const refused = await transition(601, 'answered', { home });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /--reason is required/);
+  });
+
+  test('with both, the issue can say what it is', async () => {
+    const moved = await transition(601, 'answered', { home, reason: 'version skew across the machine boundary' });
+    assert.equal(moved.ok, true);
+  });
+
+  // The correction the measurement made to the design. The obvious move was a
+  // terminal state meaning "settled without a diff", and the moment findings
+  // are posted the issue is not settled — it is waiting on the reporter, which
+  // is exactly where #18284 sits.
+  test('answered is not terminal, and its exits are the three that happen', () => {
+    assert.deepEqual(TRANSITIONS['answered'], ['resolved', 'planned', 'abandoned']);
+  });
+
+  test('resolved is terminal and is not merged', async () => {
+    assert.deepEqual(TRANSITIONS['resolved'], []);
+
+    const moved = await transition(601, 'resolved', { home, reason: 'the reporter confirmed' });
+    assert.equal(moved.ok, true);
+    assert.equal((await read(601, { home })).state, 'resolved');
+    assert.equal((await transition(601, 'merged', { home })).ok, false, 'terminal is terminal');
+  });
+
+  // An answer that implies product work is not the end of the issue.
+  test('the other exit leads back to planning', async () => {
+    await transition(602, 'triaged', { home, route: 'standard' });
+    await captured(602);
+    await transition(602, 'answered', { home, reason: 'environmental, and the product says nothing about it' });
+
+    assert.equal((await transition(602, 'planned', { home })).ok, true);
+  });
+
+  test('nothing else has to be captured to move', async () => {
+    await transition(603, 'triaged', { home, route: 'standard' });
+    assert.equal((await transition(603, 'planned', { home })).ok, true, 'the demand belongs to `answered` alone');
+  });
+});
+
 describe('allocation', () => {
   test('requirement numbers are handed out in order', async () => {
     await transition(301, 'triaged', { home });

@@ -23,7 +23,7 @@ import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
 import { handle as taskCompleted } from '../lib/hooks/task-completed.js';
 import { read as readJournal } from '../lib/journal.js';
-import { setOwns, transition } from '../lib/state.js';
+import { TRANSITIONS, setOwns, transition } from '../lib/state.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -175,7 +175,11 @@ describe('re-anchoring', () => {
     assert.match(decision.message, /issue 18248 — triaged/);
     assert.match(decision.message, /T1 \(join the command arguments\)/);
     assert.match(decision.message, /packages\/main\/src\/plugin\/container-registry\.ts/);
-    assert.match(decision.message, /next {4}: quickfix, planned, abandoned/);
+    // Read from the transition table rather than pinned as a string: this line
+    // exists to prove the summary offers the moves the machine allows, and a
+    // literal copy of them turns every edge added to section 1 into a failing
+    // test about nothing. `answered` was the edge that showed it (0.27).
+    assert.match(decision.message, new RegExp(`next {4}: ${TRANSITIONS['triaged'].join(', ')}`));
   });
 
   test('the journal is summarized, not injected whole', async () => {

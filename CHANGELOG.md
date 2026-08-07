@@ -342,6 +342,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     unknown issue number is refused — the journal is append-only, so a mistyped
     entry is not one anything takes back.
 
+- **An issue can now end in an answer rather than a diff** (section 10,
+  scenario 14). Measured by walking #18284 — a real, reproducible bug in
+  podman-desktop whose cause is a version skew between the podman client and the
+  machine it drives — through the machinery as it stood. Four things came back:
+  every route was accepted because the automaton does not judge fit; `validate
+  attach` recorded the reproduction straight from `triaged` while
+  `triaged → validated` stays forbidden, so `validation.json` said "reproduced"
+  and `state.json` said nothing happened; the only exit was `abandoned`, which
+  is absorbing, so the state this shape is pushed into is a one-way door; and
+  `close --finish` refused with "no pull request was ever opened", which is true
+  and about nothing.
+  - **`answered` is a state, and it is not terminal.** That is the correction
+    the run made to its own design: a terminal "settled without a diff" is
+    wrong, because at the moment the findings are posted the issue is waiting on
+    the reporter — exactly where #18284 sits. The machine could wait on a
+    reviewer and could not wait on a reporter. Three exits: `resolved` when
+    someone confirms, back to `planned` when the answer implies product work,
+    `abandoned` when it goes quiet.
+  - **`resolved` is separate from `merged` and from `abandoned`**, because one
+    claims a change landed and the other says the work was dropped, and here the
+    work was the entire deliverable.
+  - **Entry is guarded by a capture, not by a claim.** `answered` is refused
+    while nothing is attached — a workaround nobody ran is a suggestion, and a
+    suggestion posted in the voice of a finding costs the reporter their
+    evening. Counted as files rather than by reading `validation.json`:
+    `lib/validation.js` imports `lib/state.js`, so the reverse import would be a
+    cycle, and re-deriving the record's shape would give it a second reader.
+  - **Closing takes a fact about them, not a verdict about us.**
+    `close --finish --confirmed "<who confirmed>"`; without it the close is
+    refused, because deciding on our own that someone else's problem went away
+    is the overreach `awaiting-review` refuses for domain owners.
+  - `templates/findings.md` and `pdkit findings new` — and the template asks for
+    two things it would be easy to skip: a detector command that separates this
+    problem from its look-alikes, and what would have kept it from reaching a
+    user. An environmental cause is a reason not to change this repository, not
+    a reason for the repository to stay silent.
+
 - **Scenarios 12 and 13 and the machine half of `redo` were dry-run on real
   upstream pull requests**, which read without a single write to GitHub. Four
   findings, none of them reachable by a unit test — the same proportion the

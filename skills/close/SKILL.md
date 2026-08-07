@@ -46,6 +46,25 @@ model: sonnet
    that is the one case where tidying up loses work. `--force` only once you
    mean to abandon those commits.
 
+## When the issue was answered rather than changed
+
+An issue in `answered` finished differently: the deliverable was a reproduction,
+a detector and a workaround, published as a comment, and no diff of ours settled
+it. The rollup has nothing to say about it — asking it produces "no pull request
+was ever opened", which is true and about nothing.
+
+```
+pdkit close <issue> --finish --confirmed "<who confirmed, and how>"
+```
+
+`--confirmed` is required and is a **fact about them**, not a verdict of ours:
+the reporter said it worked, or a maintainer closed the issue. Without it the
+close is refused, because deciding on our own that someone else's problem went
+away is the same overreach `awaiting-review` refuses for domain owners. If
+nobody ever answers, the honest end is `abandoned` and the reason says so; if
+the answer implied product work, the issue goes back to `planned` instead of
+being closed at all.
+
 ## What not to do here
 
 Do not close the upstream issue and do not comment on it. Both are refused by

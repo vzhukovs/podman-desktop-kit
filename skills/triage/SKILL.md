@@ -101,6 +101,48 @@ State one route explicitly:
 issue. Do not post it — publishing to someone else's tracker is a human action,
 and the gate refuses it anyway.
 
+**A valid, reproducible bug whose cause is outside this repository is not
+`invalid`.** It is an ordinary route until the investigation says otherwise, and
+what changes is where it ends: the state `answered`, and a findings artefact
+instead of a diff. Do not decide this at triage — on #18284 the report reads as
+a plain bug and the version skew behind it only appeared once someone had built
+the machine and run the pull. Section 5b is where that lands.
+
+## 5b. When the answer turns out not to be a diff
+
+Some issues are real, reproducible, and not ours to fix in code: the cause sits
+in a dependency, in the host, or across a version boundary the product only
+drives. The deliverable is then a reproduction, a way to tell this problem from
+the ones it resembles, and a workaround — published as a comment.
+
+The machine has a state for it, and it is guarded by the same rule as PASS:
+
+```
+pdkit validate attach --issue <n> --title "<what this step shows>" --run "<command>"
+pdkit findings new --issue <n> --values <file.json>
+pdkit state <n> --to answered --reason "<what the answer is>"
+```
+
+Three things this route asks that are easy to skip:
+
+1. **Run the workaround, do not reason it out.** `answered` is refused while
+   nothing is captured, and that refusal is the point: a workaround nobody
+   executed is a suggestion, and a suggestion posted in the voice of a finding
+   costs the reporter their evening.
+2. **Give them a detector.** One command whose output separates this problem
+   from its look-alikes. Without it, every reader with a similar symptom runs
+   the workaround and half of them are fixing something else.
+3. **Answer the product question.** An environmental cause is a reason not to
+   change this repository — not a reason for the repository to say nothing. On
+   #18284 the client is 6.0.1, the machine is 5.8.2, and Podman Desktop shows
+   both without a word. Name that, and whether it should be its own issue.
+
+`answered` is **not** the end. It means the findings are out and the reporter
+has not spoken; from there the issue is `resolved` when someone confirms, back
+to `planned` if the answer implied product work, or `abandoned` if it goes
+quiet. Closing it on our own say-so would make the plugin the judge of whether
+someone else's problem went away.
+
 ## 5a. On the redo route only
 
 Work that was landed and backed out is not ordinary work with more history
