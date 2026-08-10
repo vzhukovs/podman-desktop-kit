@@ -1,4 +1,20 @@
-// SPDX-License-Identifier: Apache-2.0
+/**********************************************************************
+ * Copyright (C) 2026 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ***********************************************************************/
 
 // Structural invariants from section 2.2 of the specification.
 //
@@ -213,13 +229,45 @@ describe('skills only name commands that exist', () => {
 });
 
 describe('licensing', () => {
-  // The plugin enforces SPDX headers upstream; failing to carry them itself
-  // would be the kind of detail that costs credibility in review.
-  test('every module carries an SPDX header', async () => {
+  // The house format, stated here in full rather than sampled from a file that
+  // happens to carry it. knowledge/upstream-rules.md tells contributors that a
+  // bare `// SPDX-License-Identifier: Apache-2.0` is *not* the format podman-
+  // desktop accepts, and preflight fails a pull request that ships one. A
+  // repository that says that while carrying the short form itself is the kind
+  // of detail a reviewer notices first and trusts least afterwards.
+  const HEADER = `/**********************************************************************
+ * Copyright (C) 2026 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ***********************************************************************/
+`;
+
+  test('every module carries the header in full', async () => {
     const missing = (await modules())
-      .filter((module) => !module.source.startsWith('// SPDX-License-Identifier: Apache-2.0'))
+      .filter((module) => !module.source.startsWith(HEADER))
       .map((module) => module.name);
 
     assert.deepEqual(missing, []);
+  });
+
+  test('the entry point carries it under the shebang', async () => {
+    const source = await readFile(join(ROOT, 'bin', 'pdkit'), 'utf8');
+
+    // Order matters and only one way round works: a header above `#!` leaves a
+    // file the kernel will not execute, and the plugin puts bin/ on PATH.
+    assert.ok(source.startsWith('#!/usr/bin/env node\n'), 'the shebang is not first');
+    assert.ok(source.startsWith(`#!/usr/bin/env node\n${HEADER}`), 'the header does not follow the shebang');
   });
 });
