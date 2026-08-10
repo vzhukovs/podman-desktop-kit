@@ -130,5 +130,5 @@ reviewer who reviews it as new work.
 ## When the answer is "this cannot be cut"
 
 Say that. A diff whose parts cannot be separated without rewriting the work is
-a finding about the plan — section 11 of the spec expects it, and "slicing
-requires redoing tasks T2–T4" is a real answer, not a failure to slice.
+a finding about the plan — the design expects it (specification, section 11), and
+"slicing requires redoing tasks T2–T4" is a real answer, not a failure to slice.

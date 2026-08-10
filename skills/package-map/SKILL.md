@@ -46,8 +46,8 @@ this; do not rely on the file's location to tell you.
 - **No map** — `pdkit init` has not run in this repository.
 - **Layer `other`** — `packages/api`, `packages/webview-api` and `storybook`
   match no rule in `slicing.layer_order`. Say so rather than guessing a layer:
-  merge order for those three is genuinely undecided, and it is an open question
-  in section 13 of the spec.
+  merge order for those three is genuinely undecided, and saying so is the
+  answer.
 - **The path is not in any package** — say that too. Repository-root files
   (`.github/`, config, scripts) belong to no layer and are reviewed by whoever
   owns the area they configure.

@@ -140,6 +140,13 @@ the shipped default through.
 | `validation.app.binary` | A packaged application to drive. Empty by default: `PODMAN_DESKTOP_BINARY` comes next, then `node_modules/.bin/electron .` — the development build, which is what upstream's own e2e drives |
 | `validation.app.debug_port` | Where CDP listens. `validate launch` refuses a port something else already answers on rather than fighting it |
 | `validation.app.startup_timeout` | How long to wait for `/json/version`. A process that dies before then is reported at once, not after the timeout |
+| `preflight.scripts.*` | Overrides for script-name resolution. **Empty by default**, and it should stay that way: names are resolved from the repository's own `package.json`, which is the right source. Filling one in is worth doing exactly when the resolver got it wrong — which is a reason to fix the resolver |
+| `exec.max_attempts` | How many failed captures of `Done when` block a task. Three by default; zero switches blocking off entirely. It can only weaken the rule, never tighten it — the count itself comes from the captures, not from anyone's account of them |
+| `review.stale_after_days` | When an open pull request is reported as idle |
+| `review.bots_collapsed` | Accounts collapsed to one line in `pr threads`. Collapsed, never dropped |
+| `review.bot_escalate` | Words that expand a collapsed bot back to full text. One direction only: a match raises a thread and never lowers one |
+| `journal.reanchor_scope` | How much of the journal `SessionStart` injects. `issue` by default, because the whole file starts eating context within a month |
+| `languages.*` | The language each artefact is written in. The review report is the one worth setting: it is read by you, not by upstream |
 
 ### The package map
 
@@ -219,41 +226,24 @@ tree.
 `doctor` reports the second separately, as `validate:app` — a perfectly
 configured server still has nothing to drive if the tree was never built.
 
-## Always-on adapters: rtk and ponytail
+## Hooks other tools install, and why they cannot get past the gate
 
-The plugin configures neither, and the `tools:` block that used to is gone —
-`tools.rtk` in 0.18, `tools.ponytail` in 0.19. Both were measured against this
-workflow rather than judged by their descriptions; sections 8.1 and 8.2 of the
-spec carry the numbers. In short:
+Hooks on the `Bash` tool are **global**: one installed for an unrelated project
+sees the commands you run here too, and can rewrite them. That is why
+`lib/hooks/command-parse.js` strips wrapper programs — `sudo`, `env`, `nice`,
+`nohup` and the rest — before any rule is applied, and why
+`/pd:doctor --gate-selftest` probes that exact shape. The question the parser
+answers is never "did somebody mean to wrap it" but "what is going to run".
 
-- **rtk** rewrites `Bash` commands to compress their output. Its hook matches
-  `Bash` and nothing else, so `Read`, `Grep` and `Glob` never reach it — and it
-  does not compress `pnpm test`, `pnpm typecheck` or `node --test`, which is
-  where this workflow's output actually is.
-- **ponytail** serves a disposition over MCP. It is written for whoever writes
-  the code — "before any code", "ship the lazy version", "code first, then at
-  most three short lines" — and the two agents that pulled it review instead of
-  writing. Its `full` ruleset also argues against test frameworks and against
-  producing a report, both of which this plugin requires.
+If you install anything that hooks `Bash`, run the self-test afterwards.
 
-**Neither decision protects you from having them installed**, and that is the
-part worth keeping straight.
+**Receipts are unaffected either way.** `lib/evidence.js` spawns the command
+itself from Node, so no hook on the `Bash` tool is consulted and nothing sits
+between the command and the output that lands in the receipt.
 
-A rewriter installed for another project rewrites commands here too, because its
-hook is global. So `lib/hooks/command-parse.js` unwraps `rtk git push` — along
-with `sudo`, `env`, `nice` and the rest — before any rule is applied, and
-`/pd:doctor --gate-selftest` probes that exact form. If you install one, run
-that self-test.
+## Retired keys
 
-Likewise, **do not install ponytail as a `SessionStart` hook.** A hook reaches
-every agent and bypasses `tools:` scoping entirely, including `pd-implementer`,
-which must follow the plan literally rather than minimize it. `/pd:doctor` warns
-when it finds one, under `ponytail:hooks`, and that check is unaffected by the
-removal — it is about what is on your machine, not about what the plugin uses.
-
-Receipts are unaffected either way. `lib/evidence.js` spawns the command itself
-from Node, so no hook on the `Bash` tool is consulted and nothing sits between
-the command and the output that lands in the receipt.
-
-If either key is still in your own `$PDKIT_HOME/config.yaml`, `/pd:doctor` says
-so under `config:gates`. Delete them — nothing reads them.
+`pdkit init` copies the shipped config whole, so a key the plugin stops reading
+survives in your own file looking exactly like a setting you chose.
+`/pd:doctor` reports any it finds under `config:gates`, naming the key and what
+to do. The fix is always the same: delete it.

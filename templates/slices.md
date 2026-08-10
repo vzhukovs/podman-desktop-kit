@@ -10,7 +10,8 @@
 
        `Patch comes off` is named for what it measures: the diff applies in
        reverse. It is not a claim that the build survives a revert, and it is
-       not going to become one — measured, section 13, item H. -->
+       not going to become one: the honest form was measured at +100% per slice
+       and answers about a tree that will not exist by the time a revert lands. -->
 
 | # | Branch | Layer | Base | Files | R-IDs | Standalone | Patch comes off |
 |---|--------|-------|------|-------|-------|------------|-----------------|
