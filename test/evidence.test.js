@@ -64,8 +64,8 @@ describe('capture', () => {
     assert.match(result.stdout.trim(), /tmp$/);
   });
 
-  // Section 8.2: what makes a receipt evidence rather than a claim is that the
-  // output was not compressed on its way here.
+  // What makes a receipt evidence rather than a claim is that the output was not
+  // rewritten on its way here (section 6, receipts).
   //
   // The guarantee is the spawn. capture() starts the process from Node, so an
   // output rewriter hooked onto Claude Code's Bash tool never sees the command.

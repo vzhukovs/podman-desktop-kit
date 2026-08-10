@@ -307,7 +307,7 @@ describe('retired config keys', () => {
   });
 });
 
-// Section 8.4 claimed this check verified the endpoint. Until 0.21 it verified
+// Section 8.2 claimed this check verified the endpoint. Until 0.21 it verified
 // the name: a Playwright server started without `--cdp-endpoint` launches a
 // browser of its own, never sees the application pdkit started, and reported
 // `connected` exactly like one wired correctly.
