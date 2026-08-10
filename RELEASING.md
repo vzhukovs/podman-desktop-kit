@@ -1,7 +1,7 @@
 # Releasing
 
-How a version is decided, what a release run consists of, and what a colleague
-has to do to receive it.
+How a version is decided, what a release run consists of, and what a user has to
+do to receive it.
 
 ## Versioning
 
@@ -24,8 +24,8 @@ Claude Code resolves an installed plugin's version from
 already installed**. So:
 
 > **A release shipped without bumping `plugin.json` reaches nobody.**
-> `/plugin update` reports "already at the latest version", every colleague stays
-> on the old copy, and nothing anywhere reports a problem.
+> `/plugin update` reports "already at the latest version", every user stays on
+> the old copy, and nothing anywhere reports a problem.
 
 `package.json` carries the same number because `pdkit version` reads it, and
 `CHANGELOG.md`'s newest heading carries it because that is what a person checks.
@@ -50,7 +50,7 @@ gh release create v0.1.0 --title "0.1.0" \
   --notes-file <(sed -n '/^## \[0\.1\.0\]/,/^## \[/p' CHANGELOG.md | sed '$d')
 ```
 
-Then tell colleagues the two lines from the README:
+From then on, installing is the two lines from the README:
 
 ```
 /plugin marketplace add vzhukovs/podman-desktop-kit
@@ -100,10 +100,10 @@ Step 7 is not ceremony. Of the twenty-one skills this plugin ships, twenty have
 never been invoked through a Claude Code session, and every check above passes
 whether or not the manifest loads.
 
-## How a colleague receives an update
+## How a user receives an update
 
 Third-party marketplaces have **auto-update off by default**, so an update is not
-automatic unless they turn it on.
+automatic unless the user turns it on.
 
 ```
 /plugin marketplace update podman-desktop-kit

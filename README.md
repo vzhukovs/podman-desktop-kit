@@ -194,7 +194,7 @@ it found, not merely that a server exists.
 | [`docs/architecture.md`](docs/architecture.md) | the same in five minutes |
 | [`docs/configuration.md`](docs/configuration.md) | the three config layers and what every key decides |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to add a command, a skill, an agent or a check — and how to test it |
-| [`RELEASING.md`](RELEASING.md) | versioning, the release runbook, and how colleagues get updates |
+| [`RELEASING.md`](RELEASING.md) | versioning, the release runbook, and how users get updates |
 | [`CHANGELOG.md`](CHANGELOG.md) | what each release contains |
 
 ## Layout

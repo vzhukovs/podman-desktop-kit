@@ -1278,7 +1278,7 @@ point of failure.
 | **Playwright MCP** | `/pd:validate`: walk scenarios in the running application, capture screenshots as evidence | **Take it.** The only way to close "manual validation" with evidence rather than claims. `pdkit` brings the application up (8.2); the server attaches to its CDP endpoint |
 | **GitHub MCP** | issues, PRs, review threads, GraphQL resolve | **Optional.** The default is `gh` through `pdkit`: more deterministic, cheaper in tokens, easy to restrict to reads |
 | **context7** (or an equivalent docs MCP) | a question about somebody else's library: API, configuration, what changed between versions | **Take it as optional.** A hint about a library is needed in planning and in reviewing somebody else's PR, and a model's knowledge of library versions goes out of date without saying so |
-| **basic-memory** | a personal knowledge layer | **Optional, one-way bridge.** The source of truth is the `knowledge/` files, or the plugin is not portable to a colleague. There is no reverse import — two sources of truth would diverge |
+| **basic-memory** | a personal knowledge layer | **Optional, one-way bridge.** The source of truth is the `knowledge/` files, or the plugin is not portable to anybody else. There is no reverse import — two sources of truth would diverge |
 | Chrome DevTools MCP | — | **No.** Covered by Playwright |
 | sequential-thinking / memory-graph and similar | — | **No.** Orchestration is set by the skills and by `pdkit`; a separate "thinking" server only spends tokens |
 
@@ -1566,7 +1566,7 @@ you can point at.**
 
 | What | Why it is not a detail |
 |---|---|
-| **The plugin as installed from a marketplace.** It loads from `--plugin-dir`, and no marketplace has ever carried it | Loading from a directory and installing from a catalogue are different code paths, and the second is the one every colleague will use |
+| **The plugin as installed from a marketplace.** It loads from `--plugin-dir`, and no marketplace has ever carried it | Loading from a directory and installing from a catalogue are different code paths, and the second is the one every user will take |
 | **Twenty of the twenty-one skills.** Only `doctor` has been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
 | **Four of the six hook events.** `pre-bash` has one genuine firing in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host |
 | **Agent dispatch by name.** No `pd-*` agent has been launched by a skill through a session | Every measured run drove `bin/pdkit` directly, so the agents that carry the judgement half have run only as prompts a human pasted |

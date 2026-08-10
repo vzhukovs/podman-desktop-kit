@@ -22,7 +22,7 @@
 // Claude Code resolves an installed plugin's version from plugin.json first and
 // SKIPS the update when it matches what is already on disk. So a release shipped
 // without bumping that field does not reach anybody: `/plugin update` reports
-// "already at the latest version", every colleague stays on the old copy, and
+// "already at the latest version", every user stays on the old copy, and
 // nothing anywhere reports a problem. There is no runtime symptom to notice —
 // which is exactly the shape of failure this repository keeps finding, and the
 // reason it gets a test rather than a line in a runbook.
