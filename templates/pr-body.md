@@ -55,3 +55,14 @@
 {{notes}}
 
 - [ ] Tests are covering the bug fix or the new feature
+
+<!-- Filled in for you. The login comes from the `origin` remote of this clone,
+     which `pdkit init` already read, so there is nothing to type and nothing to
+     keep in step. When no login can be established the clause is left out
+     rather than rendered empty: a footer may say less than usual, and must
+     never name somebody who did not look.
+
+     It is stated at all because a reviewer is entitled to know how a change
+     reached them, and because the second half is the part that matters — a
+     named person read this before it was opened. -->
+<sub>Prepared with podman-desktop-kit (Claude Code Plugin){{reviewedBy}}</sub>

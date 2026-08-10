@@ -25,7 +25,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -185,5 +185,95 @@ describe('validateSections', () => {
 
   test('an unknown template is an error', async () => {
     await assert.rejects(() => validateSections('nope', ''), /no template named/);
+  });
+});
+
+// The attribution footer, and the reason it is not simply a value the caller
+// passes. Every place that renders a PR body would otherwise have to know how
+// to find a GitHub login, and the day one of them forgets is the day a raw
+// `{{reviewedBy}}` reaches an upstream reviewer.
+describe('implicit values', () => {
+  /** A gh runner that answers one thing and records that it was asked. */
+  const fakeGh = (stdout, calls = []) =>
+    Object.assign(
+      (file, args, options, callback) => {
+        calls.push(args);
+        queueMicrotask(() => callback(null, stdout, ''));
+        return { stdin: { end: () => {} } };
+      },
+      { calls },
+    );
+
+  test('the footer names the fork owner without being told to', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  fork: jdoe/podman-desktop\n');
+    const values = await fillAll('prBody');
+    delete values.reviewedBy;
+
+    const text = await render('prBody', values, { home, stripComments: true });
+
+    assert.match(text, /Prepared with podman-desktop-kit \(Claude Code Plugin\), reviewed by @jdoe/);
+  });
+
+  // The clone already knows. Asking GitHub as well would be a network round
+  // trip for an answer sitting in a file, and would fail offline.
+  test('it does not ask GitHub when the config can answer', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  fork: jdoe/podman-desktop\n');
+    const exec = fakeGh('someone-else\n');
+    const values = await fillAll('prBody');
+    delete values.reviewedBy;
+
+    await render('prBody', values, { home, exec });
+
+    assert.deepEqual(exec.calls, [], 'gh was called with the answer already in hand');
+  });
+
+  test('it falls back to the authenticated user when the fork slug is empty', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  fork: ""\n');
+    const exec = fakeGh('octocat\n');
+    const values = await fillAll('prBody');
+    delete values.reviewedBy;
+
+    const text = await render('prBody', values, { home, exec, stripComments: true });
+
+    assert.deepEqual(exec.calls[0], ['api', 'user', '--jq', '.login']);
+    assert.match(text, /reviewed by @octocat/);
+  });
+
+  // The failure worth designing for. A footer may say less than usual; it must
+  // never name somebody who did not look, and must never print a bare `@`.
+  test('with no login at all the clause is left out, not left empty', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  fork: ""\n');
+    const exec = (file, args, options, callback) => {
+      queueMicrotask(() => callback(Object.assign(new Error('gh: not logged in'), { code: 1 }), '', ''));
+      return { stdin: { end: () => {} } };
+    };
+    const values = await fillAll('prBody');
+    delete values.reviewedBy;
+
+    const text = await render('prBody', values, { home, exec, stripComments: true });
+
+    assert.match(text, /Prepared with podman-desktop-kit \(Claude Code Plugin\)<\/sub>/);
+    assert.doesNotMatch(text, /reviewed by/);
+    assert.doesNotMatch(text, /@\s*<\/sub>/, 'a dangling @ reached the body');
+  });
+
+  test('an explicit value wins over the lookup', async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  fork: jdoe/podman-desktop\n');
+    const values = { ...(await fillAll('prBody')), reviewedBy: ', reviewed by @someone' };
+
+    const text = await render('prBody', values, { home, stripComments: true });
+
+    assert.match(text, /reviewed by @someone/);
+    assert.doesNotMatch(text, /@jdoe/);
+  });
+
+  // A plan has no attribution footer, and rendering one must not pay for the
+  // lookup that the PR body is the only artefact to need.
+  test('a template that does not ask for it resolves nothing', async () => {
+    const exec = fakeGh('octocat\n');
+
+    await render('plan', await fillAll('plan'), { home, exec });
+
+    assert.deepEqual(exec.calls, []);
   });
 });
