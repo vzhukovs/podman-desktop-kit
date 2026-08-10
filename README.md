@@ -9,8 +9,9 @@ It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
 > **Status: 0.1.0, a proof of concept.** Two routes have gone end to end to a
-> published upstream pull request. The plugin has never been installed *as a
-> plugin* by anyone, so most of its skills have never been invoked as `/pd:*`.
+> published upstream pull request, and most of the workflow was driven through
+> `pdkit` in a terminal rather than through `/pd:*` in a session — so twenty of
+> the twenty-one skills have never run.
 > [Status and limitations](#status-and-limitations) has the full accounting, with
 > evidence per line.
 
@@ -134,12 +135,14 @@ puts one there — a journal entry, or an artefact you can point at.
 | Reviewing other people's pull requests | two reports, `REQUEST_CHANGES` and `APPROVE_WITH_NITS` |
 | The gate firing as a hook rather than as a function | a `denied` journal entry from a handler the host launched |
 | Slicing from a published pull request, and the archaeology behind `redo` | dry runs against upstream PRs, no writes |
+| The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
 
 **Never executed, in order of risk:**
 
 | What | Why it matters |
 |---|---|
-| **The plugin as a plugin.** It has never been installed; exactly one skill has ever been invoked | The gate logic is covered by a self-test that spawns the handler the way the host does. What is untested is whether the other five hook events fire, whether skills are invocable as `/pd:*`, and whether agents dispatch by name |
+| **Twenty of the twenty-one skills**, and installing from a marketplace rather than a directory | Skill bodies are prose, which is the half of this plugin nothing covers; and a catalogue install is a different code path from `--plugin-dir` |
+| **Four of the six hook events**, and agent dispatch by name | `pre-bash` has one genuine firing and `pre-write` is exercised through the manifest. The rest have only ever been spawned by a self-test, which proves the handler works and not that the host calls it |
 | **Cutting into several slices, stacking, and `cascade`** | The densest machinery in the plugin. The only live graph was one slice |
 | **`pr-sync` end to end**, including the two GraphQL mutations | They need somebody else's review thread; synthetic material would be self-confirmation |
 | **`close --finish` and the transition to `merged`** | The rollup that distinguishes a three-slice issue from a one-slice one has never fired |

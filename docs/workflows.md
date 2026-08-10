@@ -37,8 +37,9 @@ by tests. **What has been proven against a live repository is narrower**, and th
 difference is worth knowing before trusting a step — section 13 of
 [`specification.md`](specification.md) keeps the full accounting, with evidence
 per row. In short: the `quickfix` and `standard` routes have each gone end to end
-to a published upstream pull request, and the plugin has never been installed *as
-a plugin*, so twenty of its twenty-one skills have never been invoked as `/pd:*`.
+to a published upstream pull request, and almost all of that was driven through
+`pdkit` in a terminal — so twenty of the twenty-one skills below have never been
+invoked as `/pd:*`.
 
 ## Before anything
 

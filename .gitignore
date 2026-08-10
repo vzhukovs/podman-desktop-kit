@@ -1,3 +1,27 @@
+# Dependencies. The plugin is zero-dependency at runtime; this is only ever
+# tooling installed locally.
 node_modules/
+*.tgz
+
+# Design notes kept outside the published repository. They are the working
+# record behind docs/specification.md, in a different language and with local
+# absolute paths in them; the specification is the version meant to be read.
+specs/
+
+# Editors and IDEs.
+.idea/
+.vscode/
+*.swp
+
+# macOS.
 .DS_Store
+
+# Scratch output. Playwright MCP writes console logs beside the working
+# directory it was invoked from, which is this repository often enough to matter.
+.playwright-mcp/
+coverage/
 *.log
+
+# Personal Claude Code settings. The shared ones belong in the repository; the
+# local overrides are yours.
+.claude/settings.local.json

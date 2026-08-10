@@ -1,0 +1,46 @@
+name: Feature request
+description: Something the workflow should do and does not.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: situation
+    attributes:
+      label: The situation this comes from
+      description: >
+        A real one, ideally with the upstream issue or pull request number. The
+        two scenarios this plugin struck from its own plan were struck because
+        the upstream population turned out not to contain them, and that is the
+        cheapest way for a feature request to be answered well.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: Including "nothing, I gave up on that issue" — that is the strongest version of this field.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you think should happen
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which half of the plugin is this
+      description: >
+        Anything that must be *true* belongs in `lib/`, where it can be tested.
+        Anything that needs *judgement* belongs in a skill or an agent. Guessing
+        wrong is fine — the answer is often the interesting part of the
+        discussion.
+      options:
+        - A fact something could measure (deterministic, belongs in pdkit)
+        - A judgement (belongs in a skill or an agent)
+        - Not sure
+    validations:
+      required: true

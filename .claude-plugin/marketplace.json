@@ -2,13 +2,29 @@
   "name": "podman-desktop-kit",
   "description": "Tooling for contributing to podman-desktop from a fork: issue triage, planning, slicing work into atomic pull requests, and review.",
   "owner": {
-    "name": "Vladyslav Zhukovskyi"
+    "name": "Vladyslav Zhukovskyi",
+    "url": "https://github.com/vzhukovs"
   },
   "plugins": [
     {
       "name": "pd",
       "source": "./",
-      "description": "Workflow kit for working upstream issues in podman-desktop: triage, plan, slice into atomic PRs, review."
+      "displayName": "Podman Desktop Kit",
+      "description": "Workflow kit for working upstream issues in podman-desktop: triage, plan, slice into atomic PRs, review.",
+      "author": {
+        "name": "Vladyslav Zhukovskyi"
+      },
+      "homepage": "https://github.com/vzhukovs/podman-desktop-kit",
+      "repository": "https://github.com/vzhukovs/podman-desktop-kit",
+      "license": "Apache-2.0",
+      "category": "development",
+      "keywords": [
+        "podman-desktop",
+        "workflow",
+        "upstream",
+        "pull-request",
+        "code-review"
+      ]
     }
   ]
 }

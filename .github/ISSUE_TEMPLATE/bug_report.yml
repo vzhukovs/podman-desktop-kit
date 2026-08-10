@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in the plugin behaved differently from what it says it does.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two commands answer most of what anyone would otherwise ask you for. Both
+        are read-only and neither touches GitHub.
+
+  - type: textarea
+    id: version
+    attributes:
+      label: pdkit version
+      description: "`pdkit version` — it prints the commit too, and says `modified` if the checkout is dirty."
+      placeholder: 0.1.0 (1330ef4)
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: pdkit doctor
+      description: >
+        Paste the whole report. Most surprising behaviour turns out to be
+        something this already says: a config layer that did not load, a stale
+        package map, a Playwright server pointed at the wrong port.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: >
+        The command you ran and what it printed, rather than a summary of it.
+        This plugin exists to replace reasoning with reading, and a bug report is
+        not an exception.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: If a document says otherwise, name it — the document may be the bug.
+    validations:
+      required: true
+
+  - type: input
+    id: issue
+    attributes:
+      label: Which upstream issue you were working on
+      description: Optional, and only if it is public. The journal for it often explains the state the plugin was in.
+      placeholder: podman-desktop#18248
+
+  - type: checkboxes
+    id: gate
+    attributes:
+      label: If the report is about the gate refusing or allowing something
+      options:
+        - label: I ran `pdkit doctor --gate-selftest` and pasted the result above.
