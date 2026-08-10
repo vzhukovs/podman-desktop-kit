@@ -65,18 +65,18 @@ describe('parse', () => {
     assert.ok(commands.some((c) => c.program === 'git' && c.args[0] === 'push'));
   });
 
-  // Spec section 8.2. The plugin configures no rewriter, but one installed for
-  // another project hooks the Bash tool globally, and a wrapper that turns
-  // `git push` into `rtk git push` must not become a way past the gate.
+  // A hook installed for another project rewrites commands in this one, since
+  // hooks on the Bash tool are global. A wrapper that turns `git push` into
+  // `<something> git push` must not become a way past the gate.
   test('unwraps wrapper programs and records what was stripped', () => {
-    const [command] = parse('rtk git push origin main');
+    const [command] = parse('sudo git push origin main');
     assert.equal(command.program, 'git');
     assert.deepEqual(command.args, ['push', 'origin', 'main']);
-    assert.deepEqual(command.wrappers, ['rtk']);
+    assert.deepEqual(command.wrappers, ['sudo']);
   });
 
   test('unwraps nested wrappers', () => {
-    const [command] = parse('env FOO=1 nice rtk git push');
+    const [command] = parse('env FOO=1 nice nohup git push');
     assert.equal(command.program, 'git');
   });
 
@@ -116,7 +116,7 @@ describe('matches', () => {
   });
 
   test('matches a wrapped command', () => {
-    assert.equal(matches('rtk git push', 'git', ['push']), true);
+    assert.equal(matches('nohup git push', 'git', ['push']), true);
   });
 
   test('matches a multi-token prefix', () => {
@@ -198,7 +198,7 @@ describe('shapes the contract did not name', () => {
   // the first token after the wrapper would read the program as "-n1".
   test('looks past a wrapper own options', () => {
     assert.equal(matches('xargs -n1 git push', 'git', ['push']), true);
-    assert.equal(matches('sudo -u someone rtk git push', 'git', ['push']), true);
+    assert.equal(matches('sudo -u someone nohup git push', 'git', ['push']), true);
   });
 
   test('survives an unterminated quote and an unterminated substitution', () => {

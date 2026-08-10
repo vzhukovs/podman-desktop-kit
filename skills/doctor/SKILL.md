@@ -67,8 +67,6 @@ Do not offer to "fix" these — say what they mean and let the user decide:
   shipped default. Lists replace rather than merge, so one copied by `init` and
   never edited stays at the value shipped that day; delete the key to follow the
   default again, or extend it deliberately.
-- **`ponytail:hooks`** — a global ponytail hook reaches every agent, including
-  the implementer, which is where its disposition argues with the plan.
 
 ## When something is red
 

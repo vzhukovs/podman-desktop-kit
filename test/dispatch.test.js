@@ -193,12 +193,12 @@ describe('the gate', () => {
     assert.equal((await handle(bash(`gh pr create --base main --head ${BRANCH} --title x`))).block, false);
   });
 
-  // Section 8.2: a rewriter must not become a way past the gate.
+  // A wrapper program must not become a way past the gate.
   test('a wrapped push is gated exactly like a bare one', async () => {
-    assert.equal((await handle(bash('rtk git push'))).block, true);
+    assert.equal((await handle(bash('nohup git push'))).block, true);
 
     await gate.open({ issue: 2001, branch: BRANCH, home });
-    assert.equal((await handle(bash('rtk git push'))).block, false);
+    assert.equal((await handle(bash('nohup git push'))).block, false);
   });
 
   test('a chained push is gated', async () => {

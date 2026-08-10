@@ -34,6 +34,7 @@ import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
 import { GATE_PROBES, RETIRED_KEYS, diagnose, gateSelftest, mcpServers, playwrightCdp } from '../lib/doctor.js';
+import { WRAPPERS } from '../lib/hooks/command-parse.js';
 import { create } from '../lib/worktree.js';
 
 let plugin;
@@ -64,12 +65,15 @@ describe('the probe set', () => {
     for (const probe of GATE_PROBES) assert.ok(probe.why, `${probe.command} has no explanation`);
   });
 
-  // Section 8.2: a rewriter must not become a way past the gate, and the ways
-  // past a naive matcher are the ones worth probing.
+  // A wrapper program must not become a way past the gate, and the ways past a
+  // naive matcher are the ones worth probing.
   test('includes the shapes that defeat substring matching', () => {
     const commands = GATE_PROBES.filter((probe) => probe.deny).map((probe) => probe.command);
 
-    assert.ok(commands.some((c) => c.startsWith('rtk ')), 'no wrapped form');
+    // Asked of the wrapper list rather than of one name: the probe set has to
+    // stay honest about what the parser strips, not about what it stripped the
+    // day the probe was written.
+    assert.ok(commands.some((c) => WRAPPERS.includes(c.split(' ')[0])), 'no wrapped form');
     assert.ok(commands.some((c) => c.includes('&&')), 'no chained form');
     assert.ok(commands.some((c) => c.startsWith('(')), 'no subshell form');
     assert.ok(commands.some((c) => c.includes('$(')), 'no substitution form');
@@ -115,7 +119,7 @@ describe('the self-test', () => {
 
       assert.equal(result.status, 'fail');
       assert.match(result.detail, /THE GATE DOES NOT SEE/);
-      assert.match(result.detail, /rtk git push/);
+      assert.match(result.detail, /nohup git push/);
       assert.match(result.detail, /\(git push\)/);
     } finally {
       await writeFile(file, original);
@@ -264,12 +268,10 @@ describe('the validation and config-drift checks', () => {
 });
 
 // `pdkit init` copies the shipped config whole, so a key retired afterwards
-// survives in personal configs looking like a setting somebody chose. Both
-// entries got there that way: `gates.require_states` in 0.6, `tools.rtk` in
-// 0.18 when the output rewriter was measured and dropped.
+// survives in personal configs looking like a setting somebody chose.
 describe('retired config keys', () => {
   test('every entry names the version and says what to do', () => {
-    assert.ok(RETIRED_KEYS.length >= 2);
+    assert.ok(RETIRED_KEYS.length >= 1);
     for (const entry of RETIRED_KEYS) {
       assert.match(entry.key, /^[\w.]+$/);
       assert.match(entry.why, /no longer read \(deleted in \d+\.\d+\)/, `${entry.key} does not say when`);
@@ -280,12 +282,12 @@ describe('retired config keys', () => {
     const home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-retired-'));
 
     try {
-      await writeFile(join(home, 'config.yaml'), 'tools:\n  rtk:\n    enabled: auto\n');
+      await writeFile(join(home, 'config.yaml'), 'gates:\n  require_states:\n    - preflight-green\n');
       const report = await diagnose({ home, pluginRoot: process.cwd() });
       const gates = find(report.checks, 'config:gates');
 
       assert.equal(gates.status, 'warn');
-      assert.match(gates.detail, /tools\.rtk is no longer read/);
+      assert.match(gates.detail, /gates\.require_states is no longer read/);
     } finally {
       await rm(home, { recursive: true, force: true });
     }

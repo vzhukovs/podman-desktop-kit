@@ -59,10 +59,10 @@ Therefore:
 
 ## Over-engineering checklist
 
-The whole of it, used by `pd-plan-critic` and `pd-review-architecture`. Until
-0.19 this was the fallback for an external disposition server; it is now the
-only version, because the served disposition was written for whoever writes the
-code and both of those agents review instead (§8.1).
+The whole of it, used by `pd-plan-critic` and `pd-review-architecture`. It lives
+here, in this repository's own words, rather than being pulled from somewhere at
+run time: a checklist a reviewer cannot read before the review is a checklist
+nobody agreed to.
 
 1. Is this task necessary at all?
 2. Does something in the repository already do it? Check both `packages/main`
@@ -75,8 +75,7 @@ code and both of those agents review instead (§8.1).
    name? Grep every caller of the function being changed. One guard in the
    shared function is a smaller diff than a guard per caller, and it is the
    difference between a fixed bug and a fixed path — the siblings stay broken
-   otherwise. Kept from ponytail on the way out: it was the one rung of that
-   ladder this checklist did not already have.
+   otherwise.
 
 The one thing this checklist must not do is argue with upstream ceremony. SPDX
 headers, sign-offs, scoped commits and detailed check steps look like bureaucracy

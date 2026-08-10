@@ -226,7 +226,7 @@ describe('selectivity', () => {
   });
 
   test('a rule fires through a wrapper and through a chain', () => {
-    assert.equal(fired('rtk git push origin main'), 'push');
+    assert.equal(fired('nohup git push origin main'), 'push');
     assert.equal(fired('pnpm test:unit && git push'), 'push');
     assert.equal(fired('(git add -A)'), 'add-all');
   });
