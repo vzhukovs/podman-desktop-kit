@@ -61,7 +61,7 @@ languages:
 
 # There is no `routing:` block here, and its absence is deliberate. Model
 # selection lives in the `model:` frontmatter of skills and agents — see
-# section 5 of the architecture spec. A skill's own model can only be set
+# section 5 of docs/specification.md. A skill's own model can only be set
 # there, so a second copy in this file would be a lever that moves nothing
 # half the time and disagrees with the frontmatter the rest of it.
 
