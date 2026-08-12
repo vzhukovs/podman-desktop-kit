@@ -612,6 +612,46 @@ describe('the artefact checks', () => {
     assert.match(result.summary, /at least 3/);
   });
 
+  // A step is not a line. Written out, one usually runs to three — the action,
+  // the command, and what should come back — and reading only the first says
+  // the step states no result while the reviewer is looking straight at one.
+  // Found on DESKTOP-18778, where all four steps were reported as vague.
+  test('steps-to-check: the result may sit on the step own continuation lines', async () => {
+    const result = await only('steps-to-check', {
+      prBody: body({
+        steps:
+          '1. Start a container with a long command:\n' +
+          '   `podman run -d --name long-cmd alpine sleep 3600`\n' +
+          '   Expected: the container starts.\n' +
+          '2. Open the Summary tab.\n' +
+          '   Expected: the command wraps inside the pane.\n' +
+          '3. Look at the rest of the card.\n' +
+          '   Expected: every field is still visible.',
+      }),
+    });
+
+    assert.equal(result.status, 'pass', result.output);
+    assert.equal(result.summary, '3 steps, each with an expected result');
+  });
+
+  // The bound on that. Continuation is indentation, because taking everything
+  // up to the next number would let unindented prose further down the section
+  // satisfy a step that says nothing — the exact failure this check is for.
+  test('steps-to-check: unindented prose does not rescue a vague step', async () => {
+    const result = await only('steps-to-check', {
+      prBody: body({
+        steps:
+          '1. Build it\n' +
+          '2. Test the dialog\n' +
+          '3. Look at it\n' +
+          'Afterwards the dialog shows the new label and the list displays it too.',
+      }),
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /3 steps do not read as actions/);
+  });
+
   // "Test the dialog" is not a step. What a reviewer needs is what should
   // happen.
   test('steps-to-check: a step with no expected result fails', async () => {

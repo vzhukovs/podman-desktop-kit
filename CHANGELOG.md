@@ -68,6 +68,19 @@ fixes — see [RELEASING.md](RELEASING.md).
   them. Closing is the last step, so there is no later gate — which argues for
   refusing until the other half is weighed: a gate between a finished issue and
   its terminal state is paid every time and earns its keep almost never.
+- **`steps-to-check` reads a step, not a line.** Written out, a step usually runs
+  to three lines — the action, the command, and what should come back — and the
+  check filtered numbered *lines* and tested only those. A step whose result sat
+  on its own indented line was reported as stating none, while the reviewer was
+  looking straight at it. Found on DESKTOP-18778, where all four steps failed
+  that way and the body was correct.
+  The bound on the fix is the interesting half: continuation is **indentation**,
+  which is what makes a line part of a list item in markdown. Taking everything
+  up to the next number instead would let unindented prose further down the
+  section satisfy a step that says nothing — the exact failure the check exists
+  to catch. This is the third time a check here has been narrower than the thing
+  it claimed to measure, and the second where the fix was scope rather than
+  vocabulary.
 - **`pdkit worktree create` names the branch.** It took `--branch` and nothing
   derived one, so the ordinary call left the tree on a detached HEAD — and the
   first thing that said so was `branch-name` in preflight, which is the step
