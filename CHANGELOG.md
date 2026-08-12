@@ -9,6 +9,50 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`pdkit defer` records what a review thread set aside.** `/pd:pr-sync` has
+  offered four ways to answer a thread since it was written — `accept`,
+  `discuss`, `defer`, `reject` — and three of them led somewhere. Nothing
+  recorded a `defer`, so the decision existed only as whatever the reply happened
+  to say. Found on #18561: after the pull request merged, a reviewer asked what a
+  very long container command does to the display, and the answer — truncation
+  belongs to the renderer, a follow-up issue will be opened — lived in a GitHub
+  comment and nowhere else. `close --finish` would have moved the issue to
+  `merged` without a word about it.
+  - The record is **derived from the journal, not stored**, for the reason
+    `lib/attempts.js` gives for the attempt count, plus one that is particular
+    here: an issue that merges is in a terminal state and a promise made to a
+    reviewer is not, so it has to live somewhere that state cannot erase. The
+    journal is append-only, so `pdkit defer list` still answers afterwards.
+  - `defer new` also drafts the follow-up issue. Opening it stays a human action:
+    `gh issue create` is denied at the hook from every state.
+  - `defer drop` requires `--reason`, on the same grounds as `task unblock`: it
+    is the only record of why something a reviewer raised is not being done.
+- **`pdkit amendment approve|reject|list`.** `amendment new` has always ended by
+  saying "nothing moves until this is approved", and nothing could approve one —
+  an instruction with no way to carry it out, which is the defect
+  `pdkit journal conflict` was written to fix the first time. On DESKTOP-18548 two
+  amendments sat `proposed` for six days while the work ran against a plan neither
+  had changed, and the correction that superseded the first was a blockquote
+  somebody typed at the top of the file.
+  - No state transition. The plan becomes what the amendment says and the work
+    continues against it; what finds the work done against the previous version is
+    `pdkit audit`.
+  - The status is rewritten in the artefact rather than kept only in the journal,
+    because that file is the record of the decision and one saying `proposed`
+    after approval contradicts it. The rewrite is one line: everything a person
+    added by hand is exactly what a re-render would lose.
+
+### Changed
+
+- **`pdkit close` names deferrals that are still open**, and does not block on
+  them. Closing is the last step, so there is no later gate — which argues for
+  refusing until the other half is weighed: a gate between a finished issue and
+  its terminal state is paid every time and earns its keep almost never.
+- `pdkit close --confirmed` reached the usage text, having existed since the
+  answered route landed without appearing in `--help`.
+
 ## [0.1.0] - 2026-08-10
 
 First public release. Stages 0 through 5 of the delivery plan

@@ -31,7 +31,19 @@ spent twice.
 
    - `accept` — we change something;
    - `discuss` — an answer, not a change;
-   - `defer` — a separate issue, named;
+   - `defer` — a separate issue, and **record it**:
+
+     ```
+     pdkit defer new --issue <n> --pr <k> --raised-by <who> --what "<what was set aside>" --url <comment>
+     ```
+
+     Saying "we will open an issue for that" in a reply and leaving it there is
+     how the promise ends up existing only on GitHub, on a pull request that is
+     about to merge. The command writes it to the journal, which is append-only,
+     so it outlives the issue reaching `merged` — and `pdkit close` names it
+     while there is still somebody reading. Once the follow-up exists,
+     `pdkit defer resolve D<k> --issue <n> --follow-up <new issue>`.
+
    - `reject` — we disagree, with the reason, stated once.
 
    A thread flagged **unmapped** — its file belongs to no slice and no task — is

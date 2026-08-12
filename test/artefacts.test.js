@@ -27,7 +27,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkPlan, parsePlan, parseTask } from '../lib/artefacts.js';
+import { checkPlan, parseAmendment, parsePlan, parseTask, setAmendmentStatus } from '../lib/artefacts.js';
 
 /**
  * A plan in template shape, with the pieces a case needs replaced.
@@ -310,5 +310,79 @@ describe('checkPlan', () => {
 
     assert.equal(result.ok, false);
     assert.ok(result.problems.some((problem) => problem.check === 'sections' && problem.detail.includes('Context')));
+  });
+});
+
+// An amendment is the one artefact whose status a command has to change after
+// the fact. Everything else here is written once and read back; this one records
+// a decision that is taken later, by a person, and the file has to agree with it.
+describe('parseAmendment', () => {
+  const amendment = (status = 'proposed') => `# AMENDMENT A2: DESKTOP-18548
+
+- Raised by: validation finding — local reproduction on macOS     <!-- review thread, upstream drift -->
+- Date: 2026-08-06
+- Status: ${status}        <!-- proposed | approved | rejected -->
+
+## What changed upstream or in review
+The instrumentation fired twice, and both reports are false positives.
+`;
+
+  test('reads the id, the issue, what raised it and its status', () => {
+    const parsed = parseAmendment(amendment());
+
+    assert.equal(parsed.id, 'A2');
+    assert.equal(parsed.issue, 18548);
+    assert.equal(parsed.date, '2026-08-06');
+    assert.equal(parsed.status, 'proposed');
+    assert.match(parsed.source, /validation finding/);
+  });
+
+  // The template puts a comment after the value on that line. Reading it as part
+  // of the status is how `proposed <!-- proposed | approved | rejected -->`
+  // becomes a status nothing matches.
+  test('the trailing template comment is not part of the status', () => {
+    assert.equal(parseAmendment(amendment('approved')).status, 'approved');
+  });
+
+  test('a file that is not an amendment parses to empty rather than throwing', () => {
+    const parsed = parseAmendment('# PLAN: DESKTOP-1\n\nnothing here\n');
+
+    assert.equal(parsed.id, '');
+    assert.equal(parsed.issue, null);
+    assert.equal(parsed.status, '');
+  });
+});
+
+describe('setAmendmentStatus', () => {
+  const amendment = `# AMENDMENT A1: DESKTOP-18548
+
+- Raised by: a reviewer
+- Date: 2026-08-06
+- Status: proposed        <!-- proposed | approved | rejected -->
+
+## Why the original plan no longer holds
+The maintainer runs AdGuard, so the telemetry lines prove nothing.
+`;
+
+  test('replaces the status and nothing else', () => {
+    const next = setAmendmentStatus(amendment, 'approved');
+
+    assert.equal(parseAmendment(next).status, 'approved');
+    // Everything a person wrote by hand is the record. Re-rendering from the
+    // template would need values nobody kept, and would drop exactly this.
+    assert.match(next, /The maintainer runs AdGuard/);
+    assert.match(next, /<!-- proposed \| approved \| rejected -->/);
+    assert.equal(next.split('\n').length, amendment.split('\n').length);
+  });
+
+  test('a status outside the vocabulary is refused', () => {
+    assert.equal(setAmendmentStatus(amendment, 'superseded'), null);
+    assert.equal(setAmendmentStatus(amendment, 'APPROVED'), null);
+  });
+
+  // Null rather than an appended line: a caller told "written" about a file with
+  // no status line would report a decision the file does not carry.
+  test('a file with no status line returns null instead of gaining one', () => {
+    assert.equal(setAmendmentStatus('# AMENDMENT A1: DESKTOP-1\n\nno status here\n', 'approved'), null);
   });
 });

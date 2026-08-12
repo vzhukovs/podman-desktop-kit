@@ -374,6 +374,21 @@ from a produced one. `--resolution` is required for the same reason `--reason` i
 required on `task unblock` and `issue adopt`, and an unknown issue number is
 refused: the journal is append-only, and nothing takes a mistaken entry back.
 
+**A deferral is written the same way, and for a second reason on top of the
+first.** `pdkit defer` records what a review thread set aside — what it was, who
+raised it, on which pull request — and `pdkit defer resolve|drop` records what
+settled it. Nothing can observe a decision to defer, so it needs a person to
+write it; that is the argument a conflict already makes. What is particular here
+is *where* it has to survive. An issue that merges reaches a terminal state, and
+a promise made to a reviewer does not end when the work does. Storing it on the
+issue would put it in a record whose whole purpose is to say the issue is
+finished, and would need a second writer for `state.json`. The journal is
+append-only, so an entry outlives the state it was written under — which is the
+only property that makes the promise worth recording at all. The vocabulary is
+closed the same way: `deferred`, `deferral-resolved`, `deferral-dropped`, and
+`--reason` is required to drop one, because that sentence is the only record of
+why something a reviewer raised is not being done.
+
 What the journal adds over state: **`state.json` knows *where*, the journal knows
 *why*.** "Why is slice #2 stacked rather than branched from main" is recoverable
 six months later only from here.
@@ -844,10 +859,15 @@ digest rather than by keeping more.
    that maps to nothing is a signal: either the reviewer found a requirement the
    plan did not have, or they did not understand the PR. Both are valuable.
 4. **Classification**: `accept` (fix it) / `discuss` (needs an answer, not a fix)
-   / `defer` (separate issue) / `reject` (reasoned disagreement).
+   / `defer` (separate issue) / `reject` (reasoned disagreement). A `defer` is
+   recorded by `pdkit defer new`, not by the reply that mentions it — see 2.3.
 5. If an `accept` changes the plan, `amendments/A<k>.md` is generated with the new
    or changed R-ID and the affected slices, **and it goes to the human for
-   approval**.
+   approval** — `pdkit amendment approve` or `reject --reason`. Approval moves no
+   state: the plan becomes what the amendment says and the work continues against
+   it, and what finds the work done against the previous version is `pdkit audit`.
+   Until somebody decides, the amendment is a proposal and the plan has not
+   moved, which is what `pdkit amendment list` says out loud.
 6. `pd-thread-resolver` per thread, in parallel, each within its own files.
 7. Cascade: if a fix touched a slice others are stacked on, `pdkit slice cascade`
    rebases the dependents and re-runs verification; whatever stopped being
@@ -923,6 +943,14 @@ the human's call; `close` writes nothing there itself.
 Two mechanical steps: cleaning up the issue's working trees (`worktree remove`,
 refusing on an unmerged branch), and **the transition to `merged` only on the
 `prs.json` rollup**. An unclosed PR produces a refusal listing the numbers.
+
+**Deferrals still open are named, and do not block.** Closing is the last step,
+so there is no later gate to catch them at — which reads as an argument for
+refusing until the other half is weighed: a gate standing between a finished
+issue and its terminal state is paid every time and earns its keep almost never,
+and that is the reasoning `unverified` already settled. What keeps the promise is
+not the gate but the journal: `pdkit defer list` still answers after the issue is
+`merged`.
 
 ### `/pd:review-pr <pr#>` — reviewing somebody else's pull request
 

@@ -14,6 +14,7 @@ names the commands and the decision points that stay yours.
   · [an answer instead of a diff](#6-an-issue-that-ends-in-an-answer)
 - **Part III — [Living with an open pull request](#part-iii--living-with-an-open-pull-request)**
   · [a stale PR](#7-a-pull-request-that-has-gone-stale)
+  · [feedback after the merge](#7a-feedback-that-arrives-after-the-merge)
   · [coming back after a break](#8-coming-back-after-a-break)
   · [the reviewer rejected the approach](#9-the-reviewer-rejected-the-approach-not-the-diff)
   · [a PR replaced by another](#10-a-pull-request-replaced-by-another)
@@ -337,6 +338,68 @@ Publishing takes two tokens, because they are two different acts of consent:
 pdkit gate open --issue 17221 --branch <b>              push, per branch, spent on use
 pdkit gate open --issue 17221 --pr 17577 --kind reply   replies, per PR, covers the batch
 ```
+
+## 7a. Feedback that arrives after the merge
+
+The pull request is merged and a reviewer asks something anyway. It happens, and
+it is not a defect in anybody's process: on #18561 the question came a week after
+the merge and was a good one — what does a very long container command do to the
+display?
+
+There is nothing to push, so `/pd:pr-sync` has nothing to drive. What is left is
+a decision, and the decision has to survive the issue closing.
+
+```
+pdkit defer new --issue 18248 --pr 18561 --raised-by simonrey1 \
+  --what "a very long container command may break the interface display; it needs an ellipsis plus a tooltip in the renderer" \
+  --url https://github.com/podman-desktop/podman-desktop/pull/18561#issuecomment-5266241008
+```
+
+That writes a journal entry and drafts the follow-up issue under
+`deferrals/D1.md`. **Opening the issue is yours** — `gh issue create` is denied
+at the hook from every state.
+
+**Why this is a new issue rather than a wider pull request.** The one that merged
+fixed a conversion in the logic: the container command was not being joined.
+Truncation, an ellipsis and a tooltip are the renderer's. Putting both in one
+pull request would have made a one-line fix into a UI change, sent it to a second
+domain owner for review, and given preflight a slice spanning two layers to warn
+about. "Out of scope" is not the argument; **the layer is**, and it is the
+argument that survives being read by the reviewer who raised the point.
+
+Then close the issue that is actually finished:
+
+```
+pdkit close 18248 --finish
+```
+
+It **warns rather than refuses**:
+
+```
+  ! D1 is still open, and closing does not settle it:
+      a very long container command may break the interface display … — simonrey1, #18561
+      https://github.com/podman-desktop/podman-desktop/pull/18561#issuecomment-5266241008
+      `pdkit defer resolve D1 --issue 18248 --follow-up <n>` when you open one.
+DESKTOP-18248 is merged
+```
+
+Closing is the last step, so there is no later gate this could be caught at —
+which sounds like an argument for refusing until you notice the other half: a
+gate standing between a finished issue and its terminal state gets paid every
+time and earns its keep almost never. What keeps the promise is not the gate. It
+is that the journal is append-only, so `pdkit defer list --issue 18248` still
+answers after the issue is `merged`, and `pdkit journal --issue 18248` still has
+the line.
+
+```
+pdkit defer list --issue 18248            # what is outstanding
+pdkit defer list --issue 18248 --all      # including what has been settled
+pdkit defer resolve D1 --issue 18248 --follow-up 18604
+pdkit defer drop D1 --issue 18248 --reason "asks about a code path the fix removed"
+```
+
+`drop` takes a reason for the same purpose `task unblock` does: it is the only
+record of why something a reviewer raised is not being done.
 
 ## 8. Coming back after a break
 
