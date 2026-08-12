@@ -427,6 +427,37 @@ describe('judging a red job', () => {
     assert.equal(verdict.verdict, 'flake');
   });
 
+  // The shape the comment above always named and the code could not report. A
+  // job that failed and was re-run green has a CURRENT conclusion of success, so
+  // while the flake test sat below `if (GREEN) return pass` the only flake
+  // reachable was one still red — which is the rarer half. Found on #18779,
+  // where three jobs went red, two re-runs turned them green, and the report
+  // said pass.
+  //
+  // Whether a job disagreed with itself is a fact about the commit, not about
+  // what it says at the moment somebody looks.
+  test('a job that was red and is now green, after a re-run, is still a flake', () => {
+    const verdict = pr.judge(check('SUCCESS'), {
+      runs: [
+        { name: 'Windows', conclusion: 'FAILURE' },
+        { name: 'Windows', conclusion: 'SUCCESS' },
+      ],
+    });
+    assert.equal(verdict.verdict, 'flake');
+  });
+
+  // And the bound: agreeing with itself twice is not a flake, however many runs
+  // there are. Otherwise every re-run of a green job would report one.
+  test('a job that answered the same way twice is not a flake', () => {
+    const verdict = pr.judge(check('SUCCESS'), {
+      runs: [
+        { name: 'Windows', conclusion: 'SUCCESS' },
+        { name: 'Windows', conclusion: 'SUCCESS' },
+      ],
+    });
+    assert.equal(verdict.verdict, 'pass');
+  });
+
   test('the rollup is the worst thing any job said', () => {
     const jobs = (...verdicts) => verdicts.map((verdict) => ({ verdict }));
 
@@ -605,7 +636,14 @@ describe('refreshing from GitHub', () => {
 
   // A green pull request has no red job to explain, so it should not pay for
   // the population read that only a red job needs.
-  test('a green run does not go looking for peers', async () => {
+  //
+  // The per-commit runs are the other way round, and this test used to assert
+  // the opposite. Skipping them while nothing is red asks "did this job answer
+  // twice" exactly when the answer must be no, because the ordinary flake is
+  // red, re-run, green — nothing is red by the time anyone looks. Measured on
+  // #18779: three jobs red, two re-runs, and the report said pass until this
+  // fetch became unconditional.
+  test('a green run does not go looking for peers, but does read the commit runs', async () => {
     await pr.register({ issue: ISSUE, number: 17577, home });
 
     const seen = [];
@@ -628,7 +666,10 @@ describe('refreshing from GitHub', () => {
     });
 
     assert.ok(!seen.some((argv) => argv.includes('pr list')), 'the peer population was read for nothing');
-    assert.ok(!seen.some((argv) => argv.includes('check-runs')));
+    assert.ok(
+      seen.some((argv) => argv.includes('check-runs')),
+      'a flake is invisible unless the runs are read while the checks are green',
+    );
   });
 });
 

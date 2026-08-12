@@ -68,22 +68,29 @@ fixes — see [RELEASING.md](RELEASING.md).
   them. Closing is the last step, so there is no later gate — which argues for
   refusing until the other half is weighed: a gate between a finished issue and
   its terminal state is paid every time and earns its keep almost never.
-- **Flake detection could never have fired, and now can.**
-  `checkRunsForCommit` asked GitHub for a commit's check runs without
-  `filter=all`, and that endpoint defaults to `filter=latest` — one run per check
-  name. So after a re-run the failure is gone and the caller sees exactly what
-  `gh pr view` shows, which is the thing this function exists not to see. The
-  flake test downstream compares two answers for one job on one commit; with the
-  default it was comparing a single run against itself.
-  Measured on #18779, where three jobs went red and two re-runs turned them
-  green: `filter=latest` returns 1 run for `k8s sanity e2e tests`, `filter=all`
-  returns 3 — two successes and the failure. Section 13 has listed flake
-  detection as never having fired live, and this is why.
-  The test that should have caught it was already there and named for it, and it
-  stubbed the response: it proved the parser handled two runs, never that the
-  request asked for them. It now asserts the argv, which fails against the old
-  code. Same shape as the environment-variable test corrected in 0.1.0 — a test
-  that only ever proved its own fixture.
+- **Flake detection fires. It never had, and three defects were in the way** —
+  each alone enough to silence it, each found by watching it stay silent through
+  a real flake on #18779.
+  1. `checkRunsForCommit` asked for a commit's check runs without `filter=all`,
+     and that endpoint defaults to `filter=latest`: one run per check name, so
+     after a re-run the failure is simply absent. On that commit `latest` returns
+     1 run for `k8s sanity e2e tests` and `all` returns 3.
+  2. `refresh` fetched those runs only when a check was *currently* red — asking
+     "did this job answer twice" exactly when the answer has to be no, since the
+     ordinary flake is red, re-run, green. Now unconditional: one REST call
+     against a measured budget of 32 points out of an hourly 5000 for a ten-PR
+     sweep, and a verdict nobody can reach is not a saving.
+  3. `judge` returned `pass` on a green conclusion before comparing the runs, so
+     the only flake reachable was one still red — while the comment beside it
+     named the opposite case. Whether a job disagreed with itself is a fact about
+     the commit, not about what it says when somebody looks.
+  With all three fixed, `pdkit pr ci 18779` reports `flake` on five jobs: the
+  three that were re-run and two whose red run nobody had noticed.
+  The test that should have caught the first was present and named for it, and it
+  stubbed the response — it proved the parser kept two runs, never that the
+  request asked for them. It now asserts the argv, and fails against the old
+  code. Second time here a test proved its own fixture rather than the behaviour
+  it was named for.
 - **`steps-to-check` reads a step, not a line.** Written out, a step usually runs
   to three lines — the action, the command, and what should come back — and the
   check filtered numbered *lines* and tested only those. A step whose result sat

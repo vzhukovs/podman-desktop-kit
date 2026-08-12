@@ -1589,6 +1589,7 @@ you can point at.**
 | **The gate as a hook, not as a function** | a `denied` journal entry on 2026-08-02 for `git push --dry-run`: the refusal came from a handler the host launched, not from a test |
 | **Scenarios 12 and 13 and the machine half of `redo`**, by dry run against other people's upstream PRs | `slice suggest --from-pr 18434` → a five-slice graph by layer with a `merge-base` base; both public-API refusals fired on a real `extension-api.d.ts` diff; `issue history 17873` produced the correct pair #17976 ↔ #18323 and reviewer quotes from the real attempt |
 | **The plugin loads as a plugin, and a skill is invocable as `/pd:*`** | 2026-08-10: `claude --plugin-dir . -p "/pd:doctor"` against the fork returned the full doctor report, so the manifest loads, the skill body runs, and `bin/` reaches the Bash tool's `PATH` — `pdkit` resolved as a bare command. `claude plugin validate . --strict` passes |
+| **Flake detection** | 2026-08-13 on [#18779](https://github.com/podman-desktop/podman-desktop/pull/18779): three jobs went red on an Electron install failure, two re-runs turned them green, and `pdkit pr ci` reports `flake` on five — the three plus two whose red run nobody had noticed. It had never fired before because it could not: three separate defects sat between it and its data (below) |
 
 ### Never executed, in order of risk
 
@@ -1607,6 +1608,38 @@ you can point at.**
 
 None of these blocks the work: each closes with the next issue of the right kind
 rather than with a dedicated task.
+
+### A verdict that could not be reached, in three layers
+
+Flake detection sat in the "never executed" table from the first version, and the
+reason was assumed to be a shortage of flakes. It was not. Between the check and
+its data were three defects, each of which alone was enough to silence it, and
+each found only by watching the real thing fail to happen on #18779.
+
+1. **The data was never requested.** `checkRunsForCommit` read a commit's check
+   runs without `filter=all`, and that endpoint defaults to `filter=latest` — one
+   run per check name. After a re-run the failure is simply absent. Measured on
+   one commit: `latest` returns 1 run for `k8s sanity e2e tests`, `all` returns 3.
+2. **The data was requested only when it could not help.** `refresh` fetched the
+   per-commit runs only when some check was *currently* red — that is, it asked
+   "did this job answer twice" exactly when the answer had to be no, because the
+   ordinary flake is red, re-run, green, and nothing is red by the time anyone
+   looks.
+3. **The verdict was unreachable even with the data.** `judge` returned `pass` on
+   a green conclusion before it ever compared the runs, so the only flake it
+   could have reported was one still red — while the comment beside it named the
+   opposite case, "a re-run that went green is exactly what hides this".
+
+The test that should have caught the first was present and named for it, and it
+stubbed the response: it proved the parser kept two runs, never that the request
+asked for them. That is the second time here a test proved its own fixture rather
+than the behaviour it was named for.
+
+The general shape is worth keeping, because it has now cost three findings in one
+day: **a check that never fires is not evidence that the condition never occurs.**
+Silence is the one result that looks identical whether the mechanism works or was
+never wired up, which is why section 13 requires an artefact to *remove* a row and
+not merely the absence of complaints.
 
 ### Measurements that settled a question by refusing to buy something
 
