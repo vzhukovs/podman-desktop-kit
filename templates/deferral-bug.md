@@ -20,6 +20,21 @@
 
 ---
 
+### Title
+
+<!-- The title field at the top of the issue form, not part of the body.
+
+     House style upstream is a plain sentence describing the wrong behaviour, in
+     sentence case, with no prefix and no ticket id — "Kubernetes Pods view
+     appears empty without a loading indicator while refreshing context",
+     "initial setup - 'click next' but the button is off the screen". Titles run
+     long there and that is fine; a title that says what is wrong beats a short
+     one that does not.
+
+     Derived from --what unless --title was given. Rewrite it if the derivation
+     reads like a note to yourself rather than a report to somebody else. -->
+{{title}}
+
 ### Bug description
 
 <!-- What happens, and what was expected instead. The reviewer's words are worth

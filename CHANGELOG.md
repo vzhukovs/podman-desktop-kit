@@ -32,7 +32,11 @@ fixes — see [RELEASING.md](RELEASING.md).
     GitHub UI and the posted issue reads like every other one in the repository
     rather than like something a tool produced. Operating system and version are
     filled in from the machine and the checkout, because a field typed from
-    memory is a field that names last year's OS.
+    memory is a field that names last year's OS. The title has its own heading —
+    it is the form's first field and not part of the body — derived from
+    `--what`, overridable with `--title`, and never truncated: upstream titles
+    run to a hundred characters, and one cut mid-clause says less than a long one
+    while looking finished.
   - Screenshots get one **visible** placeholder per image found under the issue's
     `evidence/` directory. Visible rather than an HTML comment on purpose: a
     comment renders as nothing, so one left unreplaced reaches the issue

@@ -16,6 +16,18 @@
 
 ---
 
+### Title
+
+<!-- The title field at the top of the issue form, not part of the body.
+
+     House style upstream is a verb first — "Add an option to install podman6 on
+     Fedora 44 machines in Testing Farm", "Document button layout convention in
+     `CODE-GUIDELINES.md`", "Migrate direct `Dialog` consumers to `ButtonRow`".
+     Say what should exist, not what is missing.
+
+     Derived from --what unless --title was given. -->
+{{title}}
+
 ### Is your feature request related to a problem? Please describe
 
 <!-- The problem, not the solution — the next field is for the solution. What a

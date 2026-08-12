@@ -18,6 +18,14 @@
 
 ---
 
+### Title
+
+<!-- The title field at the top of the issue form, not part of the body.
+     A verb first, naming the piece of work.
+
+     Derived from --what unless --title was given. -->
+{{title}}
+
 ### Task content
 
 <!-- One clear description. The form has no other fields, so everything a reader

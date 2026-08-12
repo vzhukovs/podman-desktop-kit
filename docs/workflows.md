@@ -367,6 +367,13 @@ field labels, so the posted issue reads like every other one in the repository
 rather than like something a tool produced. The operating system and the version
 are filled in from the machine and the checkout.
 
+**The title comes first**, under its own heading, because it is the first field
+of the form and not part of the body. It is derived from `--what`, and `--title`
+overrides when the two differ — a feature request is titled by what should exist,
+while `--what` records what was set aside. It is never truncated: upstream titles
+run to a hundred characters, and one cut mid-clause says less than a long one
+while looking finished.
+
 Screenshots get **visible placeholders**, one per image found under the issue's
 `evidence/` directory:
 
