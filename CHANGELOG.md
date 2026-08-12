@@ -68,6 +68,17 @@ fixes — see [RELEASING.md](RELEASING.md).
   them. Closing is the last step, so there is no later gate — which argues for
   refusing until the other half is weighed: a gate between a finished issue and
   its terminal state is paid every time and earns its keep almost never.
+- **`pdkit worktree create` names the branch.** It took `--branch` and nothing
+  derived one, so the ordinary call left the tree on a detached HEAD — and the
+  first thing that said so was `branch-name` in preflight, which is the step
+  before the gate. By then there are commits on a detached HEAD and the fix is a
+  branch plus an amend. Found on DESKTOP-18778, exactly that way.
+  `--slug` now derives the name through `ids.branchName`, so the tree starts on
+  the name preflight and the gate will later check against, rather than on one
+  typed twice and spelled differently the second time. Without a slug the tree is
+  still detached — looking around before naming the work is legitimate — but it
+  says so at creation and names the two commands that fix it. The journal entry
+  records which of the two it was.
 - **A reply token can be issued after the pull request has merged.** Found by
   walking into the refusal: a reviewer asked a question on #18561 a week after it
   landed, answering is an ordinary continuation of the same review conversation,

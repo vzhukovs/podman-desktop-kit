@@ -35,6 +35,7 @@ import { join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
 import { create, list, prepare, remove, rootFor, verifyName } from '../lib/worktree.js';
+import { read as readJournal } from '../lib/journal.js';
 
 let repo;
 let home;
@@ -78,6 +79,37 @@ describe('create', () => {
 
     await access(join(result.path, '.env'));
     assert.equal(await readFile(join(result.path, 'packages/main/src/exec.ts'), 'utf8'), await readFile(join(repo, 'packages/main/src/exec.ts'), 'utf8'));
+  });
+
+  // The tree the work actually happens in is the one that needs a branch, and
+  // finding that out at preflight costs an amend: by then there are commits on a
+  // detached HEAD and the gate is the next step. Found on DESKTOP-18778 that way.
+  test('starts on the branch it is given, and says so in the journal', async () => {
+    const result = await create({
+      repoRoot: repo,
+      name: 'wt-on-branch',
+      branch: 'DESKTOP-18778/wrap-long-details-values',
+      issue: 18778,
+      config: config(),
+      home,
+    });
+
+    assert.equal(result.ok, true);
+
+    assert.equal(await git(['rev-parse', '--abbrev-ref', 'HEAD'], result.path), 'DESKTOP-18778/wrap-long-details-values');
+
+    const [entry] = (await readJournal({ issue: 18778 }, { home })).filter((line) => line.event === 'worktree-create');
+    assert.match(entry.detail, /on DESKTOP-18778\/wrap-long-details-values/);
+  });
+
+  // Detached stays available: looking around before naming the work is a
+  // legitimate thing to want, so this reports rather than refuses. What changed
+  // is that the journal says which it was.
+  test('a tree with no branch is recorded as detached', async () => {
+    await create({ repoRoot: repo, name: 'wt-detached', issue: 18779, config: config(), home });
+
+    const [entry] = (await readJournal({ issue: 18779 }, { home })).filter((line) => line.event === 'worktree-create');
+    assert.match(entry.detail, /\(detached\)/);
   });
 
   // Re-running a flow after fixing something is the normal case. A command that
