@@ -136,6 +136,8 @@ puts one there — a journal entry, or an artefact you can point at.
 | The gate firing as a hook rather than as a function | a `denied` journal entry from a handler the host launched |
 | Slicing from a published pull request, and the archaeology behind `redo` | dry runs against upstream PRs, no writes |
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
+| `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal |
+| Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
 
 **Never executed, in order of risk:**
 
@@ -145,7 +147,6 @@ puts one there — a journal entry, or an artefact you can point at.
 | **Four of the six hook events**, and agent dispatch by name | `pre-bash` has one genuine firing and `pre-write` is exercised through the manifest. The rest have only ever been spawned by a self-test, which proves the handler works and not that the host calls it |
 | **Cutting into several slices, stacking, and `cascade`** | The densest machinery in the plugin. The only live graph was one slice |
 | **`pr-sync` end to end**, including the two GraphQL mutations | They need somebody else's review thread; synthetic material would be self-confirmation |
-| **`close --finish` and the transition to `merged`** | The rollup that distinguishes a three-slice issue from a one-slice one has never fired |
 | **`resume` against a real conflict** | No semantic conflict has occurred yet — not for want of trying, but for want of material |
 
 None of it blocks use. Each closes with the next issue of the right kind.
