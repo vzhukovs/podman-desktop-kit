@@ -350,7 +350,7 @@ There is nothing to push, so `/pd:pr-sync` has nothing to drive. What is left is
 a decision, and the decision has to survive the issue closing.
 
 ```
-pdkit defer new --issue 18248 --pr 18561 --raised-by simonrey1 \
+pdkit defer new --issue 18248 --pr 18561 --raised-by simonrey1 --kind bug \
   --what "a very long container command may break the interface display; it needs an ellipsis plus a tooltip in the renderer" \
   --url https://github.com/podman-desktop/podman-desktop/pull/18561#issuecomment-5266241008
 ```
@@ -358,6 +358,26 @@ pdkit defer new --issue 18248 --pr 18561 --raised-by simonrey1 \
 That writes a journal entry and drafts the follow-up issue under
 `deferrals/D1.md`. **Opening the issue is yours** — `gh issue create` is denied
 at the hook from every state.
+
+**The draft is laid out in upstream's own issue form**, so you open the issue
+through the template in the GitHub UI and copy field by field. `--kind` picks
+which form: `bug` (default), `feature` or `task`, matching
+`.github/ISSUE_TEMPLATE/` upstream. The headings in the draft are that form's
+field labels, so the posted issue reads like every other one in the repository
+rather than like something a tool produced. The operating system and the version
+are filled in from the machine and the checkout.
+
+Screenshots get **visible placeholders**, one per image found under the issue's
+`evidence/` directory:
+
+```
+**[SCREENSHOT 1 — replace this line by dragging in `long-cmd-token-summary.png`]**
+```
+
+Visible rather than an HTML comment, deliberately: a comment renders as nothing,
+so one left unreplaced reaches the issue invisibly — the same defect this
+repository has fixed three times elsewhere. Posted unreplaced, that line is
+obvious to you and to the reader.
 
 **Why this is a new issue rather than a wider pull request.** The one that merged
 fixed a conversion in the logic: the container command was not being joined.

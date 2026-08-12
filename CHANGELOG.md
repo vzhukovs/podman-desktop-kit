@@ -25,8 +25,22 @@ fixes — see [RELEASING.md](RELEASING.md).
     here: an issue that merges is in a terminal state and a promise made to a
     reviewer is not, so it has to live somewhere that state cannot erase. The
     journal is append-only, so `pdkit defer list` still answers afterwards.
-  - `defer new` also drafts the follow-up issue. Opening it stays a human action:
-    `gh issue create` is denied at the hook from every state.
+  - `defer new` also drafts the follow-up issue, **in the shape of upstream's own
+    issue form** — `--kind bug|feature|task`, matching
+    `.github/ISSUE_TEMPLATE/` in podman-desktop. The headings are that form's
+    field labels, so the draft is copied field by field into the template in the
+    GitHub UI and the posted issue reads like every other one in the repository
+    rather than like something a tool produced. Operating system and version are
+    filled in from the machine and the checkout, because a field typed from
+    memory is a field that names last year's OS.
+  - Screenshots get one **visible** placeholder per image found under the issue's
+    `evidence/` directory. Visible rather than an HTML comment on purpose: a
+    comment renders as nothing, so one left unreplaced reaches the issue
+    invisibly — the defect already fixed in the `Patch comes off` caveat, the
+    config arrays message and `steps-to-check`. Posted unreplaced, the line is
+    obvious.
+  - Opening the issue stays a human action: `gh issue create` is denied at the
+    hook from every state.
   - `defer drop` requires `--reason`, on the same grounds as `task unblock`: it
     is the only record of why something a reviewer raised is not being done.
 - **`pdkit amendment approve|reject|list`.** `amendment new` has always ended by
