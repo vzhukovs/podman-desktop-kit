@@ -466,6 +466,14 @@ describe('reading a pull request', () => {
       runs.map((run) => run.conclusion),
       ['FAILURE', 'SUCCESS'],
     );
+
+    // And the half this test was missing until #18779, which is the half that
+    // decides whether any of the above ever happens. GitHub defaults this
+    // endpoint to `filter=latest` — one run per check name — so without asking
+    // for all of them the caller receives exactly what `gh pr view` shows, and
+    // the fixture above is a shape the API would never have sent. A test that
+    // stubs the answer proves the parser; only the argv proves the question.
+    assert.match(calls[0].args.at(-1), /[?&]filter=all\b/);
   });
 
   const threadPage = (nodes, hasNextPage = false, endCursor = null) =>
