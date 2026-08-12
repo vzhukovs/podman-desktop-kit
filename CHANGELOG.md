@@ -68,6 +68,15 @@ fixes — see [RELEASING.md](RELEASING.md).
   them. Closing is the last step, so there is no later gate — which argues for
   refusing until the other half is weighed: a gate between a finished issue and
   its terminal state is paid every time and earns its keep almost never.
+- **A reply token can be issued after the pull request has merged.** Found by
+  walking into the refusal: a reviewer asked a question on #18561 a week after it
+  landed, answering is an ordinary continuation of the same review conversation,
+  and the gate said the issue was merged and refused. That is the failure section
+  6 names for the tracker rules — a gate that cannot open is worse than a refusal
+  that says what to do — except here no route says a human posts it instead,
+  because replying on your own pull request is what `pdkit pr reply` is for.
+  **It widens nothing about publishing code:** `push` is still one state, and a
+  reply key cannot be found for a push.
 - `pdkit close --confirmed` reached the usage text, having existed since the
   answered route landed without appearing in `--help`.
 

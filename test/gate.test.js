@@ -311,7 +311,24 @@ describe('kinds of write', () => {
     await readyIssue(1053);
     const reply = await open({ issue: 1053, pr: 2871, kind: 'reply', home });
     assert.equal(reply.ok, false);
-    assert.match(reply.error, /reply token is only issued from pr-open, review-in-progress/);
+    assert.match(reply.error, /reply token is only issued from pr-open, review-in-progress, merged/);
+  });
+
+  // A reviewer asking a question a week after the merge is an ordinary
+  // continuation of the same conversation, and the gate used to refuse it — the
+  // failure section 6 names for the tracker rules, except here there is no route
+  // saying a human posts it instead.
+  test('a reply token is issued after the pull request has merged', async () => {
+    await openedPr(1058);
+    await transition(1058, 'merged', { home, reason: 'the pull request landed' });
+
+    const reply = await open({ issue: 1058, pr: 18561, kind: 'reply', home });
+    assert.equal(reply.ok, true, reply.error);
+
+    // And it still authorises only a sentence. Keys of different kinds are not
+    // found for one another, which is the hole stage 4 closed.
+    assert.equal((await verify({ pr: 18561, kind: 'reply', home })).valid, true);
+    assert.equal((await verify({ branch: 'DESKTOP-1058/x', kind: 'push', home })).valid, false);
   });
 
   test('a token for one pull request does not cover another', async () => {
