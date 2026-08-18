@@ -346,7 +346,7 @@ prefix:
 ```
 2026-07-30T14:02:11Z  issue:12345  slice:2  event:plan-approved   R1,R2,R3 frozen
 2026-07-30T15:41:03Z  issue:12345  slice:2  event:conflict-semantic  upstream a3f21e touched exec.ts; plan amended A1
-2026-07-31T09:12:44Z  issue:12908  —        event:route  quickfix (14 lines, 2 files)
+2026-07-31T09:12:44Z  issue:12908  —        event:triaged  one-line conversion, cause and fix named by the reporter
 ```
 
 The per-issue view is generated, not stored: `pdkit journal --issue 12345`.
@@ -1543,6 +1543,19 @@ Stated here rather than discovered later.
    nothing prevents it, because silently re-extending a list somebody edited
    would be worse.
 
+10. **A type-change refactor has no slice graph, by construction.** A slice is
+    independent when it builds standalone from `main`; changing the type a store
+    holds happens on one line, and every consumer stops typechecking at that
+    instant. So the answer is always one slice, and `/pd:slice` can only confirm
+    there is no graph rather than choose one — the densest machinery in the
+    plugin has nothing to do on a whole class of issue. Found on 18832, where the
+    first plan proposed two slices and the second withdrew to one after review.
+    This is not the same as scenario 8, which was struck because upstream does
+    not contain bulk cross-package refactors; this kind is common and the machine
+    simply has no work on it. The cost is a plan that reasons about a cut which
+    cannot exist, which is why `Slice hypothesis` is worth writing even when the
+    honest content is "one, and here is why no cut is possible".
+
 ---
 
 ## 12. Delivery order
@@ -1591,15 +1604,18 @@ you can point at.**
 | **The plugin loads as a plugin, and a skill is invocable as `/pd:*`** | 2026-08-10: `claude --plugin-dir . -p "/pd:doctor"` against the fork returned the full doctor report, so the manifest loads, the skill body runs, and `bin/` reaches the Bash tool's `PATH` — `pdkit` resolved as a bare command. `claude plugin validate . --strict` passes |
 | **`close --finish`, the invariant-4 rollup, and the transition to `merged`** | 18248, 2026-08-12: `pr refresh` observed a merge made in the browser and journalled `pr-merged #18561 observed by refresh` once; `close --finish` then read the rollup (1 merged, 0 open, 0 closed) and wrote `event:merged 1 pull request(s) merged`, with `pr-open -> merged` in the state history. Worktree removal refused in the same run, correctly: the branch had merged upstream but not into the local base |
 | **Flake detection** | 2026-08-13 on [#18779](https://github.com/podman-desktop/podman-desktop/pull/18779): three jobs went red on an Electron install failure, two re-runs turned them green, and `pdkit pr ci` reports `flake` on five — the three plus two whose red run nobody had noticed. It had never fired before because it could not: three separate defects sat between it and its data (below) |
+| **Skills run as `/pd:*`, and agents dispatched by name** | 18832, 2026-08-18: `/pd:doctor`, `/pd:sync`, `/pd:plan` and `/pd:plan-review` all ran through a session, from the plugin as enabled in `settings.json` rather than from `--plugin-dir`. `/pd:plan` dispatched four `pd:pd-scout` agents on different questions and `/pd:plan-review` dispatched `pd:pd-plan-critic`; `research.md`, `plan.md`, seventeen task files and `plan-review.md` are what they produced |
+| **The adversarial gate changing an outcome** | Same issue: `plan check` was green, and `pd-plan-critic` returned three must-change findings anyway — one of them a task made unimplementable by the plugin's own `Owns` exclusivity rule. The issue went `planned` → `triaged` → replanned → `planned`, with the second plan at seventeen tasks against the first one's thirteen. The first time review sent a plan back rather than agreeing with it |
+| **The gate under deliberately widened permissions** | 2026-08-18: a session started with `--allowedTools Bash` was refused `git push --dry-run origin main` by the `pre-bash` handler the host launched, journalled as `event:denied`. Granting a tool does not disable the hook — which is the question that had to be answered before any run was given write access |
+| **A deferral raised and retracted outside review** | 18832: `defer new` recorded a postponement decided at *planning* time, with no `--pr` to hang it on, and `defer drop` retracted it with a reason once `plan-review` disproved the argument it rested on. Both are journal entries; the machinery is not specific to a review thread |
 
 ### Never executed, in order of risk
 
 | What | Why it is not a detail |
 |---|---|
-| **The plugin as installed from a marketplace.** It loads from `--plugin-dir`, and no marketplace has ever carried it | Loading from a directory and installing from a catalogue are different code paths, and the second is the one every user will take |
-| **Twenty of the twenty-one skills.** Only `doctor` has been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
-| **Four of the six hook events.** `pre-bash` has one genuine firing in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host |
-| **Agent dispatch by name.** No `pd-*` agent has been launched by a skill through a session | Every measured run drove `bin/pdkit` directly, so the agents that carry the judgement half have run only as prompts a human pasted |
+| **The plugin as installed from a catalogue over the network.** It now loads from a marketplace entry in `settings.json` — but that entry's source is a local directory | Half the row closed on 18832: the manifest is found through `extraKnownMarketplaces` plus `enabledPlugins`, not only through `--plugin-dir`, and skills and agents resolve from it. What is still untested is the fetch: a marketplace pulled from a remote repository, which is the path every other user takes |
+| **Seventeen of the twenty-one skills.** `doctor`, `sync`, `plan` and `plan-review` have been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
+| **Four of the six hook events.** `pre-bash` has two genuine firings in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host. On 18832 a session *did* write plan and task files through the host's `Write` tool, so `post-write` was almost certainly called — and left no trace either way, because a handler that passes silently is indistinguishable from one that was never wired up. That is the same shape as the flake verdict below, and it is why this row needs an artefact rather than an absence of complaints |
 | **Cutting into N slices, stacking, and `cascade`.** The only live graph was `1 slice(s)`; there is no `slice-cascade` event in the journal | The key feature of stage 3 and the densest machinery in the plugin. Untested: a stacked base taken from the graph, rebasing dependents, the loss of standalone, preflight from a predecessor's branch |
 | **`pr-sync` as a whole**, and specifically `replyToThread` with both GraphQL mutations | The reply token is verified further than it was — issued from `pr-open` for `gh pr edit`, and from `merged` for `gh pr comment` on #18561 — so what is left is narrower and harder: the mutations need somebody else's *thread*, and synthetic material there is self-confirmation, since the same person would be writing both the threads and the filter that reads them |
 | **The `redo` route carried through to code** | The facts of a previous attempt are now collected correctly and `archaeology.json` is written by a real query, but no redo has reached a diff: that is a separate issue, not a separate task |

@@ -10,7 +10,7 @@ pull requests against** — and most of what follows is a consequence of that.
 
 > **Status: 0.1.0, a proof of concept.** Two routes have gone end to end to a
 > published upstream pull request, and most of the workflow was driven through
-> `pdkit` in a terminal rather than through `/pd:*` in a session — so twenty of
+> `pdkit` in a terminal rather than through `/pd:*` in a session — so seventeen of
 > the twenty-one skills have never run.
 > [Status and limitations](#status-and-limitations) has the full accounting, with
 > evidence per line.
@@ -138,13 +138,16 @@ puts one there — a journal entry, or an artefact you can point at.
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
 | `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
+| Four skills through a session, and agents dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on issue 18832, from the plugin as enabled in `settings.json`; four `pd-scout` runs and one `pd-plan-critic`, with the artefacts they wrote |
+| Review sending a plan back | `plan check` green, `pd-plan-critic` returning three must-change findings anyway, and the issue going `planned` → `triaged` → replanned |
+| The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journalled as `denied` |
 
 **Never executed, in order of risk:**
 
 | What | Why it matters |
 |---|---|
-| **Twenty of the twenty-one skills**, and installing from a marketplace rather than a directory | Skill bodies are prose, which is the half of this plugin nothing covers; and a catalogue install is a different code path from `--plugin-dir` |
-| **Four of the six hook events**, and agent dispatch by name | `pre-bash` has one genuine firing and `pre-write` is exercised through the manifest. The rest have only ever been spawned by a self-test, which proves the handler works and not that the host calls it |
+| **Seventeen of the twenty-one skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Four of the six hook events** | `pre-bash` has two genuine firings and `pre-write` is exercised through the manifest. `post-write`, `task-completed`, `session-start` and `pre-compact` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
 | **Cutting into several slices, stacking, and `cascade`** | The densest machinery in the plugin. The only live graph was one slice |
 | **`pr-sync` end to end**, including the two GraphQL mutations | They need somebody else's review thread; synthetic material would be self-confirmation |
 | **`resume` against a real conflict** | No semantic conflict has occurred yet — not for want of trying, but for want of material |
