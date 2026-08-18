@@ -294,7 +294,7 @@ describe('checkPlan', () => {
     assert.ok(result.warnings.some((warning) => warning.check === 'owns'));
   });
 
-  test('the plan is checked against the frozen requirement set when there is one', async () => {
+  test('the plan is checked against the allocated requirement set when there is one', async () => {
     const result = await checkPlan({
       plan: parsePlan(plan()),
       record: { requirements: { ids: ['R1', 'R2', 'R3'], frozen: true } },
@@ -302,6 +302,25 @@ describe('checkPlan', () => {
 
     assert.equal(result.ok, false);
     assert.ok(result.problems.some((problem) => problem.detail.includes('R3')));
+  });
+
+  // The freeze flag is not the trigger, and the test above was named as if it
+  // were. Freezing happens at plan approval, so a check that waited for it would
+  // be inert during the only phase that writes a plan. On 18832 a replan
+  // introduced R9 for work moved into scope; had it been written into the plan
+  // without `pdkit ids requirement` allocating it, this is what refuses it —
+  // before anybody approves, not after.
+  test('and against an unfrozen set too, because that is when a plan is written', async () => {
+    const invented = await checkPlan({
+      plan: parsePlan(plan({ requirements: 'R1, R2, R9' })),
+      record: { requirements: { ids: ['R1', 'R2'], frozen: false } },
+    });
+
+    assert.equal(invented.ok, false);
+    assert.ok(
+      invented.problems.some((problem) => problem.check === 'requirements' && problem.detail.includes('R9')),
+      JSON.stringify(invented.problems),
+    );
   });
 
   test('a dropped section is reported when the content is given', async () => {
