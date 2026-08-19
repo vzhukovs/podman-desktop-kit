@@ -170,6 +170,25 @@ describe('parseTask', () => {
       'packages/main/src/plugin/container-registry.spec.ts',
     ]);
   });
+
+  // Two runs of the same skill wrote this section two ways: bare paths one day,
+  // ``- `path` `` bullets the next. The bullet was already stripped and the code
+  // span was not, so `task sync` stored entries that match no file — and the
+  // pre-write hook refused a write to a file it named as owned in the same
+  // breath. Every task, every file, on 18832.
+  test('markdown decoration around a path is stripped, bullet and code span alike', () => {
+    const decorated = file.replace(
+      /## Owns\n[\s\S]*?\n\n/,
+      '## Owns\n' +
+        '- `packages/main/src/plugin/container-registry.ts`\n' +
+        '- `packages/main/src/plugin/container-registry.spec.ts`\n\n',
+    );
+
+    assert.deepEqual(parseTask(decorated).owns, [
+      'packages/main/src/plugin/container-registry.ts',
+      'packages/main/src/plugin/container-registry.spec.ts',
+    ]);
+  });
 });
 
 describe('checkPlan', () => {
