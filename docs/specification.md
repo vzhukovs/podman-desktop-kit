@@ -1543,18 +1543,31 @@ Stated here rather than discovered later.
    nothing prevents it, because silently re-extending a list somebody edited
    would be worse.
 
-10. **A type-change refactor has no slice graph, by construction.** A slice is
-    independent when it builds standalone from `main`; changing the type a store
-    holds happens on one line, and every consumer stops typechecking at that
-    instant. So the answer is always one slice, and `/pd:slice` can only confirm
-    there is no graph rather than choose one — the densest machinery in the
-    plugin has nothing to do on a whole class of issue. Found on 18832, where the
-    first plan proposed two slices and the second withdrew to one after review.
-    This is not the same as scenario 8, which was struck because upstream does
-    not contain bulk cross-package refactors; this kind is common and the machine
-    simply has no work on it. The cost is a plan that reasons about a cut which
-    cannot exist, which is why `Slice hypothesis` is worth writing even when the
-    honest content is "one, and here is why no cut is possible".
+10. **In a type-change refactor the flip cannot be cut, but the groundwork can —
+    and only if the cut owns everything that breaks because of it.** Changing the
+    type a store holds happens on one line and every consumer stops typechecking
+    at that instant, so no subset of the flip is independently green. What *is*
+    separable is the additive half: new fields on the UI type, the converter that
+    populates them, **and every existing file that stops compiling when a required
+    field appears**. That last clause is the whole of it, and it is measurable
+    rather than arguable — adding the field and running the repository's own
+    typecheck names the files exactly.
+
+    This item was first written as "the answer is always one slice", and that was
+    wrong. It generalised from a plan that claimed a purely additive first slice
+    while owning none of the six fixture files the new fields broke; review
+    rejected that plan, the next one withdrew to a single slice, and the
+    withdrawal was read as a property of the class. A later plan on the same issue
+    proposed two slices again with the fixture files inside the first, and the
+    measurement backs it: nine typecheck errors, seven files, all of them in that
+    slice.
+
+    So the honest rule is narrower and more useful than the one it replaces: an
+    additive slice is independent exactly when the set of files it owns is closed
+    under "what fails to compile without this change". `/pd:slice` verifies that
+    by running the build; the plan is where it has to be got right, because a
+    slice hypothesis that claims additivity without the closure is the specific
+    error that has now been made once and caught once.
 
 ---
 
@@ -1605,7 +1618,7 @@ you can point at.**
 | **`close --finish`, the invariant-4 rollup, and the transition to `merged`** | 18248, 2026-08-12: `pr refresh` observed a merge made in the browser and journalled `pr-merged #18561 observed by refresh` once; `close --finish` then read the rollup (1 merged, 0 open, 0 closed) and wrote `event:merged 1 pull request(s) merged`, with `pr-open -> merged` in the state history. Worktree removal refused in the same run, correctly: the branch had merged upstream but not into the local base |
 | **Flake detection** | 2026-08-13 on [#18779](https://github.com/podman-desktop/podman-desktop/pull/18779): three jobs went red on an Electron install failure, two re-runs turned them green, and `pdkit pr ci` reports `flake` on five — the three plus two whose red run nobody had noticed. It had never fired before because it could not: three separate defects sat between it and its data (below) |
 | **Skills run as `/pd:*`, and agents dispatched by name** | 18832, 2026-08-18: `/pd:doctor`, `/pd:sync`, `/pd:plan` and `/pd:plan-review` all ran through a session, from the plugin as enabled in `settings.json` rather than from `--plugin-dir`. `/pd:plan` dispatched four `pd:pd-scout` agents on different questions and `/pd:plan-review` dispatched `pd:pd-plan-critic`; `research.md`, `plan.md`, seventeen task files and `plan-review.md` are what they produced |
-| **The adversarial gate changing an outcome** | Same issue: `plan check` was green, and `pd-plan-critic` returned three must-change findings anyway — one of them a task made unimplementable by the plugin's own `Owns` exclusivity rule. The issue went `planned` → `triaged` → replanned → `planned`, with the second plan at seventeen tasks against the first one's thirteen. The first time review sent a plan back rather than agreeing with it |
+| **The adversarial gate changing an outcome, twice** | 18832 on 2026-08-18 and again on 2026-08-19: both times `plan check` was green and `pd-plan-critic` returned three must-change findings anyway, and both times the issue went back through `triaged` to be replanned. Six blockers in total, no two the same, and none of them of a kind `plan check` looks for — a task made unimplementable by the plugin's own `Owns` exclusivity rule (found twice, under two different architectural answers), a fix that reintroduced the bug it was fixing one layer up, a step rewriting a test that already existed. The second run also showed the synthesis half working against its own agent: the critic proposed extracting a shared abstraction for a third future consumer, and the host checked, found the third consumer does not use the field at all, and dropped the finding |
 | **The gate under deliberately widened permissions** | 2026-08-18: a session started with `--allowedTools Bash` was refused `git push --dry-run origin main` by the `pre-bash` handler the host launched, journalled as `event:denied`. Granting a tool does not disable the hook — which is the question that had to be answered before any run was given write access |
 | **A deferral raised and retracted outside review** | 18832: `defer new` recorded a postponement decided at *planning* time, with no `--pr` to hang it on, and `defer drop` retracted it with a reason once `plan-review` disproved the argument it rested on. Both are journal entries; the machinery is not specific to a review thread |
 
