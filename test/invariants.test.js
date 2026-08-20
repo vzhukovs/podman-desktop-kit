@@ -183,6 +183,13 @@ describe('the handoff between skills', () => {
 
   test('every /pd:<skill> named anywhere resolves to a real skill', async () => {
     const known = new Set(await skillNames());
+    // Prose is included rather than only code spans, unlike the `pdkit` test
+    // below, and the difference is the point: `/pd:x` is never English, so any
+    // occurrence is a reference. The cost is that a document cannot quote a
+    // wrong name while explaining it — which this test enforced on section 1
+    // the day it was written, and the section was reworded rather than
+    // exempted. CHANGELOG.md is deliberately absent: its job is to record
+    // mistakes verbatim, including the names of commands that never existed.
     const files = [
       ...(await skillNames()).map((name) => join(ROOT, 'skills', name, 'SKILL.md')),
       ...['specification.md', 'workflows.md', 'architecture.md', 'configuration.md'].map((name) => join(ROOT, 'docs', name)),

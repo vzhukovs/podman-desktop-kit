@@ -168,8 +168,9 @@ them — `triaged`/`triage`, `planned`/`plan`, `validated`/`validate`,
 `audited`/`audit`, `sliced`/`slice`, `preflight-green`/`preflight`,
 `pr-open`/`pr`. The eighth is `implemented`, reached by `/pd:exec`. A session on
 DESKTOP-18832 finished a plan review, read `next: implemented`, applied the
-pattern that holds seven times out of eight, and told the user to run
-`/pd:implement` — which does not exist.
+pattern that holds seven times out of eight, and told the user to run a skill
+named after the state — `implement`, under the `/pd:` namespace — which does not
+exist.
 
 Nothing in the plugin had contradicted it. Every skill in the chain ended on a
 `pdkit state --to` call and named nothing after it: the forward links did not
