@@ -77,3 +77,9 @@ Approval is a human action. On approval — and only then — `pdkit ids freeze
 <n>` and `pdkit state <n> --to plan-approved`. The freeze is what makes R-IDs
 a trace rather than a numbering: after it, they cannot be renumbered under a
 PR that already cites them.
+
+## Next
+
+`/pd:plan-review <issue>` — before approval, not after. On approval, and only
+then, freeze and move to `plan-approved`; what runs from there is
+`/pd:exec <issue>`.

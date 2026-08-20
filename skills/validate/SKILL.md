@@ -120,3 +120,7 @@ as writing a receipt by hand.
 If the application could not be driven at all, produce the human checklist,
 attach nothing, and let the outcome be `unverified`. An honest gap is useful; a
 fabricated pass is worse than no validation at all.
+
+## Next
+
+`/pd:audit <issue>` — the diff against the plan, in fresh context.

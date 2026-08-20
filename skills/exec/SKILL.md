@@ -99,3 +99,8 @@ the only record of why anyone expected a fourth attempt to differ.
 ## Then
 
 `pdkit state <n> --to implemented`.
+
+## Next
+
+`/pd:validate <issue>` — evidence for what was built, before anything judges it
+against the plan.

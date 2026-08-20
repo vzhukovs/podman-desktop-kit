@@ -54,3 +54,8 @@ from the issue, with the code you wrote as evidence rather than as the answer.
 - The PR body carries `Fixes #<n>` instead of a coverage table.
 - No e2e test. It inflates both review and CI time, which contradicts the one
   thing a small PR is for.
+
+## Next
+
+`/pd:pr <issue>` — the same gate, the same body, the same preflight. What was
+skipped is planning, not publishing.

@@ -101,6 +101,37 @@ fixes — see [RELEASING.md](RELEASING.md).
     after approval contradicts it. The rewrite is one line: everything a person
     added by hand is exactly what a re-render would lose.
 
+### Fixed
+
+- **The machine said `next: implemented`, and a session typed `/pd:implement`.**
+  `pdkit state` could say which states an issue may move to and never which
+  command gets it there. Seven of the eight states in the chain are spelled like
+  the command that reaches them — `triaged`/`triage`, `planned`/`plan`,
+  `validated`/`validate` and so on — so the eighth gets guessed, and it is the
+  one place the two vocabularies diverge: `implemented` is reached by `/pd:exec`.
+  Observed on DESKTOP-18832, where a plan review ended by recommending a command
+  that does not exist.
+  - Nothing contradicted it, because **the forward links did not exist**. Every
+    skill in the chain ended on a `pdkit state --to` call and named nothing
+    after it: `/pd:plan` pointed at `/pd:plan-review`, which pointed back at
+    `/pd:plan`, and past that the chain stopped.
+  - `lib/state.js` now carries `ADVANCES` and `nextStep()`, printed by the
+    transition, by the record and by the SessionStart summary — the three places
+    a next step is read. Against the record rather than the state, because one
+    answer depends on the route: a `triaged` issue on the quickfix route goes to
+    `/pd:quickfix`, and sending it to `/pd:plan` is what `escalate` exists to
+    undo.
+  - Ten skills gained a `## Next` section, so the chain reads forward as well as
+    back. `/pd:plan-review` says outright that the command is spelled `exec`
+    rather than `implement`, and why.
+  - Two states answer with a sentence instead of a command. `sliced` waits on an
+    approval that is a person's to give, and naming a skill there would name one
+    that must not run yet.
+  - Two invariants pin it: every `/pd:x` written in a skill or a doc resolves to
+    a real skill, and every non-terminal state names something to run. The
+    existing test covered `pdkit <command>` mentions and nothing else — a wrong
+    `/pd:*` name passed every test in the suite.
+
 ### Changed
 
 - **The attempt count stops at a reset.** It is derived from the journal, which

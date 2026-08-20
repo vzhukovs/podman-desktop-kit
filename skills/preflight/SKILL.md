@@ -43,3 +43,8 @@ Lint failures that `lint:fix` resolves, and a missing SPDX header — the check
 prints the exact block. Re-run afterwards.
 
 Everything else goes back to the user with the output attached.
+
+## Next
+
+`/pd:pr <issue> [slice]` — green preflight is what the push gate is issued from,
+and nothing else is.

@@ -157,6 +157,38 @@ So `pdkit reset <issue>` **removes the record instead of moving it**. With no
 representation of nothing has happened here, and `new -> triaged` is the only way
 out of it. The contract is in section 4.
 
+### The machine names the next command, not only the next state
+
+`pdkit state` has always been able to say where an issue may go next, and until
+0.29 that was all it said: `next: implemented`. That is a **state**, and a state
+name in the position where a next action belongs is one that gets typed.
+
+Seven of the eight states in the chain are spelled like the command that reaches
+them — `triaged`/`triage`, `planned`/`plan`, `validated`/`validate`,
+`audited`/`audit`, `sliced`/`slice`, `preflight-green`/`preflight`,
+`pr-open`/`pr`. The eighth is `implemented`, reached by `/pd:exec`. A session on
+DESKTOP-18832 finished a plan review, read `next: implemented`, applied the
+pattern that holds seven times out of eight, and told the user to run
+`/pd:implement` — which does not exist.
+
+Nothing in the plugin had contradicted it. Every skill in the chain ended on a
+`pdkit state --to` call and named nothing after it: the forward links did not
+exist, so `/pd:plan` pointed at `/pd:plan-review`, `/pd:plan-review` pointed back
+at `/pd:plan`, and past that the chain simply stopped.
+
+So `lib/state.js` carries `ADVANCES`, a state → skill table, and `nextStep()`
+resolves it against the record — against the record rather than the state,
+because one answer depends on the route: a `triaged` issue on the quickfix route
+goes to `/pd:quickfix`, and sending it to `/pd:plan` is what `escalate` exists to
+undo. Three places print it: the transition, the record, and the SessionStart
+summary. The skills say it too, but the table is what is printed by the command
+the model has just run, whether or not it read anything — the same argument
+section 6 makes for hooks.
+
+Two states answer with a sentence rather than a command, and deliberately.
+`sliced` and `planned`-after-review wait on an approval that is a person's to
+give, and naming a skill there would name one that must not run yet.
+
 ### The hard rule
 
 **`pdkit gate` lets `git push` and `gh pr create` through only from

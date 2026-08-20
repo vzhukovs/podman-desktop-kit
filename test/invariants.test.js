@@ -160,6 +160,83 @@ describe('the hook table has one owner', () => {
   });
 });
 
+// The other half of the same failure, and the half that actually happened.
+//
+// On DESKTOP-18832 a session finished a plan review and told the user to run
+// `/pd:implement 18832`. There is no such skill. It was not invented from
+// nothing: every skill in the chain ended on a `pdkit state --to` call and named
+// nothing after it, while what the machine printed was `next: implemented` — a
+// STATE. Seven of the eight states in the chain are spelled like the command
+// that reaches them, so the eighth gets guessed, and the guess is wrong at
+// exactly the one place the two vocabularies diverge.
+//
+// Two properties are pinned here, because neither is visible in any behaviour
+// test: that every `/pd:x` written down resolves to a skill, and that every
+// state a person can be standing in says what to run from it.
+describe('the handoff between skills', () => {
+  /** Every skill directory that exists. */
+  async function skillNames() {
+    return (await readdir(join(ROOT, 'skills'), { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  }
+
+  test('every /pd:<skill> named anywhere resolves to a real skill', async () => {
+    const known = new Set(await skillNames());
+    const files = [
+      ...(await skillNames()).map((name) => join(ROOT, 'skills', name, 'SKILL.md')),
+      ...['specification.md', 'workflows.md', 'architecture.md', 'configuration.md'].map((name) => join(ROOT, 'docs', name)),
+      join(ROOT, 'README.md'),
+    ];
+
+    const problems = [];
+    for (const file of files) {
+      const text = await readFile(file, 'utf8');
+      for (const [, name] of text.matchAll(/\/pd:([a-z][a-z0-9-]*)/g)) {
+        if (!known.has(name)) problems.push(`${file.slice(ROOT.length)}: /pd:${name}`);
+      }
+    }
+
+    assert.deepEqual(problems, [], `these name skills that do not exist:\n  ${problems.join('\n  ')}`);
+  });
+
+  test('every state names what to run from it, and it is a real skill', async () => {
+    const { ADVANCES, TRANSITIONS, nextStep } = await import('../lib/state.js');
+    const known = new Set(await skillNames());
+
+    for (const state of Object.keys(TRANSITIONS)) {
+      assert.ok(state in ADVANCES, `ADVANCES says nothing about "${state}" — a state with no next step is where a command gets guessed`);
+
+      const skill = ADVANCES[state];
+      if (skill !== null) assert.ok(known.has(skill), `ADVANCES sends "${state}" to /pd:${skill}, which is not a skill`);
+
+      // Terminal states are the only ones allowed to answer nothing, plus the
+      // two whose next move is a person's decision rather than a command.
+      const terminal = (TRANSITIONS[state] ?? []).length === 0;
+      const step = nextStep({ issue: 1, state, route: null });
+      if (!terminal) assert.ok(step, `nothing to run from "${state}"`);
+      else assert.equal(step, null, `"${state}" is terminal and should offer nothing`);
+    }
+  });
+
+  test('the quickfix route is not sent into planning', async () => {
+    const { nextStep } = await import('../lib/state.js');
+
+    // The one answer that depends on the route. Sending a quickfix to /pd:plan
+    // is what `pdkit issue escalate` exists to undo, and it would be handed out
+    // by the machine rather than chosen by anybody.
+    assert.equal(nextStep({ issue: 42, state: 'triaged', route: 'quickfix' }), '/pd:quickfix 42');
+    assert.equal(nextStep({ issue: 42, state: 'triaged', route: 'standard' }), '/pd:plan 42');
+  });
+
+  test('plan-approved names exec, which is the state name that is not the command name', async () => {
+    const { nextStep } = await import('../lib/state.js');
+
+    // The regression this whole describe block exists for.
+    assert.equal(nextStep({ issue: 18832, state: 'plan-approved', route: 'standard' }), '/pd:exec 18832');
+  });
+});
+
 // A skill is instructions the model follows. One naming a command that does
 // not exist fails mid-flow, with the model improvising a substitute — which is
 // exactly the moment improvisation is least wanted.

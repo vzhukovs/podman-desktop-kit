@@ -132,3 +132,8 @@ reviewer who reviews it as new work.
 Say that. A diff whose parts cannot be separated without rewriting the work is
 a finding about the plan — the design expects it (specification, section 11), and
 "slicing requires redoing tasks T2–T4" is a real answer, not a failure to slice.
+
+## Next
+
+Approval is the user's: `pdkit state <n> --to slices-approved`, and branches are
+cut from it. Then `/pd:preflight <issue>` per slice.

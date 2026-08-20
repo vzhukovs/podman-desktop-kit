@@ -115,3 +115,8 @@ The one failure mode this whole design cannot prevent is a human pressing yes
 without reading. It is mitigated by showing something worth reading — the
 actual body, the actual branch — and by a TTL short enough that consent cannot
 be banked. Printing "ready to push?" instead would hand that mitigation back.
+
+## Next
+
+`/pd:pr-status` — CI, review and idleness across every open pull request. When a
+reviewer answers, `/pd:pr-sync <pr>`.

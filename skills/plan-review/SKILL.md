@@ -50,3 +50,10 @@ wrong with every plan is one nobody reads by the third time.
 None. `plan check` failing is not a state transition — it is a plan that goes
 back to `/pd:plan`. Approval stays a human action, and only after it:
 `pdkit ids freeze <n>` and `pdkit state <n> --to plan-approved`.
+
+## Next
+
+`/pd:exec <issue>`, once approval has been given and the state moved. It is
+spelled `exec` rather than `implement` — the state it produces is `implemented`,
+and that is the one place in the chain where the state and the command are not
+the same word.

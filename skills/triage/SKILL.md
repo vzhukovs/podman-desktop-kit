@@ -206,3 +206,9 @@ The route is recorded there, not implied: `standard`, `quickfix`,
 `multi-slice` or `redo`. `invalid` is not a route — an issue that should not be
 worked on goes to `pdkit state <n> --to abandoned` with the reason, and the
 draft comment stays for a human to post.
+
+## Next
+
+`/pd:plan <issue>` — or `/pd:quickfix <issue>` when the route is `quickfix`.
+The route decides which, and taking a quickfix into planning is what `escalate`
+exists to undo.

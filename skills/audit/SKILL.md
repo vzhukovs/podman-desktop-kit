@@ -59,3 +59,8 @@ with the model that wrote the code.
 `pdkit state <n> --to audited` when the findings are addressed or accepted.
 Unaddressed findings are not a reason to skip the transition quietly — they go
 in `audit.md` and the state stays where it is.
+
+## Next
+
+`/pd:slice <issue>` — the change set becomes a verified graph of atomic pull
+requests, even when the graph turns out to have one node.
