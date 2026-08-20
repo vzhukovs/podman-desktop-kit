@@ -754,6 +754,35 @@ scoped tests there. **Green standalone → the slice is independent and branches
 from `main`. Red → it needs a stack, and `base` is the preceding slice.**
 Independence is preferred; a stack is the exception.
 
+**There is a third verdict, and leaving it unsaid cost a run.** A red slice has
+two possible causes and they are not the same finding: the slice broke something,
+or the base does not pass that command either. The second is a false accusation —
+the exact mirror of a false green — so it is measured rather than assumed:
+`baselineFor` resets the same tree to the base, prepares it the same way, runs the
+same command, and caches the answer per base, command **and preparation**. The
+verdict is then `inconclusive`, which `independenceProblems` excludes,
+`slices.md` renders as `⚠️`, `slice-standalone` downgrades to a warning, and the
+journal records as `slice-verify-inconclusive`.
+
+Five places knew that word. `pdkit slice verify` — the one a person runs and
+reads at the moment it happens — printed `RED`, and on DESKTOP-18832 that sent a
+session into a half-hour investigation of a fact already sitting in
+`slices.json`, ending in a judgement call made under uncertainty the machine did
+not have. The verdict now has three words everywhere, and the inconclusive one
+names where to look.
+
+Where to look is nearly always the same place, which is why it is named rather
+than left to be found. **The verification tree is cleaned back to what git holds
+on every run**, deliberately — a green standalone built on a leftover file is the
+failure the working-tree check exists for. The cost is that anything a command
+needs and does not itself build is absent there and present in your own checkout.
+`slicing.verify.prepare` is the list that closes that gap, and both entries in it
+were found by walking into the same wall: `build:core-api` because `typecheck:main`
+consumes `packages/api/dist`, and `build:ui` because `typecheck:renderer` consumes
+`packages/ui/dist` while upstream's own `typecheck:ui` builds it first. Either one
+missing turns **every slice of every issue** red for a reason that has nothing to
+do with slicing.
+
 **A slice is a base plus a set of files, not a set of commits.** The form it is
 verified and materialised through is one and the same:
 

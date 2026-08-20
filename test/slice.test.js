@@ -939,6 +939,75 @@ describe('a base that fails the same command', () => {
 
     assert.match(values.rows, /inconclusive/);
   });
+
+  // The gap DESKTOP-18832 walked into. Five places distinguished a slice that
+  // broke something from a run that proved nothing — `format`, `renderValues`,
+  // `independenceProblems`, the preflight check and the journal — and the sixth
+  // said `RED`. The sixth is the one a person runs and reads at the moment it
+  // happens, so it was the only one that mattered, and it sent a session on a
+  // half-hour investigation of a fact already sitting in slices.json.
+  test('the verdict has a third word, and it is not red', async () => {
+    const graph = await slice.read(7777, { home: brokenHome });
+
+    assert.equal(slice.verdict(graph.slices[0].verification), 'inconclusive');
+    assert.equal(slice.verdict(null), 'unverified');
+    assert.equal(slice.verdict({ ok: true }), 'green');
+    // Red is reserved for a base that passes what the slice failed. Anything
+    // else is an accusation the run did not measure.
+    assert.equal(slice.verdict({ ok: false, baselineOk: true }), 'red');
+    assert.equal(slice.verdict({ ok: false, baselineOk: null }), 'red');
+  });
+
+  test('the explanation names where the cause usually is', async () => {
+    const graph = await slice.read(7777, { home: brokenHome });
+    const text = slice.explainInconclusive(graph.slices[0].verification, { base: 'main' }).join('\n');
+
+    assert.match(text, /nothing has been shown about this slice/);
+    // Without this the reader is told the run proved nothing and not where to
+    // look, which is the half of the message that costs the half hour.
+    assert.match(text, /slicing\.verify\.prepare/);
+    assert.match(text, /verify\/baseline\.json/);
+  });
+
+  test('correcting the prepare list re-measures the base', async () => {
+    const file = join(issueDir(brokenHome, 7777), 'verify', 'baseline.json');
+    const before = Object.keys(JSON.parse(await readFile(file, 'utf8')));
+
+    // A base that fails because the tree was never told to build what the
+    // command needs is a fact about the prepare list as much as about the
+    // commit. Keyed on the command alone, the cache outlived the correction:
+    // every issue that had once measured a false baseline stayed inconclusive
+    // forever, and nothing said why.
+    const config = { ...brokenConfig(), slicing: { ...brokenConfig().slicing, verify: { worktree: 'reuse', install: 'never', prepare: ['build:something'] } } };
+
+    await slice.verifySlice({
+      issue: 7777,
+      index: 1,
+      repoRoot: broken,
+      home: brokenHome,
+      config,
+      packageMap: packageMap(broken),
+    });
+
+    const after = Object.keys(JSON.parse(await readFile(file, 'utf8')));
+    assert.equal(after.length, before.length + 1, 'a different preparation is a different question');
+  });
+
+  test('a sweep carries the verdict, so it cannot report N accusations for one cause', async () => {
+    const result = await slice.verifyAll({
+      issue: 7777,
+      repoRoot: broken,
+      home: brokenHome,
+      config: brokenConfig(),
+      packageMap: packageMap(broken),
+    });
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.results.map((entry) => entry.verdict),
+      ['inconclusive'],
+    );
+  });
 });
 
 // Scenario 13: upstream asks for an already-published pull request to be split.

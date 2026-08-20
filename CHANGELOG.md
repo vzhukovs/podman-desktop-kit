@@ -103,6 +103,37 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`slice verify` said `RED` for a run that proved nothing.** A red slice has two
+  causes and they are not the same finding: the slice broke something, or the base
+  fails that command too. The plugin already measured the difference — it resets
+  the same tree to the base, runs the same command, caches the answer, excludes
+  such slices from `independenceProblems`, renders `⚠️` in `slices.md`, downgrades
+  the preflight check to a warning and journals `slice-verify-inconclusive`. Five
+  places knew the word `inconclusive`. The sixth — the command a person runs and
+  reads at the moment it happens — printed `RED`.
+  - On DESKTOP-18832 that cost a session half an hour of rediscovering by hand a
+    fact already in `slices.json`, and ended in a judgement call made under an
+    uncertainty the machine did not have. `slice verify` now has three words, and
+    the inconclusive one names where to look; `verify --all` carries the verdict
+    per slice and says the cause once rather than accusing N slices of it.
+- **Every renderer slice was inconclusive, and the reason was one missing build
+  script.** `slicing.verify.prepare` lists what a cleaned tree must build before
+  anything is checked, and it held `build:core-api` alone. `typecheck:renderer`
+  consumes `@podman-desktop/ui-svelte`, which resolves through `packages/ui/dist`
+  — not in git, not built by that script, and built by upstream's own
+  `typecheck:ui`. On a clean tree that is 577 errors across 295 files, none of
+  them in the slice, and since typecheck runs first the test step that would have
+  built it is never reached.
+  - This is the second time the same shape has been found, one live run apart:
+    `build:core-api` was added for `typecheck:main` and `packages/api/dist`. Both
+    are now in the shipped list, and the key is documented in
+    `configuration.md`, where it had never appeared at all.
+- **The baseline cache outlived the thing it measured.** It was keyed on base and
+  command, so a base that failed because the tree was never told to build what the
+  command needs stayed `false` after the prepare list was corrected — every issue
+  that had once measured a false baseline would have reported inconclusive
+  forever, with the cache the only thing that could have said why. The preparation
+  is now part of the key.
 - **The machine said `next: implemented`, and a session typed `/pd:implement`.**
   `pdkit state` could say which states an issue may move to and never which
   command gets it there. Seven of the eight states in the chain are spelled like

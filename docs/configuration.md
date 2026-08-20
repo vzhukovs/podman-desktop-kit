@@ -130,6 +130,7 @@ the shipped default through.
 | `slicing.max_files_per_slice` | A warning threshold, not a refusal. Size is a conversation |
 | `slicing.verify.worktree` | `reuse` keeps one tree per issue, so `node_modules` survives between runs; `ephemeral` rebuilds it every time and pays a full install per slice |
 | `slicing.verify.install` | `on-lockfile-change` (default), `always`, or `never`. The marker recording which lockfile is installed lives inside `node_modules`, so wiping one wipes the other |
+| `slicing.verify.prepare` | Build scripts run after every clean, before anything is checked. **The list to look at when every slice comes back inconclusive.** The tree is reset to what git holds on each run, so a package resolving through a `dist/` that is not committed is simply absent there — and a typecheck that consumes it without building it reports hundreds of errors in files no slice touched. podman-desktop needs `build:core-api` and `build:ui`, both found that way, one live run apart. Names the repository does not define are skipped, so the list costs nothing where it does not apply |
 | `worktrees.root` | Where trees go. Beside the fork, never inside it: a checkout under the repository shows up in `git status` and eventually in a pull request |
 | `worktrees.copy_files` | Copied into every new tree, and again after each verification reset — `git clean` takes them |
 | `quickfix.max_changed_lines`, `quickfix.max_files` | Thresholds above which a quickfix escalates back to triage |

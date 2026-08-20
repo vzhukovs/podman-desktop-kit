@@ -86,13 +86,26 @@ slicing:
     # Build steps a fresh tree needs before anything can be checked in it, by
     # script name; anything the repository does not define is skipped.
     #
-    # podman-desktop needs this one. @podman-desktop/core-api resolves through
-    # packages/api/dist, which exists only after build:core-api — and until it
-    # does, typecheck:main cannot find the module and eslint's type-aware rules
-    # see `any` where a type should be, reporting errors in files no slice
-    # touched. Every slice then comes back red for a reason unrelated to
-    # slicing. It costs about two seconds.
-    prepare: [build:core-api]
+    # podman-desktop needs both of these, for one reason twice over: a package
+    # that resolves through a `dist/` which is not in git, consumed by a
+    # typecheck that does not build it.
+    #
+    # @podman-desktop/core-api resolves through packages/api/dist, which exists
+    # only after build:core-api — and until it does, typecheck:main cannot find
+    # the module and eslint's type-aware rules see `any` where a type should be,
+    # reporting errors in files no slice touched.
+    #
+    # @podman-desktop/ui-svelte is the same shape and was found the same way,
+    # one live run later: typecheck:renderer runs build:preload:types and NOT
+    # build:ui, though every renderer component imports the package. On a clean
+    # tree that is 577 errors across 295 files, none of them in the slice — and
+    # since typecheck runs first, the test step that would have built it is
+    # never reached. Upstream's own typecheck:ui does run build:ui first, which
+    # is where the asymmetry shows.
+    #
+    # Either one missing turns every slice of every issue red for a reason that
+    # has nothing to do with slicing. Together they cost a few seconds.
+    prepare: [build:core-api, build:ui]
 
 # Script name overrides for preflight (section 7). Empty by default: names are
 # resolved from the repository's own package.json through a candidate chain,
