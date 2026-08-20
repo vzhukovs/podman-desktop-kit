@@ -38,6 +38,27 @@ decides, and you do:
 Nothing here writes anything or moves any issue. Listing is a read; picking is
 the user's. When they pick, continue from section 1 with that number.
 
+## 0b. Has this issue been triaged before?
+
+`pdkit state <n>` in one line. Anything but `new` means the plugin already
+carries a record, and triaging over it is not a fresh start: the R-set, the
+route and `research.md` are already on disk, and everything downstream reads
+them.
+
+Three different situations, and only one of them is this command's:
+
+- **Continuing** — the record is right and the work just stopped. `/pd:resume
+  <n>`, not a second triage.
+- **The review rejected the approach** — `pdkit issue rework <n> --reason
+  "<what was refused>"`. It lands back on `triaged` with the pull request left
+  open and requirements thawed, and the objection becomes a `[review]`
+  requirement. Continue from section 1 after it.
+- **The earlier run was wrong from the start** — the issue was read as
+  something it is not, or the scouts mapped the wrong package. Then nothing on
+  disk is worth keeping, and starting over is `/pd:reset <n>`, which forgets
+  this issue and no other. Do not do it silently: it is the user's call, and
+  the pull request it will not close is theirs to think about.
+
 ## 1. Read, and dedup before anything else
 
 `pdkit issue fetch <n>` prints the issue and every pull request that

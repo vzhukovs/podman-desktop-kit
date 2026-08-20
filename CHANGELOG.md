@@ -11,6 +11,45 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Added
 
+- **`pdkit reset <issue>` starts one issue over.** A cycle can go wrong early —
+  the triage reads the issue as something it is not, the scouts map the wrong
+  package — and then every later step inherits the mistake, because every later
+  step reads what the earlier ones wrote. The machine had no answer: `new` has no
+  predecessor, so nothing could return an issue to the state its own artefacts
+  had never been produced in, and the only route out was `rm -rf` on a directory
+  whose neighbours share a parent.
+  - **Not a transition, and deliberately not one.** Adding an edge into `new`
+    would write a trip into the history that the work never took, and destroy the
+    distinction `adopted` exists for — "these artefacts were never produced"
+    reading differently from "these artefacts were lost". The record is *removed*
+    instead, so `state.read` returns its own blank, whose only exit is `triaged`.
+  - **A dry run by default**, shaped like `close`: bare it reports and changes
+    nothing, `--confirm` acts. The report has two halves, and the second is the
+    one that stops a mistake — what stays.
+  - **Four stores, three of them cleared.** The issue's artefacts (archived to
+    `$PDKIT_HOME/archive/<issue>/<timestamp>/`, or deleted with `--purge`), its
+    consent tokens, and its active-task pointers in every working tree. Tokens are
+    matched on the issue inside the record rather than on the key, because a reply
+    token's key names a pull request — which says nothing about the issue unless
+    you already hold the `prs.json` that is inside the directory about to move.
+  - **The journal is the fourth, and it is kept.** Invariant 2 has no delete, and
+    that turns out to be the property this needs most: an issue back at `new` with
+    no history would be indistinguishable from one nobody ever worked on. One
+    `reset` entry is appended saying what the issue was and where its record went.
+  - **It touches one issue.** Worktrees are matched exactly rather than by
+    substring, so `DESKTOP-1854` does not select the tree of `DESKTOP-18548` — and
+    they are not removed at all without `--worktrees`, which still refuses a tree
+    holding a branch that has not landed. A branch with unpushed commits is work,
+    not a record of work, and a command called "start over" must not be the thing
+    that drops it.
+  - **Nothing upstream moves**, and the output says so twice: an open pull request
+    is forgotten, not closed. The design self-heals around it, because dedup is
+    the first step of triage — the next cycle rediscovers from GitHub what this
+    one forgot. Deferrals survive for the same reason they survive a merge.
+  - Distinct from the three outcomes it is easy to confuse with, and the skill
+    says which is which: `issue rework` when a reviewer refused the approach (the
+    objection is the most valuable thing the review produced), the `redo` route
+    when the work was tried and reverted, `abandoned` when it is not worth doing.
 - **`pdkit defer` records what a review thread set aside.** `/pd:pr-sync` has
   offered four ways to answer a thread since it was written — `accept`,
   `discuss`, `defer`, `reject` — and three of them led somewhere. Nothing
@@ -64,6 +103,13 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Changed
 
+- **The attempt count stops at a reset.** It is derived from the journal, which
+  `pdkit reset` may not delete — and task numbering restarts with the record, so
+  the T1 of the new cycle would have inherited the failures of the T1 of the old
+  one and could have been born blocked. The walk is cut by position rather than by
+  timestamp: the journal is second-resolution, so a reset and the first capture
+  after it can share one, and `>` would drop the capture while `>=` kept the
+  reset.
 - **`pdkit close` names deferrals that are still open**, and does not block on
   them. Closing is the last step, so there is no later gate — which argues for
   refusing until the other half is weighed: a gate between a finished issue and

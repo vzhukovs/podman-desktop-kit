@@ -138,6 +138,25 @@ chosen again, and planning starts from the issue rather than from the rejected
 diff — the same ordering `escalate` imposes, for the same reason. The pull
 request stays open, the branch stays put, and `--reason` is required.
 
+### There is no edge into `new`, and starting over does not add one
+
+A run can go wrong early — the triage reads the issue as something it is not,
+the scouts map the wrong package — and then every later step inherits the
+mistake, because every later step reads what the earlier ones wrote. The machine
+had no answer for that: `new` has no predecessor, so nothing could return an
+issue to the state its own artefacts had never been produced in.
+
+Adding such an edge would be the wrong fix, and the reason is the same one
+`adopted` exists for. A transition writes history, so an issue that travelled
+back to `new` would carry a trip the work never took, and "these artefacts were
+never produced" would stop reading differently from "these artefacts were lost" —
+which is the distinction every downstream check depends on.
+
+So `pdkit reset <issue>` **removes the record instead of moving it**. With no
+`state.json`, `state.read` returns `blank()`, which is the machine's own
+representation of nothing has happened here, and `new -> triaged` is the only way
+out of it. The contract is in section 4.
+
 ### The hard rule
 
 **`pdkit gate` lets `git push` and `gh pr create` through only from
@@ -283,9 +302,16 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 │   ├── verify/S1.md …           # raw slice-verification output, receipt format
 │   ├── prs.json, prs/2871.md    # open pull requests; .md is rendered
 │   └── amendments/A1.md         # plan amendments arising from review
+├── archive/12345/2026-08-20-1114/   # what `pdkit reset` moved out of the way
 ├── journal/YYYY-MM.md           # global, append-only, sliced by month
 └── reviews/2903.md              # reviews of other people's PRs, tied to no issue
 ```
+
+`archive/` sits beside `issues/` rather than inside it, and the reason is
+mechanical rather than tidiness: two commands find an issue by reading the names
+in `issues/` and calling `Number.parseInt` on them, which answers `12345` for
+`12345.reset-2026-08-20`. An archive kept next to its original would be read back
+as the issue it is a copy of.
 
 `$PDKIT_HOME` is created at runtime by `pdkit init` and is **not part of the
 plugin tree**: the plugin's path changes on every update, so state cannot be
@@ -419,6 +445,7 @@ its own.
 | `/pd:review-pr <pr#>` | PR | `reviews/<pr>.md` | — | opus + 4 sonnet axes | — |
 | `/pd:quickfix <issue>` | issue | fix + PR | `pr-open` | sonnet | **push gate** |
 | `/pd:close <issue>` | issue | knowledge harvest, worktree cleanup | `merged` | sonnet | — |
+| `/pd:reset <issue>` | issue | what would go and what would stay; with `--confirm`, one issue forgotten | record removed, so `new` | sonnet | human: `--confirm` |
 | `/pd:knowledge` | — | revision of `knowledge/` | — | opus | — |
 
 ### Phrase-triggered skills
@@ -952,6 +979,48 @@ and that is the reasoning `unverified` already settled. What keeps the promise i
 not the gate but the journal: `pdkit defer list` still answers after the issue is
 `merged`.
 
+### `/pd:reset <issue>` — starting one issue over
+
+The failure it closes is ordinary and had no answer: a cycle that went wrong
+early, where continuing means every later step inherits the mistake because every
+later step reads what the earlier ones wrote. Before this command the only route
+out was `rm -rf` on a directory whose neighbours share a parent — a thing nobody
+should have to type carefully at midnight.
+
+Shaped like `close`: bare, it reports and changes nothing; `--confirm` acts. The
+two are the only commands standing where the question is whether a cycle is over,
+and both are read by someone who wants the consequences before agreeing to them.
+
+**Four stores hold something about an issue, and they are not treated alike.**
+
+| Store | What happens | Why |
+|---|---|---|
+| `issues/<n>/` | archived to `archive/<n>/<timestamp>/`, or deleted on `--purge` | this is the research the next cycle must not inherit. Archived by default because a gate that is expensive to pass gets routed around, and an undo that is one `mv` makes `--confirm` cheap to grant |
+| `gates/` | tokens carrying this issue's number are revoked | consent must not outlive the record that justified it. Matched on the `issue` field inside the token, not on its key: a reply token's key names a pull request, which says nothing about the issue unless you already hold `prs.json` — which is inside the directory about to move |
+| `active/` | pointers naming a task of this issue are cleared, in every working tree | otherwise a hook is left enforcing an `Owns` set for a task whose file has gone |
+| `journal/` | **kept**, and one `reset` entry appended | invariant 2. It is also what makes the reset legible: an issue back at `new` would otherwise be indistinguishable from one nobody ever worked on |
+
+Two consequences follow from the journal being kept, and both are printed rather
+than left to be discovered. **Deferrals survive**, because they are derived from
+the journal precisely so a promise to a reviewer outlives the issue — and it
+equally outlives us deciding to start again. **Nothing upstream moves**: an open
+pull request is forgotten, not closed. That last one is the item worth reading
+twice, and the design self-heals around it — dedup is the first step of triage,
+so the next cycle rediscovers from GitHub what this one forgot.
+
+Working trees are a fifth case and sit outside `$PDKIT_HOME`. A branch carrying
+unpushed commits is *work*, not a record of work, so removal is `--worktrees`
+rather than the default, and still goes through the check that refuses a tree
+holding a branch which has not landed. A command called "start over" must not be
+the thing that silently drops commits.
+
+**One consumer had to change.** Attempt counts are derived from the journal, and
+task numbering restarts with the record — so the T1 of the new cycle would
+inherit the failures of the T1 of the old one and could be born blocked. The walk
+now stops at the last `reset` entry, cut by position rather than by timestamp: the
+journal is second-resolution, and a reset and the first capture after it can share
+one.
+
 ### `/pd:review-pr <pr#>` — reviewing somebody else's pull request
 
 The machine goes first here as well. `pdkit review fetch <k> [--json]`:
@@ -1481,6 +1550,7 @@ file.
 | 12 | **A change to the public extension API** | not a separate command but a mandatory sub-mode, triggered by the fact that `extension-api.d.ts` was touched. It adds backwards-compatibility and disposal checks, and is always carved into a separate first slice |
 | 13 | **Upstream asks for an already-open PR to be split** | `slice suggest --from-pr <n>`: the same slicer, with a published diff as its input; the output is a graph plus a plan for migrating review threads into the new pull requests |
 | 14 | **There is an answer, and no diff.** The bug is real and reproducible, and the cause lives outside the repository — in a dependency, in the host, or across a version boundary the product merely triggers | the `answered` state plus `findings.md`: reproduction, detector command, workaround, and the question "what would have kept this from reaching a user". Entry requires a capture: a workaround nobody ran is a suggestion, and a suggestion posted in the voice of a finding costs the reporter their evening. A human publishes it; `gh issue comment` is denied by the hook from every state |
+| 15 | **The cycle itself went wrong.** Not the diff and not the review — the triage read the issue as something it is not, or the scouts mapped the wrong package, and everything after inherits it, because everything after reads what came before | `/pd:reset <n>`: one issue forgotten, none of its neighbours touched, and the record **removed rather than transitioned**, so the machine reads `new` and triage is the only exit. Deliberately distinct from the three outcomes it is easy to confuse with — `rework` (a reviewer refused the approach; their objection is the most valuable thing the review produced, and a reset would throw it away), `redo` (it was tried and reverted; the archaeology is the whole point) and `abandoned` (the work was dropped, and why is worth keeping). Nothing upstream moves and the journal keeps everything, so what is forgotten is our reading of the issue, not the issue's history |
 
 Scenario 13 is worth holding in mind when reading the slicer: it must work not
 only from the local `HEAD` but from an arbitrary diff. And "work" means in
@@ -1627,7 +1697,7 @@ you can point at.**
 | What | Why it is not a detail |
 |---|---|
 | **The plugin as installed from a catalogue over the network.** It now loads from a marketplace entry in `settings.json` — but that entry's source is a local directory | Half the row closed on 18832: the manifest is found through `extraKnownMarketplaces` plus `enabledPlugins`, not only through `--plugin-dir`, and skills and agents resolve from it. What is still untested is the fetch: a marketplace pulled from a remote repository, which is the path every other user takes |
-| **Seventeen of the twenty-one skills.** `doctor`, `sync`, `plan` and `plan-review` have been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
+| **Eighteen of the twenty-two skills.** `doctor`, `sync`, `plan` and `plan-review` have been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
 | **Four of the six hook events.** `pre-bash` has two genuine firings in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host. On 18832 a session *did* write plan and task files through the host's `Write` tool, so `post-write` was almost certainly called — and left no trace either way, because a handler that passes silently is indistinguishable from one that was never wired up. That is the same shape as the flake verdict below, and it is why this row needs an artefact rather than an absence of complaints |
 | **Cutting into N slices, stacking, and `cascade`.** The only live graph was `1 slice(s)`; there is no `slice-cascade` event in the journal | The key feature of stage 3 and the densest machinery in the plugin. Untested: a stacked base taken from the graph, rebasing dependents, the loss of standalone, preflight from a predecessor's branch |
 | **`pr-sync` as a whole**, and specifically `replyToThread` with both GraphQL mutations | The reply token is verified further than it was — issued from `pr-open` for `gh pr edit`, and from `merged` for `gh pr comment` on #18561 — so what is left is narrower and harder: the mutations need somebody else's *thread*, and synthetic material there is self-confirmation, since the same person would be writing both the threads and the filter that reads them |

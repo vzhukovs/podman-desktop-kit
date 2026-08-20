@@ -10,8 +10,8 @@ pull requests against** — and most of what follows is a consequence of that.
 
 > **Status: 0.1.0, a proof of concept.** Two routes have gone end to end to a
 > published upstream pull request, and most of the workflow was driven through
-> `pdkit` in a terminal rather than through `/pd:*` in a session — so seventeen of
-> the twenty-one skills have never run.
+> `pdkit` in a terminal rather than through `/pd:*` in a session — so eighteen of
+> the twenty-two skills have never run.
 > [Status and limitations](#status-and-limitations) has the full accounting, with
 > evidence per line.
 
@@ -109,6 +109,7 @@ All orchestrating skills are manual only — nothing starts on its own.
 | `/pd:review-pr <pr>` | review someone else's PR along four parallel axes |
 | `/pd:quickfix <issue>` | small fix without the planning ceremony |
 | `/pd:close <issue>` | harvest knowledge, clean up worktrees |
+| `/pd:reset <issue>` | start one issue over: forget its plan, research and artefacts. No other issue, and nothing upstream |
 | `/pd:knowledge` | revise the shipped knowledge base |
 
 Three more skills trigger by meaning rather than by slash: `package-map`,
@@ -146,7 +147,7 @@ puts one there — a journal entry, or an artefact you can point at.
 
 | What | Why it matters |
 |---|---|
-| **Seventeen of the twenty-one skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Eighteen of the twenty-two skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
 | **Four of the six hook events** | `pre-bash` has two genuine firings and `pre-write` is exercised through the manifest. `post-write`, `task-completed`, `session-start` and `pre-compact` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
 | **Cutting into several slices, stacking, and `cascade`** | The densest machinery in the plugin. The only live graph was one slice |
 | **`pr-sync` end to end**, including the two GraphQL mutations | They need somebody else's review thread; synthetic material would be self-confirmation |
