@@ -50,6 +50,7 @@ import {
 } from '../lib/gh.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const CONFIG = {
   repo: { upstream: 'podman-desktop/podman-desktop', fork: 'vzhukovs/podman-desktop', base_branch: 'main' },
@@ -78,6 +79,8 @@ function fakeGh(stdout, error = null) {
 
 before(async () => {
   home = await mkdtemp(join(tmpdir(), 'pdkit-gh-'));
+
+  await preflightGreen(6001, { home });
 
   for (const to of [
     'triaged',

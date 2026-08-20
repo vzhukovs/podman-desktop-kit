@@ -44,6 +44,9 @@ import {
   transition,
 } from '../lib/state.js';
 import { read as readJournal } from '../lib/journal.js';
+import { BODY_DEPENDENT, CHECK_IDS } from '../lib/preflight/index.js';
+import { write } from '../lib/preflight/record.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 let home;
 
@@ -457,9 +460,130 @@ describe('adopting work that predates the plugin', () => {
   });
 });
 
+// The hole under the hard rule. Section 1 says a push token is issued from
+// `preflight-green` and nowhere else, and the gate did check it — but nothing
+// checked that the state was true. `slices-approved -> preflight-green` is a
+// legal move, so the whole chain of gates could be replaced by typing the name
+// of its outcome. Walked into on DESKTOP-18832, where a session set it by hand
+// after the slice graph landed, opened a token, and pushed.
+describe('preflight-green has to be earned', () => {
+  /** Walk to the state just before it, without producing any evidence. */
+  async function atSlicesApproved(issue) {
+    for (const to of ['triaged', 'planned', 'plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved']) {
+      const result = await transition(issue, to, { home });
+      assert.ok(result.ok, `${to}: ${result.error}`);
+    }
+  }
+
+  test('typing the name of the state is refused', async () => {
+    await atSlicesApproved(700);
+
+    const result = await transition(700, 'preflight-green', { home });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /has not been shown to be ready to publish/);
+    assert.match(result.error, /preflight has never run/);
+    // And it says what to run, because a refusal that does not is a refusal
+    // people work around rather than satisfy.
+    assert.match(result.error, /pdkit preflight 700/);
+  });
+
+  test('a green run with the body earns it', async () => {
+    await atSlicesApproved(701);
+    await preflightGreen(701, { home });
+
+    assert.equal((await transition(701, 'preflight-green', { home })).ok, true);
+  });
+
+  // The second pass is what makes a green, and the first alone does not: four
+  // checks read the pull request body, and without it they have judged nothing.
+  test('a green run that never saw the pull request body does not', async () => {
+    await atSlicesApproved(702);
+    await write({
+      issue: 702,
+      report: { ok: true, results: CHECK_IDS.map((id) => ({ id, status: 'pass', blocking: true, summary: 'ok' })) },
+      context: { branch: null, slice: null, headSha: null, baseInfo: null, prBody: null },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+
+    const result = await transition(702, 'preflight-green', { home });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /only ever run without the pull request body/);
+  });
+
+  test('a blocking failure is not readiness, however recent', async () => {
+    await atSlicesApproved(703);
+    await write({
+      issue: 703,
+      report: {
+        ok: false,
+        results: CHECK_IDS.map((id) => ({ id, status: id === 'tests' ? 'fail' : 'pass', blocking: true, summary: id === 'tests' ? 'two specs red' : 'ok' })),
+      },
+      context: { branch: null, slice: null, headSha: null, baseInfo: null, prBody: 'body' },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+
+    const result = await transition(703, 'preflight-green', { home });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /tests failed: two specs red/);
+  });
+
+  // Green on a diff that has since moved is the false evidence lib/evidence.js
+  // was written against, and the slice verifier already refuses it by digest.
+  test('a green run of a commit that is no longer checked out does not count', async () => {
+    await atSlicesApproved(704);
+    await preflightGreen(704, { home, head: 'a'.repeat(40) });
+
+    const stale = await transition(704, 'preflight-green', { home, head: 'b'.repeat(40) });
+    assert.equal(stale.ok, false);
+    assert.match(stale.error, /a green run of a diff that has since moved/);
+
+    // The same evidence, asked about the commit it was taken on.
+    assert.equal((await transition(704, 'preflight-green', { home, head: 'a'.repeat(40) })).ok, true);
+  });
+
+  // Two passes, neither complete alone: the merged view is the question.
+  test('the body pass completes the first one rather than replacing it', async () => {
+    await atSlicesApproved(705);
+    const head = 'c'.repeat(40);
+
+    await write({
+      issue: 705,
+      report: { ok: true, results: CHECK_IDS.map((id) => ({ id, status: 'pass', blocking: true, summary: 'ok' })) },
+      context: { branch: null, slice: null, headSha: head, baseInfo: null, prBody: null },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+    assert.equal((await transition(705, 'preflight-green', { home, head })).ok, false);
+
+    // --body-only re-runs exactly the four, with the body in hand.
+    await write({
+      issue: 705,
+      report: { ok: true, results: BODY_DEPENDENT.map((id) => ({ id, status: 'pass', blocking: true, summary: 'ok' })) },
+      context: { branch: null, slice: null, headSha: head, baseInfo: null, prBody: 'body' },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+
+    assert.equal((await transition(705, 'preflight-green', { home, head })).ok, true);
+  });
+
+  // Adoption is the deliberate exception: work that predates the plugin never
+  // ran preflight, and inventing the artefacts of the states it skipped is the
+  // thing `adopt` exists not to do.
+  test('adopted work is not asked for evidence it was never going to have', async () => {
+    const adopted = await adopt(706, { state: 'preflight-green', reason: 'pushed before the plugin existed', home });
+    assert.equal(adopted.ok, true);
+    assert.equal((await read(706, { home })).state, 'preflight-green');
+  });
+});
+
 describe('the review rejected the approach', () => {
   /** Walk an issue to an open pull request with a frozen requirement set. */
   async function published(issue) {
+    // preflight-green is on the way, and it is no longer free.
+    await preflightGreen(issue, { home });
     await transition(issue, 'triaged', { home });
     await transition(issue, 'planned', { home });
     await allocateRequirement(issue, { home });

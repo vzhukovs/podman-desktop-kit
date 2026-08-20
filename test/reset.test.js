@@ -38,6 +38,7 @@ import { register } from '../lib/pr.js';
 import { EVENT, apply, belongsTo, collect, format } from '../lib/reset.js';
 import { read as readState, transition } from '../lib/state.js';
 import { status as attemptStatus } from '../lib/attempts.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 let home;
 
@@ -59,6 +60,7 @@ afterEach(async () => {
 async function furnish(issue) {
   await transition(issue, 'triaged', { home, route: 'quickfix' });
   await transition(issue, 'quickfix', { home });
+  await preflightGreen(issue, { home });
   await transition(issue, 'preflight-green', { home });
 
   const dir = issueDir(home, issue);
@@ -89,7 +91,13 @@ describe('what a reset finds before it touches anything', () => {
     assert.equal(facts.state, 'preflight-green');
     assert.equal(facts.route, 'quickfix');
     assert.equal(facts.anything, true);
-    assert.deepEqual(facts.artefacts.sort(), ['plan.md', 'receipts/ (1)', 'research.md', 'prs.json', 'state.json'].sort());
+    // preflight.json is in the list because reaching preflight-green now
+    // requires it, and a reset that left it behind would hand the next cycle a
+    // green run of a diff that no longer exists.
+    assert.deepEqual(
+      facts.artefacts.sort(),
+      ['plan.md', 'preflight.json', 'receipts/ (1)', 'research.md', 'prs.json', 'state.json'].sort(),
+    );
     assert.deepEqual(facts.tokens, ['push:DESKTOP-18548/fix']);
     assert.deepEqual(
       facts.active.map((pointer) => pointer.taskId),

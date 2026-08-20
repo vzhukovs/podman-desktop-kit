@@ -33,6 +33,7 @@ import { join } from 'node:path';
 
 import { defer, deferredEntry, list, open, settle } from '../lib/deferrals.js';
 import { transition } from '../lib/state.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const ISSUE = 18248;
 
@@ -154,6 +155,7 @@ describe('a deferral outlives the issue', () => {
     // The path an issue actually takes to merged does not matter here; what
     // matters is that it is terminal when it arrives.
     await transition(ISSUE, 'quickfix', { home, reason: 'seed' });
+    await preflightGreen(ISSUE, { home });
     await transition(ISSUE, 'preflight-green', { home, reason: 'seed' });
     await transition(ISSUE, 'pr-open', { home, reason: 'seed' });
     await transition(ISSUE, 'merged', { home, reason: 'seed' });

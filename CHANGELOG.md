@@ -103,6 +103,45 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`preflight-green` could be typed, and it is the state the push gate opens
+  from.** Section 1 has stated the hard rule since 0.1 — a push token is issued
+  from that state and nowhere else — and the gate checked it faithfully. Nothing
+  checked that the state was true. `slices-approved -> preflight-green` is a
+  legal move, so the entire chain of gates could be replaced by fourteen
+  characters. Walked into on DESKTOP-18832, where a session set it by hand after
+  a slice graph landed, opened a token and pushed.
+  - The repair is the device every other guarded state already used: something on
+    disk only a real run could have produced. `answered` refuses while nothing is
+    captured, the redo route refuses to leave `triaged` without the archaeology —
+    and preflight wrote **nothing at all**, printing a report and forgetting it,
+    which is exactly why this was the one rule with no evidence behind it.
+  - `preflight.json` now records every run, green or red, both passes. The
+    transition asks three things of it: the checks ran on **this** commit (filed
+    under the resolved head SHA, so a green run of a diff that has since moved is
+    not evidence); nothing blocking is failing; and the four body-dependent
+    checks have seen a body. That last one makes the second pass load-bearing
+    rather than ceremonial — a check that skipped because it had nothing to read
+    has judged nothing.
+  - Adoption stays exempt, deliberately: `issue adopt` writes the state instead
+    of transitioning, because work predating the plugin never ran preflight.
+- **The documented publish sequence could not work.** `/pd:pr` has said
+  `gate open`, `git push`, `pdkit pr create` since it was written — and the push
+  spent the token that `pr create` then needed. Found the worst way round on
+  DESKTOP-18832: the refusal arrived *after* the push, leaving a public branch
+  with no pull request to explain it.
+  - A push token now carries two uses, `push` and `pr`, spent separately. One
+    reading — the body and the branch shown together at `gate open` — rather than
+    two confirmations, the second of which would have followed the irreversible
+    half. **One token, one push is untouched**: a token that has pushed cannot
+    push again.
+  - The order is fixed and not symmetric. Opening the pull request spends the
+    token whole, so a push may precede it and never follow it — otherwise a token
+    that had opened a pull request would still carry a push, landing new commits
+    on a branch already under review with nobody confirming them. Caught by an
+    existing test that had encoded the old rule as "one token, one write", which
+    turned out to be the right rule for the wrong reason.
+  - Reply tokens are unchanged: no uses, spent by the TTL, because what they
+    authorise is the batch of drafts somebody read in one go.
 - **`slice verify` said `RED` for a run that proved nothing.** A red slice has two
   causes and they are not the same finding: the slice broke something, or the base
   fails that command too. The plugin already measured the difference — it resets

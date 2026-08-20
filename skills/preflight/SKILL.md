@@ -44,6 +44,17 @@ prints the exact block. Re-run afterwards.
 
 Everything else goes back to the user with the output attached.
 
+## The run is kept, and it is what the next state is made of
+
+Every run is written to `preflight.json` under the issue — green or red, both
+passes — and `pdkit state <n> --to preflight-green` reads it rather than taking
+your word. It asks three things: the checks ran on **this** commit, none that
+blocks is failing, and the four that read the pull request body have seen one.
+
+So the two passes are not ceremony. The first, without a body, leaves those four
+having judged nothing; `--body-only --body <file>` is what completes them. Until
+it does, the transition refuses and the gate cannot open.
+
 ## Next
 
 `/pd:pr <issue> [slice]` — green preflight is what the push gate is issued from,

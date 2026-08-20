@@ -196,6 +196,35 @@ give, and naming a skill there would name one that must not run yet.
 `preflight-green`, and only for a branch present in the approved graph.**
 Everything else is denied at the hook, not at the prompt.
 
+**And `preflight-green` is earned rather than asserted** — which it was not, for
+the first twenty-nine versions of this document. The gate checked the state
+faithfully; nothing checked that the state was true. `slices-approved ->
+preflight-green` is a legal move, so the entire chain of gates could be replaced
+by typing the name of its outcome. Found on DESKTOP-18832, where a session did
+exactly that after a slice graph landed, opened a token and pushed.
+
+The repair is the device every other guarded state already used: something on
+disk that only a real run could have produced. `answered` refuses while nothing
+has been captured; the redo route refuses to leave `triaged` until the previous
+attempt has been looked up. Preflight had no such file — it printed a report and
+forgot it — which is precisely why this was the one rule with nothing behind it.
+It now writes `preflight.json`, and the transition asks three questions of it:
+
+1. **on this commit.** Runs are filed under the resolved head SHA, so a green
+   run of a diff that has since moved is not evidence — the same thing the slice
+   verifier refuses by digest.
+2. **nothing blocking is failing**, taken from the recorded per-check results
+   rather than from a summary anyone could have typed.
+3. **the body-dependent four have seen a body.** Section 7's two passes mean no
+   single run is complete, so the question is asked of the merged view: the
+   latest result per check, and for those four, one from a run that had the body.
+   A check that skipped because it had nothing to read has judged nothing.
+
+Adoption stays the exception, deliberately: `issue adopt` writes the state
+directly rather than transitioning, because work that predates the plugin never
+ran preflight and inventing the artefacts of states it skipped is the one thing
+that command exists not to do.
+
 ---
 
 ## 2. Plugin structure
@@ -320,6 +349,7 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 │                                #   per tree, named by a hash of its path
 ├── issues/12345/
 │   ├── state.json               # the machine, timestamps, who approved what
+│   ├── preflight.json           # every run, both passes; what `preflight-green` is earned from
 │   ├── issue.md                 # issue snapshot + triage verdict + R-set
 │   ├── archaeology.json / .md   # facts about a previous attempt, and their reading
 │   ├── research.md              # the scouts' compressed map, file:line only
@@ -1277,6 +1307,31 @@ A hand-written `gh api graphql` mutation is a separate case: the PR number is
 nowhere in it, so there is nothing to check a token against. Such a command is
 refused with a hint to use `pdkit pr reply --pr <n>` rather than matched against
 whatever token happens to be lying around.
+
+### One consent, two writes
+
+Publishing a branch takes two commands — `git push`, then `gh pr create` — and
+the push spent the token the pull request then needed. `/pd:pr` has documented
+that exact pair since it was written, so **the documented sequence could not
+work**, and it was found by running it: on DESKTOP-18832 the refusal arrived
+after the push, leaving the one state worse than either outcome — a public branch
+with no pull request to explain it.
+
+Issuing a second token was the other repair and it is the wrong one. What a human
+reads at `gate open` is the body and the branch, together; asking again splits one
+reading into two confirmations, which is the fatigue section 4 says a gate cannot
+afford — and the second confirmation would come after the irreversible half.
+
+So a push token carries two **uses**, `push` and `pr`, spent separately. One
+token, one push is untouched: a token that has pushed cannot push again, only do
+the other thing it was granted for. The order is fixed and not symmetric —
+opening the pull request spends the token whole, so a push may precede it and
+never follow it. A token that had opened a pull request and kept its push would
+put new commits on a branch already under review, with nobody confirming them in
+the moment.
+
+Reply tokens are unchanged: no uses, spent by the TTL rather than on first write,
+because what they authorise is the batch of drafts somebody read in one go.
 
 ### Receipts, and why the ceiling holds
 

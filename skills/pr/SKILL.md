@@ -83,6 +83,21 @@ it from the branch you are standing on.
    pdkit pr create --issue <n> --branch <b> --title <t> --body <file>
    ```
 
+   **One token covers those two writes**, once each: the push spends half, and
+   the pull request the push exists for spends the rest. That is one reading —
+   the body and the branch you just showed — rather than two confirmations, and
+   the second one would have arrived after the branch was already public.
+
+   The order is fixed and not symmetric. Opening the pull request spends the
+   token whole, so a push may come before it and never after: new commits on a
+   branch already under review are their own publication and need their own
+   token.
+
+   `pdkit state <n> --to preflight-green` is **earned, not asserted**. It reads
+   what `pdkit preflight` wrote — for this commit, with every check green and
+   the body-dependent four having actually seen a body. If it refuses, the
+   answer is a preflight run, never a different way of setting the state.
+
    `pdkit pr create` verifies and spends the token itself. If you open the PR
    any other way, do it after `gate open` and expect the hook to spend the
    token on the `gh` call.

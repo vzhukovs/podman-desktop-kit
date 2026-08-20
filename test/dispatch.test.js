@@ -40,6 +40,7 @@ import { handle } from '../lib/hooks/dispatch.js';
 import * as journal from '../lib/journal.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const run = promisify(execFile);
 
@@ -54,6 +55,10 @@ const bash = (command) => ({ tool_name: 'Bash', tool_input: { command }, cwd: re
 
 /** Walk an issue to the only state a token is issued from. */
 async function readyIssue(issue) {
+  // The move to preflight-green is earned from what preflight wrote, so a
+  // fixture standing there has to have produced it like anything else.
+  await preflightGreen(issue, { home });
+
   for (const to of [
     'triaged',
     'planned',
@@ -152,10 +157,34 @@ describe('the gate', () => {
     assert.equal(first.block, false);
     assert.match(first.message, /spent/);
 
-    // One token, one push. The second attempt is a new decision.
+    // One token, one push. The second attempt is a new decision, and it stays
+    // one now that the token has a second use: what the push spent is the push.
     const second = await handle(bash('git push'));
     assert.equal(second.block, true);
-    assert.match(second.reason, /already spent/);
+    assert.match(second.reason, /already pushed/);
+    assert.match(second.reason, /second push is a second publication/);
+  });
+
+  // The half of the token the push does not spend, and the reason it exists.
+  // `/pd:pr` documents `gate open`, then `git push`, then `pdkit pr create` —
+  // and until the uses were separated, the push spent the token and the third
+  // command was refused by it. The documented sequence could not work, and it
+  // failed at the worst moment: the branch was already public, so the refusal
+  // left a pushed branch with no pull request to explain it.
+  test('the pull request the push exists for is covered by the same consent', async () => {
+    await gate.open({ issue: 2001, branch: BRANCH, home });
+
+    const pushed = await handle(bash('git push'));
+    assert.equal(pushed.block, false);
+
+    // What `gh pr create` asks, through gh.createPullRequest.
+    const forPr = await gate.verify({ branch: BRANCH, use: 'pr', home });
+    assert.equal(forPr.valid, true, forPr.reason);
+
+    // And it is still single-use: spending it leaves nothing behind.
+    assert.equal((await gate.close(BRANCH, { home, use: 'pr' })).ok, true);
+    assert.equal((await gate.verify({ branch: BRANCH, use: 'pr', home })).valid, false);
+    assert.equal((await gate.verify({ branch: BRANCH, home })).valid, false, 'a token with both uses gone is gone');
   });
 
   test('an expired token does not allow', async () => {

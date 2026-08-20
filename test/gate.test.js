@@ -36,11 +36,16 @@ import { DEFAULT_TTL_MS, close, open, parseDuration, revokeAll, verify } from '.
 import { paths } from '../lib/config.js';
 import { read as readJournal } from '../lib/journal.js';
 import { transition } from '../lib/state.js';
+import { preflightGreen } from './helpers/preflight-evidence.js';
 
 let home;
 
 /** Walk an issue to preflight-green, the only state a token is issued from. */
 async function readyIssue(issue, { route = 'standard' } = {}) {
+  // That state is now earned rather than asserted, so the walk produces the
+  // evidence first — the same order real work goes in.
+  await preflightGreen(issue, { home });
+
   const path =
     route === 'quickfix'
       ? ['triaged', 'quickfix', 'preflight-green']
@@ -219,9 +224,58 @@ describe('spending', () => {
 
     const second = await close('DESKTOP-1020/spend-once', { home });
     assert.equal(second.ok, false);
-    assert.match(second.error, /already spent/);
+    assert.match(second.error, /already pushed/);
 
-    assert.equal((await verify({ branch: 'DESKTOP-1020/spend-once', home })).valid, false);
+    // Still nothing left to push with, which is the rule. What survives is the
+    // other write the same consent covered, and it is a different question.
+    assert.equal((await verify({ branch: 'DESKTOP-1020/spend-once', use: 'push', home })).valid, false);
+  });
+
+  // One reading, two writes, neither twice. The pair `git push` then
+  // `gh pr create` is what `/pd:pr` has always documented, and until the uses
+  // were separated the first spent the token and the second was refused by it —
+  // discovered on DESKTOP-18832, after the push had already made the branch
+  // public.
+  test('a push token also covers the pull request that publishes the branch', async () => {
+    await readyIssue(1060);
+    const branch = 'DESKTOP-1060/two-writes';
+    await open({ issue: 1060, branch, home });
+
+    assert.equal((await close(branch, { home, use: 'push' })).ok, true);
+    assert.equal((await verify({ branch, use: 'pr', home })).valid, true, 'the pull request half survives the push');
+
+    assert.equal((await close(branch, { home, use: 'pr' })).ok, true);
+
+    // Exhausted in every direction now: opening the pull request spends the
+    // token whole, so it cannot be followed by a push.
+    assert.equal((await verify({ branch, use: 'pr', home })).valid, false);
+    assert.equal((await verify({ branch, use: 'push', home })).valid, false);
+    assert.equal((await verify({ branch, home })).valid, false);
+  });
+
+  // The order is fixed, and this is the reason. A token that had opened a pull
+  // request but kept its push would put new commits on a branch already under
+  // review, with nobody confirming them in the moment.
+  test('a pull request cannot be followed by a push on the same consent', async () => {
+    await readyIssue(1032);
+    const branch = 'DESKTOP-1032/pr-first';
+    await open({ issue: 1032, branch, home });
+
+    assert.equal((await close(branch, { home, use: 'pr' })).ok, true);
+
+    const after = await close(branch, { home, use: 'push' });
+    assert.equal(after.ok, false);
+    assert.match(after.error, /already spent/);
+  });
+
+  test('a use a push token does not have is refused by name', async () => {
+    await readyIssue(1031);
+    const branch = 'DESKTOP-1031/unknown-use';
+    await open({ issue: 1031, branch, home });
+
+    const result = await close(branch, { home, use: 'comment' });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /not something a push token authorises/);
   });
 
   test('spending a branch that has no token fails', async () => {
