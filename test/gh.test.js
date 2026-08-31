@@ -46,6 +46,7 @@ import {
   pullRequest,
   replyToThread,
   reviewThreads,
+  upstreamBranchExists,
   upstreamSlug,
 } from '../lib/gh.js';
 import * as gate from '../lib/gate.js';
@@ -656,8 +657,55 @@ describe('creating a pull request', () => {
     assert.equal(result.number, 2871);
     assert.equal(result.url, CREATED.trim());
 
+    // Returned so that what gets recorded is what was opened. `pr.register`
+    // used to store the base the caller named, which on the first multi-slice
+    // live run was a stacked slice's branch while `main` was what GitHub got.
+    assert.equal(result.base, 'main');
+
     // One token, one write.
     assert.equal((await gate.verify({ branch: BRANCH, home })).valid, false);
+  });
+
+  test('an explicit base is the one sent, and the one returned', async () => {
+    await gate.open({ issue: 6001, branch: BRANCH, home });
+
+    const result = await createPullRequest({
+      head: BRANCH,
+      base: 'DESKTOP-6001/1-fix-main',
+      title: 't',
+      body: 'b',
+      config: CONFIG,
+      home,
+      exec: fakeGh(CREATED),
+    });
+
+    assert.equal(calls[0].args[calls[0].args.indexOf('--base') + 1], 'DESKTOP-6001/1-fix-main');
+    assert.equal(result.base, 'DESKTOP-6001/1-fix-main');
+  });
+
+  // What a stacked slice's base has to be checked against before publishing.
+  // The base of a pull request is a branch of the repository it opens against,
+  // and a slice branch lives in the fork — so the answer here is what decides
+  // whether the stack can be expressed at all.
+  describe('a branch of the upstream repository', () => {
+    test('present is true, absent is false', async () => {
+      assert.equal(await upstreamBranchExists('main', { config: CONFIG, exec: fakeGh('main\n') }), true);
+      assert.equal(
+        await upstreamBranchExists('DESKTOP-6001/1-fix-main', { config: CONFIG, exec: fakeGh('', new Error('gh: Not Found (HTTP 404)')) }),
+        false,
+      );
+    });
+
+    // A network failure is not an absent branch, and refusing to publish
+    // because of one would be this answering a question it was not asked.
+    test('a lookup that failed for another reason is unknown, not absent', async () => {
+      assert.equal(await upstreamBranchExists('main', { config: CONFIG, exec: fakeGh('', new Error('could not resolve host')) }), null);
+    });
+
+    test('the branch is escaped into the path', async () => {
+      await upstreamBranchExists('DESKTOP-6001/1-fix', { config: CONFIG, exec: fakeGh('x\n') });
+      assert.ok(calls[0].args.includes('repos/podman-desktop/podman-desktop/branches/DESKTOP-6001%2F1-fix'));
+    });
   });
 
   test('an expired token refuses', async () => {

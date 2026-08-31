@@ -206,3 +206,63 @@ describe('shapes the contract did not name', () => {
     assert.equal(matches('echo $(git push', 'git', ['push']), true);
   });
 });
+
+// A here-document with a QUOTED delimiter is the one construct whose body bash
+// guarantees it will not expand. Reading it anyway refused three writes on the
+// first multi-slice live run — each one a file whose text quoted this
+// repository's own rules, backticks included.
+//
+// The line either side of that guarantee is the whole point of the block: a
+// quoted delimiter means the body is data, an unquoted one means bash expands
+// it, and `<<` written inside quotes means nothing at all.
+describe('here-documents', () => {
+  const nl = '\n';
+
+  test("a quoted delimiter makes the body data, not commands", () => {
+    const command = ["cat > plan.json <<'JSON'", '{ "scope": "never `git rebase -i`, use reset --soft" }', 'JSON', 'echo written'].join(nl);
+
+    assert.equal(matches(command, 'git', ['rebase']), false);
+    assert.equal(matches(command, 'echo'), true, 'the line after the terminator still runs');
+  });
+
+  test('every quoted spelling of the delimiter, and the <<- variant', () => {
+    for (const opener of ["<<'EOF'", '<<"EOF"', '<<\\EOF', "<<-'EOF'"]) {
+      const command = [`cat ${opener}`, 'git push origin main', 'EOF'].join(nl);
+      assert.equal(matches(command, 'git', ['push']), false, opener);
+    }
+  });
+
+  test('the line that opens the heredoc is still scanned', () => {
+    const command = ["cat <<'EOF' && git push origin main", 'anything at all', 'EOF'].join(nl);
+    assert.equal(matches(command, 'git', ['push']), true);
+  });
+
+  // Bash expands an unquoted body, so a command in it is a command.
+  test('an unquoted delimiter leaves the body in the scan', () => {
+    const command = ['cat <<EOF', '$(git push origin main)', 'EOF'].join(nl);
+    assert.equal(matches(command, 'git', ['push']), true);
+  });
+
+  // Otherwise the sequence could be written as a string to silence every line
+  // after it — the parser talked out of looking rather than being right.
+  test('<< inside quotes opens nothing', () => {
+    const command = ['echo "<<\'EOF\'"', 'git push origin main'].join(nl);
+    assert.equal(matches(command, 'git', ['push']), true);
+  });
+
+  test('a here-string takes no body', () => {
+    const command = ['grep x <<< "not a heredoc"', 'git push origin main'].join(nl);
+    assert.equal(matches(command, 'git', ['push']), true);
+  });
+
+  test('two heredocs on one line consume their bodies in order', () => {
+    const command = ["diff <(cat <<'A'", 'git push', 'A', ") <(cat <<'B'", 'git push', 'B', ')', 'echo done'].join(nl);
+    assert.equal(matches(command, 'git', ['push']), false);
+    assert.equal(matches(command, 'echo'), true);
+  });
+
+  // What bash does with it: reads to the end of input and runs none of it.
+  test('an unterminated heredoc runs to the end', () => {
+    assert.equal(matches(["cat <<'EOF'", 'git push origin main'].join(nl), 'git', ['push']), false);
+  });
+});

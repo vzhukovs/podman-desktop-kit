@@ -234,7 +234,61 @@ describe('build', () => {
       ]),
     });
 
-    assert.ok(result.problems.some((problem) => problem.check === 'base' && problem.detail.includes('#9')));
+    assert.ok(result.problems.some((problem) => problem.check === 'base' && problem.detail.includes('baseSlice 9')));
+  });
+
+  // A slug arrived here on the first multi-slice live run and was reported as
+  // "#fix-main-…, which is not a slice" — which reads as a slice that went
+  // missing rather than as a value of the wrong kind.
+  test('a base given as a slug says what a baseSlice is', () => {
+    const result = build({
+      proposal: proposal([
+        { slug: 'a', files: [API], baseSlice: null },
+        { slug: 'b', files: [EXEC, THEME, SPEC], baseSlice: 'a' },
+      ]),
+    });
+
+    const problem = result.problems.find((entry) => entry.check === 'base');
+    assert.ok(problem, 'the graph is refused');
+    assert.match(problem.detail, /baseSlice "a" — it is the index of another slice, 1 to 2, or null/);
+  });
+
+  // A stack is legal in the graph and unpublishable from a fork: the base of a
+  // pull request is a branch of the repository it opens against, and a slice
+  // branch is not one. Said at the cut, which is the last point where choosing
+  // independence is still cheap. A live run found it after publishing.
+  describe('a stack that cannot be published from a fork', () => {
+    const forked = { ...CONFIG, repo: { ...CONFIG.repo, fork: 'someone/podman-desktop', upstream: 'podman-desktop/podman-desktop' } };
+
+    test('warns, and does not refuse — the graph is still the merge order', () => {
+      const result = build({
+        config: forked,
+        proposal: proposal([
+          { slug: 'a', files: [API], baseSlice: null },
+          { slug: 'b', files: [EXEC, THEME, SPEC], baseSlice: 1 },
+        ]),
+      });
+
+      assert.equal(result.ok, true);
+      const warning = result.warnings.find((entry) => entry.check === 'base');
+      assert.ok(warning, 'the stack is flagged');
+      assert.match(warning.detail, /cannot open against another slice/);
+    });
+
+    test('says nothing when the branches and the pull requests share a repository', () => {
+      const result = build({
+        config: { ...CONFIG, repo: { ...CONFIG.repo, fork: 'podman-desktop/podman-desktop', upstream: 'podman-desktop/podman-desktop' } },
+        proposal: proposal([
+          { slug: 'a', files: [API], baseSlice: null },
+          { slug: 'b', files: [EXEC, THEME, SPEC], baseSlice: 1 },
+        ]),
+      });
+
+      assert.equal(
+        result.warnings.some((entry) => entry.check === 'base'),
+        false,
+      );
+    });
   });
 
   describe('the public API change goes alone and goes first (section 10, scenario 12)', () => {
