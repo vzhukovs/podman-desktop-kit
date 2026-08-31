@@ -412,6 +412,36 @@ describe('the suite runs where CI says it runs', () => {
   });
 });
 
+// A dynamic import of a path this code built must go through pathToFileURL.
+//
+// The bug this replaces had been in `bin/pdkit` since the first commit and was
+// invisible for a month, because a POSIX absolute path works as an import
+// specifier by accident: it starts with `/`, which is a valid URL path. A
+// Windows path starts with `D:`, which ESM reads as an unsupported scheme and
+// refuses — so every `pdkit` invocation on Windows died at the entry point,
+// uncaught, exit 1. The gate did not refuse there; it never ran.
+//
+// Three sites had it: the entry point, the hook handler loader, and the
+// preflight check loader. Nothing caught it because the only platform that can
+// see it was the platform whose CI job was silently running zero tests.
+describe('dynamic imports are URLs, not paths', () => {
+  test('every await import() of a built path goes through pathToFileURL', async () => {
+    const sources = [...(await modules()), { name: 'bin/pdkit', code: code(await readFile(join(ROOT, 'bin', 'pdkit'), 'utf8')) }];
+
+    const offenders = [];
+    for (const module of sources) {
+      for (const [call] of module.code.matchAll(/await import\([^)]*\)/g)) {
+        // A relative specifier is fine and is the common case; what cannot be
+        // handed to import() raw is something join/resolve produced.
+        const built = /\b(join|resolve)\s*\(/.test(call);
+        if (built && !call.includes('pathToFileURL')) offenders.push(`${module.name}: ${call}`);
+      }
+    }
+
+    assert.deepEqual(offenders, [], 'these refuse to load on Windows, where a path is not a URL');
+  });
+});
+
 describe('licensing', () => {
   // The house format, stated here in full rather than sampled from a file that
   // happens to carry it. knowledge/upstream-rules.md tells contributors that a

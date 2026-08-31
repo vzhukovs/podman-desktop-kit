@@ -27,10 +27,15 @@
 //
 // Keep bin/ to this one file: everything here becomes a bare command.
 
-import { fileURLToPath } from 'node:url';
+// `pathToFileURL` and not the path itself. A filesystem path works as an import
+// specifier on Linux and macOS by accident — it begins with `/`, which is a
+// valid URL path — and on Windows it begins with `D:`, which ESM reads as an
+// unsupported scheme and refuses. Every `pdkit` invocation on Windows died here,
+// before the CLI was reached: uncaught, exit 1, and the gate along with it.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { main } = await import(join(here, '..', 'lib', 'cli.js'));
+const { main } = await import(pathToFileURL(join(here, '..', 'lib', 'cli.js')).href);
 
 process.exitCode = await main(process.argv.slice(2));
