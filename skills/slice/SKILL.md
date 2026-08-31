@@ -47,10 +47,18 @@ Write a proposal — one JSON file, one entry per slice:
   ] }
 ```
 
-`baseSlice: null` means it branches from `main`. Prefer that. A stack is
-fragile — after #1 merges, #2 needs its base switched and its review threads
-point at moved lines — so every stacked slice has to say why independence was
-impossible.
+`baseSlice` is the **index** of another slice — `1`, not its slug. `null` means
+it branches from `main`. Prefer `null`. A stack is fragile — after #1 merges,
+#2 needs its base switched and its review threads point at moved lines — so
+every stacked slice has to say why independence was impossible.
+
+**And from a fork it cannot be published as a stack at all.** The base of a
+pull request is a branch of the repository it opens against; a slice branch is
+in your fork. So a stacked slice ships against `main` carrying the diff of the
+slice below it until that one merges, and its body has to say so. `slice set`
+warns when it sees this. It is a warning rather than a refusal because the
+graph is still the right merge order — but it is the moment to ask again
+whether the slice can stand alone, because it is the last cheap one.
 
 ```
 pdkit slice set --issue <n> --from <file.json>

@@ -551,6 +551,61 @@ describe('stability', () => {
     assert.equal(result.ok, false);
     assert.match(result.error, /no longer in the repository/);
   });
+
+  // The failure this check exists to stop, which an exit code cannot see. Every
+  // machine spec in this repository opens with
+  // `test.skip(process.env.TEST_PODMAN_MACHINE !== 'true')`; run without it the
+  // suite skips its whole body and exits 0, and three of those satisfied the
+  // blocking e2e-stability gate on evidence of nothing.
+  test('a run that skipped everything is not a green run', async () => {
+    const issue = 8811;
+    const spec = await writeSpec('gated.spec.ts', 'test.skip("k", () => {});\n');
+    await writeFile(
+      join(repo, 'package.json'),
+      // The count is computed rather than written, so the summary this asserts
+      // on can only have come from the run — npm echoes the script line, and a
+      // literal "15 skipped" there would be matched as well as produced.
+      JSON.stringify({ scripts: { 'test:e2e:run': 'node -e "console.log((5*3)+String.fromCharCode(32)+\'skipped\')"' } }),
+    );
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.performed, 1, 'the series stops on the first one rather than repeating an empty suite');
+    assert.equal(result.consecutive, 0);
+    assert.match(result.error, /no test executed \(15 skipped\)/);
+    assert.match(result.error, /gated on something this environment does not satisfy/);
+
+    // The run still happened and its capture is on disk. What it is not is a pass.
+    const artefact = await readFile(join(home, 'issues', String(issue), 'validation', 'e2e-1.md'), 'utf8');
+    assert.match(artefact, /## Output/);
+  });
+
+  test('a run whose reporter says nothing recognisable is left alone', async () => {
+    const issue = 8812;
+    const spec = await writeSpec('quiet.spec.ts', 'test("l", () => {});\n');
+    await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
+    await validation.codify({ issue, home, repoRoot: repo, spec });
+
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 2 });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.consecutive, 2, 'no summary means no claim, not a refusal');
+  });
+});
+
+describe('outcomes', () => {
+  test('reads what a run reported, and separates executed from skipped', () => {
+    assert.deepEqual(validation.outcomes('\n  12 passed (3.1m)\n'), { executed: 12, skipped: 0 });
+    assert.deepEqual(validation.outcomes('\n  15 skipped\n'), { executed: 0, skipped: 15 });
+    assert.deepEqual(validation.outcomes('  2 flaky\n  1 skipped\n  9 passed (1m)\n'), { executed: 11, skipped: 1 });
+  });
+
+  test('output with no summary at all is null, not zero', () => {
+    assert.equal(validation.outcomes(''), null);
+    assert.equal(validation.outcomes('Everything is fine.'), null);
+  });
 });
 
 describe('finishing', () => {

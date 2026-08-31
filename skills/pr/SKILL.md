@@ -103,9 +103,27 @@ it from the branch you are standing on.
    token on the `gh` call.
 
    On a stacked slice the pull request opens against **its base branch**, not
-   `main` — `pdkit slice show` names it. Against `main` the diff would carry
-   the previous slice's work, and the reviewer would be reading two changes
-   believing they are one.
+   `main` — `pdkit pr create` takes it from the graph, so there is nothing to
+   pass. Against `main` the diff would carry the previous slice's work, and the
+   reviewer would be reading two changes believing they are one.
+
+   **From a fork, that base usually does not exist.** The base of a pull
+   request is a branch of the repository it opens against, and a slice branch
+   lives in your fork — so a stack is only expressible when the branches and
+   the pull requests share a repository. `pdkit pr create` checks upstream for
+   the base and refuses before the token is spent when it is not there. Two
+   honest ways past it, and neither is a different spelling of the command:
+
+   - **Wait.** Merge the slice below, then open this one. Cleanest, and free if
+     the review is not urgent.
+   - **`--base main`, and say so in the body.** The diff will carry the other
+     slice until it lands. Then "Not in this PR" has to state that in the first
+     line, name the pull request it depends on, and list the files this one
+     actually adds — otherwise the body describes a diff the reviewer is not
+     looking at.
+
+   `pdkit slice set` warns about this at the cut, which is the last point where
+   choosing independence is still cheap.
 
    Then start the next slice at step 1. The issue returns to
    `preflight-green` for each; an issue with three slices passes through that

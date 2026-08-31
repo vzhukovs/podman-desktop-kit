@@ -605,11 +605,34 @@ describe('the artefact checks', () => {
     assert.equal(result.summary, '3 steps, each with an expected result');
   });
 
+  // The other side of the bound above, and the failure it produced on the first
+  // multi-slice live run: eight steps written as `**1. Set up**` were reported
+  // as "0 steps, at least 3 are required" with a remedy about writing more of
+  // them. The answer took reading this check's source.
+  test('steps-to-check: says when a bold sub-heading cut the section short', async () => {
+    const result = await only('steps-to-check', {
+      prBody: body({
+        steps:
+          '**1. Set up**\n' +
+          '1. Build the app → it starts\n' +
+          '**2. Observe**\n' +
+          '2. Open Settings → the panel appears\n' +
+          '3. Restart the machine → the list refreshes',
+      }),
+    });
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /the section ends at a bold sub-heading, 3 more are below it/);
+    assert.equal(result.output, '**1. Set up**', 'the line that cut it is named');
+    assert.match(result.remedy, /plain numbered list/);
+  });
+
   test('steps-to-check: fewer than three fails', async () => {
     const result = await only('steps-to-check', { prBody: body({ steps: '1. Build → it builds\n2. Run → it runs' }) });
 
     assert.equal(result.status, 'fail');
     assert.match(result.summary, /at least 3/);
+    assert.doesNotMatch(result.summary, /bold/, 'genuinely too few steps is not blamed on formatting');
   });
 
   // A step is not a line. Written out, one usually runs to three — the action,

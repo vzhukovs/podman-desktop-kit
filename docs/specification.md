@@ -875,8 +875,24 @@ once.** A token is issued per branch, and confirmation for slice #1 is not
 confirmation for #2. Showing three PR bodies in a row and asking once turns the
 gate into exactly the reflex it exists to prevent. The PR base comes from the
 graph: `main` for an independent slice, the predecessor's branch for a stacked
-one, and `--base` in `gh pr create` must repeat it or upstream sees somebody
-else's changes in the diff.
+one. `pdkit pr create` reads it there and passes it, and it records the base the
+write came back with rather than the one it was given — for the same reason
+receipts are captures.
+
+**A stack cannot be published from a fork, and that is a property of GitHub
+rather than of the graph.** The base of a pull request is a branch of the
+repository it opens against; a slice branch is in the fork. So `pr create`
+checks upstream for a non-default base and refuses before the token is spent
+when it is not there, naming the two ways past: merge the slice below first, or
+open against `main` with `--base main` and state in the body that the diff
+carries the other slice until it lands. `slice set` warns at the cut, which is
+where independence is still cheap.
+
+The first multi-slice live run found this the expensive way. Slice #2 was
+verified, preflighted and shown to the user against slice #1's branch — two
+files, +130/−2 — and opened against `main` at four files, +435/−10, with a body
+that said it changed no product code. Every check had judged a different diff
+from the one the reviewer got.
 
 **Why two passes.** Six checks read the PR body, and the body depends on
 preflight — `Notes for reviewers` is mandatory exactly when preflight flagged
@@ -1816,7 +1832,7 @@ you can point at.**
 | **The plugin as installed from a catalogue over the network.** It now loads from a marketplace entry in `settings.json` — but that entry's source is a local directory | Half the row closed on 18832: the manifest is found through `extraKnownMarketplaces` plus `enabledPlugins`, not only through `--plugin-dir`, and skills and agents resolve from it. What is still untested is the fetch: a marketplace pulled from a remote repository, which is the path every other user takes |
 | **Eighteen of the twenty-two skills.** `doctor`, `sync`, `plan` and `plan-review` have been invoked through a session | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it |
 | **Four of the six hook events.** `pre-bash` has two genuine firings in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host. On 18832 a session *did* write plan and task files through the host's `Write` tool, so `post-write` was almost certainly called — and left no trace either way, because a handler that passes silently is indistinguishable from one that was never wired up. That is the same shape as the flake verdict below, and it is why this row needs an artefact rather than an absence of complaints |
-| **Cutting into N slices, stacking, and `cascade`.** The only live graph was `1 slice(s)`; there is no `slice-cascade` event in the journal | The key feature of stage 3 and the densest machinery in the plugin. Untested: a stacked base taken from the graph, rebasing dependents, the loss of standalone, preflight from a predecessor's branch |
+| **`cascade`, and rebasing dependents.** Two slices with a stacked base ran end to end on 18967 — cut, verified, materialised, preflighted from the predecessor's branch, published — so that half of the row is closed. There is still no `slice-cascade` event in the journal | What the run found is in the section above: the graph carried a base the publish route could not express, and nothing between `slice set` and `gh` compared the two. Both ends now do. What remains untested is a review fix landing in a slice something else is stacked on, which is what `cascade` is for, and it needs a reviewer rather than a fixture |
 | **`pr-sync` as a whole**, and specifically `replyToThread` with both GraphQL mutations | The reply token is verified further than it was — issued from `pr-open` for `gh pr edit`, and from `merged` for `gh pr comment` on #18561 — so what is left is narrower and harder: the mutations need somebody else's *thread*, and synthetic material there is self-confirmation, since the same person would be writing both the threads and the filter that reads them |
 | **The `redo` route carried through to code** | The facts of a previous attempt are now collected correctly and `archaeology.json` is written by a real query, but no redo has reached a diff: that is a separate issue, not a separate task |
 | **Scenarios 12 and 13 on our own work** | Run against somebody else's diff, and that is the boundary: `--from-pr` is verified from fetch to graph, while materialising a foreign PR hit the repository's own pre-commit hook on an old checkout. Branches from a foreign diff, and thread migration into new pull requests, remain unexecuted |
