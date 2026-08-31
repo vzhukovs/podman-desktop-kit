@@ -39,9 +39,10 @@ by tests. **What has been proven against a live repository is narrower**, and th
 difference is worth knowing before trusting a step — section 13 of
 [`specification.md`](specification.md) keeps the full accounting, with evidence
 per row. In short: the `quickfix` and `standard` routes have each gone end to end
-to a published upstream pull request, and almost all of that was driven through
-`pdkit` in a terminal — so eighteen of the twenty-two skills below have never
-been invoked as `/pd:*`.
+to a published upstream pull request, once as a two-slice graph into two of them,
+and one issue has been through the whole machine to `merged` with a reviewer and
+a rebase in the middle. Much of that was driven through `pdkit` in a terminal —
+so twelve of the twenty-two skills below have never been invoked as `/pd:*`.
 
 ## Before anything
 

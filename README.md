@@ -9,9 +9,10 @@ It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
 > **Status: 0.1.0, a proof of concept.** Two routes have gone end to end to a
-> published upstream pull request, and most of the workflow was driven through
-> `pdkit` in a terminal rather than through `/pd:*` in a session — so eighteen of
-> the twenty-two skills have never run.
+> published upstream pull request — once as a two-slice graph into two of them —
+> and one issue has been all the way to `merged` after review and a rebase. Much
+> of the workflow was driven through `pdkit` in a terminal rather than through
+> `/pd:*` in a session, so twelve of the twenty-two skills have never run.
 > [Status and limitations](#status-and-limitations) has the full accounting, with
 > evidence per line.
 
@@ -132,6 +133,9 @@ puts one there — a journal entry, or an artefact you can point at.
 |---|---|
 | The `quickfix` route end to end | issue #18248 → [PR #18561](https://github.com/podman-desktop/podman-desktop/pull/18561), the whole journal from `triaged` to `pr-open` |
 | The `standard` route end to end | issue #17221 → [PR #18562](https://github.com/podman-desktop/podman-desktop/pull/18562), including plan approval, receipts, validation, slicing and materialisation |
+| A **multi-slice graph** end to end, on the `standard` route | issue #18967 → [PR #19001](https://github.com/podman-desktop/podman-desktop/pull/19001) and [PR #19002](https://github.com/podman-desktop/podman-desktop/pull/19002): two slices cut, verified, materialised and preflighted separately, the second from its predecessor's branch. Three plan-review rounds and four approved amendments along the way. The `multi-slice` *route* — chosen as such at triage — is still untaken |
+| The whole machine to `merged`, with a reviewer in the middle | issue #18832 → [PR #18889](https://github.com/podman-desktop/podman-desktop/pull/18889): review threads read and answered, two amendments raised from what reviewers said, a rebase, then `pr-merged … observed by refresh` → `merged` |
+| A real rebase against real upstream drift | on #18832, after upstream `ea086a5d599`: both journal entries exist, `conflict-mechanical` and `conflict-semantic`. The semantic one is the case the module was written for — by its own text the dangerous half never surfaced as a git conflict at all |
 | Validation with Playwright and a codified e2e test | four green runs in a row, tied to a digest of the spec |
 | Reviewing other people's pull requests | two reports, `REQUEST_CHANGES` and `APPROVE_WITH_NITS` |
 | The gate firing as a hook rather than as a function | a `denied` journal entry from a handler the host launched |
@@ -139,7 +143,7 @@ puts one there — a journal entry, or an artefact you can point at.
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
 | `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
-| Four skills through a session, and agents dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on issue 18832, from the plugin as enabled in `settings.json`; four `pd-scout` runs and one `pd-plan-critic`, with the artefacts they wrote |
+| Ten skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
 | Review sending a plan back | `plan check` green, `pd-plan-critic` returning three must-change findings anyway, and the issue going `planned` → `triaged` → replanned |
 | The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journalled as `denied` |
 
@@ -147,11 +151,11 @@ puts one there — a journal entry, or an artefact you can point at.
 
 | What | Why it matters |
 |---|---|
-| **Eighteen of the twenty-two skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Twelve of the twenty-two skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers — and the ten that ran proved it twice: `/pd:pr` documented a base `pr create` could not open against, and `/pd:preflight` advised standing on a branch the graph had invented. What is left is mostly the routes nobody has needed yet: `quickfix`, `reset`, `resume`, `close`, `review-pr`, `pr-status`. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
 | **Four of the six hook events** | `pre-bash` has two genuine firings and `pre-write` is exercised through the manifest. `post-write`, `task-completed`, `session-start` and `pre-compact` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
-| **Cutting into several slices, stacking, and `cascade`** | The densest machinery in the plugin. The only live graph was one slice |
-| **`pr-sync` end to end**, including the two GraphQL mutations | They need somebody else's review thread; synthetic material would be self-confirmation |
-| **`resume` against a real conflict** | No semantic conflict has occurred yet — not for want of trying, but for want of material |
+| **`cascade`, and rebasing dependents** | Cutting, verifying, materialising and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
+| **`replyToThread`, both GraphQL mutations** | `pr-sync` itself has now run against real threads on #18889 — read, classified, two of them fixed, two turned into approved amendments. Only the reply was posted by hand, by choice. That last step writes into somebody else's pull request, which is why it will not be closed with synthetic material |
+| **`pd-conflict-analyst`** | The conflicts it exists to classify have now happened and are journalled, so this stops waiting for material. What is unknown is the agent: the session classified them itself, and whether a fresh-context read reaches the same verdict is a different question |
 
 None of it blocks use. Each closes with the next issue of the right kind.
 
@@ -208,7 +212,7 @@ it found, not merely that a server exists.
 bin/pdkit          deterministic CLI, added to PATH by the plugin
 lib/               its implementation: state machine, slicing, gates, preflight,
                    validation, reviews of other people's pull requests
-skills/            21 skills — the workflow surface
+skills/            22 skills — the workflow surface
 agents/            14 agents — scouts, implementers, auditors, reviewers
 hooks/hooks.json   six entries; the rules live in lib/hooks/
 knowledge/         upstream constitution, package map, known traps
