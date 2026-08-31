@@ -29,7 +29,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { TEMPLATES, render, validateSections, write } from '../lib/render.js';
+import { TEMPLATES, missing, render, validateSections, write } from '../lib/render.js';
 
 let home;
 
@@ -192,6 +192,35 @@ describe('validateSections', () => {
 // passes. Every place that renders a PR body would otherwise have to know how
 // to find a GitHub login, and the day one of them forgets is the day a raw
 // `{{reviewedBy}}` reaches an upstream reviewer.
+// The question a caller that allocates an identifier has to ask before it
+// allocates. `pdkit amendment new` with no --values took A1 from the counter
+// and then threw, so DESKTOP-18832's ledger begins at A2 with no A1 to find.
+describe('missing', () => {
+  test('names the placeholders a render would throw on', async () => {
+    const absent = await missing('planAmendment', { issue: 1, index: 2 });
+
+    assert.ok(absent.length > 0);
+    assert.ok(absent.includes('trigger'), absent.join(', '));
+    assert.equal(absent.includes('issue'), false, 'what was given is not missing');
+  });
+
+  test('is empty exactly when the render succeeds', async () => {
+    const values = await fillAll('planAmendment');
+
+    assert.deepEqual(await missing('planAmendment', values), []);
+    await render('planAmendment', values);
+  });
+
+  // Implicit values resolve themselves, and resolving one to answer "would this
+  // throw" would spend a lookup on a question.
+  test('an implicit value counts as filled without being resolved', async () => {
+    const values = await fillAll('prBody');
+    delete values.reviewedBy;
+
+    assert.deepEqual(await missing('prBody', values), []);
+  });
+});
+
 describe('implicit values', () => {
   /** A gh runner that answers one thing and records that it was asked. */
   const fakeGh = (stdout, calls = []) =>

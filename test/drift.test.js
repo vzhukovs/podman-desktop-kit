@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import * as drift from '../lib/drift.js';
+import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import { branchPoint, drift as driftCommits, touchedRanges } from '../lib/repo.js';
 import { cleanup, commitAll, git, initRepo, writeFiles } from './helpers/repo-fixture.js';
@@ -238,6 +239,45 @@ describe('collecting drift', () => {
 
     assert.match(text, /⚠ touches packages\/main\/src\/handler\.ts:4/);
     assert.match(text, /a semantic conflict that merges cleanly is the dangerous one/);
+  });
+
+  // Work can reach a pull request without ever being materialised — a branch
+  // cut before the graph existed, or an issue adopted at pr-open — and then the
+  // graph names a branch nobody has. On DESKTOP-18832 that produced "nothing
+  // was measured" about a branch that was sitting right there under review, and
+  // the recorded fix was a duplicate branch made by hand.
+  describe('a slice published from a branch the graph did not name', () => {
+    const PUBLISHED = 'DESKTOP-7303/store-handler';
+
+    before(async () => {
+      await git(['branch', PUBLISHED, 'DESKTOP-7303/1-handler'], repo);
+      await git(['branch', '-D', 'DESKTOP-7303/1-handler'], repo);
+
+      await pr.register({ issue: ISSUE, number: 4242, slice: 1, branch: PUBLISHED, base: 'main', home });
+    });
+
+    after(async () => {
+      await git(['branch', 'DESKTOP-7303/1-handler', PUBLISHED], repo);
+      await git(['branch', '-D', PUBLISHED], repo);
+      await rm(join(home, 'issues', String(ISSUE), 'prs.json'), { force: true });
+    });
+
+    test('is measured from the branch its pull request is on', async () => {
+      const report = await drift.collect({ issue: ISSUE, repoRoot: repo, home, config: CONFIG, upstream: 'upstream-main' });
+      const handler = report.units.find((unit) => unit.slice === 1);
+
+      assert.equal(handler.branch, PUBLISHED);
+      assert.equal(handler.commits.length, 2, 'the drift the graph name could not see');
+    });
+
+    // A substitution nobody is told about is the shape of answering about the
+    // wrong change, which is what this module exists not to do.
+    test('and the report says which branch it used, and why', async () => {
+      const report = await drift.collect({ issue: ISSUE, repoRoot: repo, home, config: CONFIG, upstream: 'upstream-main' });
+      const text = drift.format(report);
+
+      assert.match(text, /measured from the branch of #4242; the graph names DESKTOP-7303\/1-handler/);
+    });
   });
 });
 
