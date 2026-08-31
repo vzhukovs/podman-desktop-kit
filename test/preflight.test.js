@@ -32,10 +32,11 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { cleanup, commitAll, git as gitIn, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
+import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
 import * as validation from '../lib/validation.js';
@@ -52,11 +53,11 @@ let repo;
 let home;
 
 const SCRIPTS = {
-  'lint:check': 'echo linted',
-  'test:main': 'echo main tests ok',
-  'test:unit': 'echo all unit tests ok',
-  'test:renderer': 'echo renderer failed 1>&2 && exit 1',
-  typecheck: 'echo typechecked',
+  'lint:check': emits('linted\n'),
+  'test:main': emits('main tests ok\n'),
+  'test:unit': emits('all unit tests ok\n'),
+  'test:renderer': exits(1, { err: 'renderer failed\n' }),
+  typecheck: emits('typechecked\n'),
 };
 
 before(async () => {
@@ -871,7 +872,7 @@ describe('a sliced issue', () => {
   before(async () => {
     sliced = await initRepo('pdkit-preflight-sliced-');
     slicedHome = await initRepo('pdkit-preflight-sliced-home-');
-    slicedTrees = join(sliced, '..', `${sliced.split('/').pop()}-trees`);
+    slicedTrees = join(sliced, '..', `${basename(sliced)}-trees`);
 
     await seedWorkspace(sliced);
     await commitAll(sliced, 'chore: seed');
@@ -1165,7 +1166,7 @@ describe('the validation checks', () => {
   });
 
   test('a step with an artefact passes without needing anything in the body', async () => {
-    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: 'echo ok' }) });
+    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: emits('ok\n') }) });
 
     const result = await only('validation-evidence');
 
@@ -1191,7 +1192,7 @@ describe('the validation checks', () => {
   });
 
   test('a failed step fails the check, and the remedy points at the change rather than the record', async () => {
-    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: 'exit 4' }) });
+    await validation.attach({ issue: ISSUE, home: vHome, title: 'the spec passes', run: await capture({ command: exits(4) }) });
 
     const result = await only('validation-evidence', { prBody: body('everything checked') });
 

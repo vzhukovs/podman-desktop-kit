@@ -25,28 +25,47 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { capture, digest, fence, transcript, validateReceipt, writeReceipt } from '../lib/evidence.js';
 
+// `node -e "…"` rather than `echo`, `printf`, `pwd` and `sleep`.
+//
+// capture() hands the command to the platform shell, which is the behaviour
+// under test and is correct: a `Done when` command is whatever the repository's
+// scripts are. But the shell is `/bin/sh` on POSIX and `cmd.exe` on Windows, and
+// the fixtures were written in one of those two languages — `;` is not a
+// separator in cmd, `pwd`, `printf` and `seq` do not exist there, and `echo`
+// emits CRLF. Every one of these failed on the first Windows run.
+//
+// Node is the one interpreter guaranteed present, since it is running this
+// suite. The quoting works out on both shells too: double quotes are what cmd
+// understands, and inside them `sh` leaves a backslash alone unless it precedes
+// `$`, a backtick, a quote or another backslash — so `\n` reaches node either
+// way and node reads it as the escape. What the assertions gain is exactness:
+// they now describe bytes this suite chose rather than what a shell builtin
+// happens to print.
 describe('capture', () => {
   test('records stdout, the exit code and how long it took', async () => {
-    const result = await capture({ command: 'echo hello' });
+    const command = 'node -e "process.stdout.write(\'hello\\n\')"';
+    const result = await capture({ command });
 
     assert.equal(result.exitCode, 0);
     assert.equal(result.stdout, 'hello\n');
     assert.equal(result.complete, true);
     assert.ok(result.durationMs >= 0);
     assert.ok(Date.parse(result.at) > 0);
-    assert.equal(result.command, 'echo hello');
+    assert.equal(result.command, command);
   });
 
   // A failing test run is exactly what preflight has to show. Throwing here
   // would mean the one output most worth attaching is the one never captured.
   test('a non-zero exit is a result, not a failure', async () => {
-    const result = await capture({ command: 'echo out; echo err 1>&2; exit 3' });
+    const result = await capture({
+      command: 'node -e "process.stdout.write(\'out\\n\');process.stderr.write(\'err\\n\');process.exit(3)"',
+    });
 
     assert.equal(result.exitCode, 3);
     assert.equal(result.stdout, 'out\n');
@@ -55,13 +74,17 @@ describe('capture', () => {
   });
 
   test('output is captured verbatim, not trimmed or reformatted', async () => {
-    const result = await capture({ command: "printf 'a\\n\\n  b   \\n'" });
+    const result = await capture({ command: 'node -e "process.stdout.write(\'a\\n\\n  b   \\n\')"' });
     assert.equal(result.stdout, 'a\n\n  b   \n');
   });
 
   test('runs in the directory it is given', async () => {
-    const result = await capture({ command: 'pwd', cwd: '/tmp' });
-    assert.match(result.stdout.trim(), /tmp$/);
+    // The system temp directory rather than a literal /tmp, which Windows has
+    // no equivalent of; and realpath because macOS reports it through a symlink.
+    const where = await realpath(tmpdir());
+    const result = await capture({ command: 'node -e "process.stdout.write(process.cwd())"', cwd: where });
+
+    assert.equal(await realpath(result.stdout.trim()), where);
   });
 
   // What makes a receipt evidence rather than a claim is that the output was not
@@ -79,7 +102,9 @@ describe('capture', () => {
   // turned out to do nothing, and neither test could have said so.
   test('output a compressor would fold arrives whole', async () => {
     const lines = 500;
-    const result = await capture({ command: `for i in $(seq 1 ${lines}); do echo "ok $i"; done` });
+    const result = await capture({
+      command: `node -e "for(let i=1;i<=${lines};i++)process.stdout.write('ok '+i+'\\n')"`,
+    });
 
     assert.equal(result.stdout.split('\n').filter(Boolean).length, lines);
     assert.match(result.stdout, /^ok 1\n/);
@@ -91,7 +116,13 @@ describe('capture', () => {
   // the way would have to change this string, and the receipt would then name a
   // command nobody ran.
   test('the command is run and recorded exactly as given', async () => {
-    const command = 'printf "%s\\n" one two three | tail -2';
+    // Still a pipe, because a rewriter would have to survive one, and still
+    // shell syntax rather than a single program — `|` is the one operator both
+    // shells spell the same way.
+    const command =
+      'node -e "process.stdout.write(\'one\\ntwo\\nthree\\n\')" | ' +
+      'node -e "let d=\'\';process.stdin.on(\'data\',c=>d+=c).on(\'end\',()=>' +
+      'process.stdout.write(d.split(\'\\n\').filter(Boolean).slice(-2).join(\'\\n\')+\'\\n\'))"';
     const result = await capture({ command });
 
     assert.equal(result.command, command);
@@ -99,7 +130,10 @@ describe('capture', () => {
   });
 
   test('a timeout is reported as incomplete rather than as a clean result', async () => {
-    const result = await capture({ command: 'echo started; sleep 5', timeoutMs: 150 });
+    const result = await capture({
+      command: 'node -e "process.stdout.write(\'started\\n\');setTimeout(()=>{},5000)"',
+      timeoutMs: 150,
+    });
 
     assert.equal(result.complete, false);
     assert.match(result.incompleteBecause, /killed by/);

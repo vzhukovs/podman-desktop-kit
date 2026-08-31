@@ -28,7 +28,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
 import { issueDir } from '../lib/config.js';
@@ -83,7 +83,7 @@ function task(id, satisfies, owns) {
 before(async () => {
   repo = await initRepo('pdkit-slice-');
   home = await initRepo('pdkit-slice-home-');
-  trees = join(repo, '..', `${repo.split('/').pop()}-trees`);
+  trees = join(repo, '..', `${basename(repo)}-trees`);
 
   await seedWorkspace(repo);
   await commitAll(repo, 'chore: seed');
@@ -928,7 +928,7 @@ describe('a base that fails the same command', () => {
   before(async () => {
     broken = await initRepo('pdkit-slice-broken-');
     brokenHome = await initRepo('pdkit-slice-broken-home-');
-    brokenTrees = join(broken, '..', `${broken.split('/').pop()}-trees`);
+    brokenTrees = join(broken, '..', `${basename(broken)}-trees`);
 
     await seedWorkspace(broken);
     // Broken on main, before any slice exists.

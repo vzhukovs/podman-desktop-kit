@@ -35,6 +35,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
 import { read as readJournal } from '../lib/journal.js';
 import * as state from '../lib/state.js';
@@ -182,19 +183,22 @@ describe('a step without an artefact', () => {
 
 describe('a step with a captured run', () => {
   test('a green run passes and its transcript is written where the receipt validator can find it', async () => {
-    const run = await capture({ command: 'echo validated' });
+    const command = emits('validated\n');
+    const run = await capture({ command });
     const result = await validation.attach({ issue: ISSUE, home, title: 'the spec passes', run });
 
     assert.equal(validation.statusOf(result.step), 'pass');
     assert.equal(result.step.evidence.path, 'validation/V1.md');
 
     const artefact = await readFile(join(home, 'issues', String(ISSUE), 'validation', 'V1.md'), 'utf8');
-    assert.match(artefact, /echo validated/);
+    // The command it names and the output it produced: a transcript missing
+    // either is not evidence that this ran.
+    assert.ok(artefact.includes(command));
     assert.match(artefact, /validated/);
   });
 
   test('a red run is a fail, and the evidence is kept — it is the useful half', async () => {
-    const run = await capture({ command: 'echo broken >&2; exit 3' });
+    const run = await capture({ command: exits(3, { err: 'broken\n' }) });
     const result = await validation.attach({ issue: ISSUE, home, title: 'the spec passes', run });
 
     assert.equal(validation.statusOf(result.step), 'fail');
@@ -212,13 +216,13 @@ describe('a step with a captured run', () => {
 
 describe('the outcome of the whole validation', () => {
   test('the worst step wins, and a failure outranks a gap', async () => {
-    const green = await capture({ command: 'echo ok' });
+    const green = await capture({ command: emits('ok\n') });
     await validation.attach({ issue: ISSUE, home, title: 'first', run: green });
     await validation.attach({ issue: ISSUE, home, title: 'second, undemonstrated' });
 
     assert.equal(validation.outcomeOf(await validation.read(ISSUE, { home })).outcome, 'unverified');
 
-    const red = await capture({ command: 'exit 1' });
+    const red = await capture({ command: exits(1) });
     await validation.attach({ issue: ISSUE, home, title: 'third', run: red });
 
     assert.equal(validation.outcomeOf(await validation.read(ISSUE, { home })).outcome, 'fail');
@@ -289,23 +293,23 @@ describe('the e2e candidate', () => {
     await validation.codify({ issue: ISSUE, home, repoRoot: repo, spec });
 
     for (const index of [1, 2]) {
-      await validation.recordRun({ issue: ISSUE, home, index, run: await capture({ command: 'echo pass' }) });
+      await validation.recordRun({ issue: ISSUE, home, index, run: await capture({ command: emits('pass\n') }) });
     }
     let record = await validation.read(ISSUE, { home });
     assert.equal(record.e2e.consecutive, 2);
 
-    await validation.recordRun({ issue: ISSUE, home, index: 3, run: await capture({ command: 'exit 1' }) });
+    await validation.recordRun({ issue: ISSUE, home, index: 3, run: await capture({ command: exits(1) }) });
     record = await validation.read(ISSUE, { home });
     assert.equal(record.e2e.consecutive, 0);
     assert.equal(record.e2e.runs.length, 3);
 
-    await validation.recordRun({ issue: ISSUE, home, index: 4, run: await capture({ command: 'echo pass' }) });
+    await validation.recordRun({ issue: ISSUE, home, index: 4, run: await capture({ command: emits('pass\n') }) });
     record = await validation.read(ISSUE, { home });
     assert.equal(record.e2e.consecutive, 1);
   });
 
   test('runs cannot be recorded before a candidate exists', async () => {
-    const result = await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: 'echo pass' }) });
+    const result = await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: emits('pass\n') }) });
 
     assert.equal(result.ok, false);
     assert.match(result.error, /codify/);
@@ -314,7 +318,7 @@ describe('the e2e candidate', () => {
   test('editing the spec after the runs makes the series stale, and the reason says so', async () => {
     const spec = await writeSpec('stale.spec.ts', 'test("c", () => {});\n');
     await validation.codify({ issue: ISSUE, home, repoRoot: repo, spec });
-    await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: 'echo pass' }) });
+    await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: emits('pass\n') }) });
 
     assert.equal((await validation.seriesFreshness({ issue: ISSUE, home, repoRoot: repo })).fresh, true);
 
@@ -328,7 +332,7 @@ describe('the e2e candidate', () => {
   test('re-codifying a changed spec drops the runs recorded against the old one', async () => {
     const spec = await writeSpec('recodify.spec.ts', 'test("d", () => {});\n');
     await validation.codify({ issue: ISSUE, home, repoRoot: repo, spec });
-    await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: 'echo pass' }) });
+    await validation.recordRun({ issue: ISSUE, home, index: 1, run: await capture({ command: emits('pass\n') }) });
 
     await writeFile(join(repo, spec), 'test("d", () => { /* changed */ });\n');
     const again = await validation.codify({ issue: ISSUE, home, repoRoot: repo, spec });
@@ -340,7 +344,7 @@ describe('the e2e candidate', () => {
 
 describe('rendering', () => {
   test('validation.md carries the derived status and names the gaps', async () => {
-    const run = await capture({ command: 'echo ok' });
+    const run = await capture({ command: emits('ok\n') });
     await validation.attach({ issue: ISSUE, home, title: 'the spec passes', requirement: 'R1', run });
     await validation.attach({ issue: ISSUE, home, title: 'needs a real container engine' });
 
@@ -630,7 +634,7 @@ describe('finishing', () => {
     await transition(issue, 'plan-approved', { home });
     await transition(issue, 'implemented', { home });
 
-    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: 'echo ok' }) });
+    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: emits('ok\n') }) });
     const result = await validation.finish({ issue, home });
 
     assert.equal(result.ok, true);
@@ -663,7 +667,7 @@ describe('finishing', () => {
     await transition(issue, 'plan-approved', { home });
     await transition(issue, 'implemented', { home });
 
-    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: 'exit 2' }) });
+    await validation.attach({ issue, home, title: 'the spec passes', run: await capture({ command: exits(2) }) });
     const result = await validation.finish({ issue, home });
 
     assert.equal(result.ok, false);
@@ -710,12 +714,19 @@ describe('launching the application under CDP', { skip: headless ? 'no display: 
    * @param {string} body   the script, minus the shebang
    * @returns {Promise<string>}
    */
+  // A plain script run by this process's own node, rather than an executable
+  // with a shebang. Windows has neither shebangs nor an execute bit, so the
+  // old stub spawned as `EFTYPE` and took all seven of these tests with it —
+  // and the obvious repair, a `.cmd` shim, would put cmd.exe between the test
+  // and the process it then asserts `stop` kills.
+  //
+  // What it returns is what `validation.app.binary` and `.app.args` take, so
+  // the launch path under test is the real one on every platform.
   async function stub(name, body) {
     const path = join(repo, name);
-    await writeFile(path, `#!/usr/bin/env node\n${body}`);
-    await chmod(path, 0o755);
+    await writeFile(path, body);
     stubs.push(path);
-    return path;
+    return { binary: process.execPath, args: [path] };
   }
 
   /** A free port, found by letting the OS pick one and handing it back. */
@@ -814,7 +825,7 @@ setTimeout(() => {
   });
 
   test('a launched application is recorded with its endpoint, and answers there', async () => {
-    const binary = await stub('app.js', APP);
+    const app = await stub('app.js', APP);
     const port = await freePort();
 
     const result = await launch({
@@ -822,7 +833,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app: { binary } } },
+      config: { validation: { app } },
       timeoutMs: 20_000,
     });
 
@@ -839,9 +850,9 @@ setTimeout(() => {
   });
 
   test('launching twice does not start a second copy on the same port', async () => {
-    const binary = await stub('app-twice.js', APP);
+    const app = await stub('app-twice.js', APP);
     const port = await freePort();
-    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
+    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
 
     const first = await launch(input);
     const second = await launch(input);
@@ -852,7 +863,7 @@ setTimeout(() => {
   });
 
   test('a port someone else is holding is refused rather than fought over', async () => {
-    const binary = await stub('app-busy.js', APP);
+    const app = await stub('app-busy.js', APP);
     const server = createServer((_, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end('{"Browser":"someone else"}');
@@ -866,7 +877,7 @@ setTimeout(() => {
         home,
         repoRoot: repo,
         port,
-        config: { validation: { app: { binary } } },
+        config: { validation: { app } },
         timeoutMs: 5000,
       });
 
@@ -878,7 +889,7 @@ setTimeout(() => {
   });
 
   test('an application that dies before CDP comes up says so, without waiting out the timeout', async () => {
-    const binary = await stub('app-dies.js', 'process.exit(7);\n');
+    const app = await stub('app-dies.js', 'process.exit(7);\n');
     const port = await freePort();
 
     const started = Date.now();
@@ -887,7 +898,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app: { binary } } },
+      config: { validation: { app } },
       timeoutMs: 30_000,
     });
 
@@ -897,7 +908,7 @@ setTimeout(() => {
   });
 
   test('an application that never answers is killed rather than left running', async () => {
-    const binary = await stub('app-silent.js', 'setInterval(() => {}, 1000);\n');
+    const app = await stub('app-silent.js', 'setInterval(() => {}, 1000);\n');
     const port = await freePort();
 
     const result = await launch({
@@ -905,7 +916,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app: { binary } } },
+      config: { validation: { app } },
       timeoutMs: 1500,
     });
 
@@ -915,7 +926,7 @@ setTimeout(() => {
   });
 
   test('stopping kills the process and clears the record', async () => {
-    const binary = await stub('app-stop.js', APP);
+    const app = await stub('app-stop.js', APP);
     const port = await freePort();
 
     const launched = await launch({
@@ -923,7 +934,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app: { binary } } },
+      config: { validation: { app } },
       timeoutMs: 20_000,
     });
     assert.equal(launched.ok, true, launched.error);
@@ -948,7 +959,7 @@ setTimeout(() => {
   // up, and `stop` said "nothing was running" about a live Electron process
   // holding the debug port.
   test('a lost record does not turn a running application into "nothing was running"', async () => {
-    const binary = await stub('app-orphan.js', APP);
+    const app = await stub('app-orphan.js', APP);
     const port = await freePort();
 
     const launched = await launch({
@@ -956,7 +967,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app: { binary } } },
+      config: { validation: { app } },
       timeoutMs: 20_000,
     });
     assert.equal(launched.ok, true, launched.error);
@@ -987,7 +998,7 @@ setTimeout(() => {
         home,
         repoRoot: repo,
         port,
-        config: { validation: { app: { binary: await stub('never-used.js', APP) } } },
+        config: { validation: { app: await stub('never-used.js', APP) } },
         timeoutMs: 60_000,
       });
 
@@ -1003,9 +1014,9 @@ setTimeout(() => {
 
   // The relaunch caveat, which is only worth printing the second time round.
   test('a second launch is marked as a relaunch, and the first is not', async () => {
-    const binary = await stub('relaunch.js', APP);
+    const app = await stub('relaunch.js', APP);
     const port = await freePort();
-    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app: { binary } } }, timeoutMs: 20_000 };
+    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
 
     const first = await launch(input);
     assert.equal(first.ok, true, first.error);
