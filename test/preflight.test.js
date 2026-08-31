@@ -40,6 +40,7 @@ import { capture } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
 import * as validation from '../lib/validation.js';
 import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
+import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
 import { candidatesFor, runScript, scopedScripts } from '../lib/preflight/scope.js';
@@ -982,6 +983,54 @@ describe('a sliced issue', () => {
       await gitIn(['branch', branch, sha], sliced);
       await gitIn(['checkout', was], sliced);
     }
+  });
+
+  // Work reaches a pull request without ever being materialised when the branch
+  // was cut before the graph existed. The graph then names a branch nobody has,
+  // and on DESKTOP-18832 standing on the only branch the issue had matched no
+  // slice at all: `slice-standalone` skipped, advising "run preflight while
+  // standing on the slice branch", which is where the session already was.
+  describe('a slice published from a branch the graph did not name', () => {
+    const PUBLISHED = `DESKTOP-${ISSUE}/store-api`;
+
+    let was;
+
+    before(async () => {
+      was = await gitIn(['branch', '--show-current'], sliced);
+      await gitIn(['branch', PUBLISHED, `DESKTOP-${ISSUE}/1-api`], sliced);
+      // Off it first: the branch is what this worktree has checked out.
+      await gitIn(['checkout', 'main'], sliced);
+      await gitIn(['branch', '-D', `DESKTOP-${ISSUE}/1-api`], sliced);
+      await pr.register({ issue: ISSUE, number: 4300, slice: 1, branch: PUBLISHED, base: 'main', home: slicedHome });
+    });
+
+    after(async () => {
+      await gitIn(['checkout', 'main'], sliced);
+      await gitIn(['branch', `DESKTOP-${ISSUE}/1-api`, PUBLISHED], sliced);
+      await gitIn(['branch', '-D', PUBLISHED], sliced);
+      await gitIn(['checkout', was], sliced);
+      await rm(join(slicedHome, 'issues', String(ISSUE), 'prs.json'), { force: true });
+    });
+
+    test('standing on it is recognised as standing on the slice', async () => {
+      await gitIn(['checkout', PUBLISHED], sliced);
+      const prepared = await on();
+
+      assert.equal(prepared.slice, 1, 'the branch under review is the slice');
+      assert.deepEqual(prepared.changedFiles, [API]);
+      assert.equal(prepared.problem, null);
+    });
+
+    // Telling its author to materialise it would make a second name for one
+    // commit, which is what the live run did by hand.
+    test('--slice reads it instead of asking for a materialize', async () => {
+      await gitIn(['checkout', 'main'], sliced);
+      const prepared = await on({ slice: 1 });
+
+      assert.equal(prepared.ref, PUBLISHED);
+      assert.deepEqual(prepared.changedFiles, [API]);
+      assert.equal(prepared.problem, null);
+    });
   });
 
   // An empty diff passes every file check trivially, so the report comes out

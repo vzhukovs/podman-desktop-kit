@@ -102,6 +102,22 @@ describe('create', () => {
     assert.match(entry.detail, /on DESKTOP-18778\/wrap-long-details-values/);
   });
 
+  // Asked for a branch that is already there, check it out. `-b` creates, and
+  // creating one twice is a fatal from git — which is what somebody rebasing
+  // work already under review got on DESKTOP-18832, having named the only
+  // branch the issue had.
+  test('a branch that already exists is checked out, not created again', async () => {
+    await git(['branch', 'DESKTOP-18781/already-here', 'main'], repo);
+
+    const result = await create({ repoRoot: repo, name: 'wt-existing', branch: 'DESKTOP-18781/already-here', issue: 18781, config: config(), home });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(await git(['rev-parse', '--abbrev-ref', 'HEAD'], result.path), 'DESKTOP-18781/already-here');
+
+    const [entry] = (await readJournal({ issue: 18781 }, { home })).filter((line) => line.event === 'worktree-create');
+    assert.match(entry.detail, /on DESKTOP-18781\/already-here \(existing\)/, 'the journal says it was adopted, not cut');
+  });
+
   // Detached stays available: looking around before naming the work is a
   // legitimate thing to want, so this reports rather than refuses. What changed
   // is that the journal says which it was.
@@ -182,10 +198,29 @@ describe('remove', () => {
     const refused = await remove({ repoRoot: repo, name: 'wt-branch', config: config(), home });
 
     assert.equal(refused.ok, false);
-    assert.match(refused.error, /not merged into main/);
+    assert.match(refused.error, /not an ancestor of main and has no merged pull request recorded/);
     // And it is still there: a refusal that removed the tree anyway would be
     // the worst of both.
     assert.ok((await list(repo)).some((tree) => tree.path.endsWith('wt-branch')));
+  });
+
+  // The other half of "landed", and the only one that works upstream: a
+  // squash-merged branch is never an ancestor of the base, so ancestry can
+  // never say yes about one. On DESKTOP-18832 `close --finish` reported one
+  // merged pull request and then kept the worktree it had just finished with.
+  test('a branch whose pull request landed is removable without --force', async () => {
+    await create({ repoRoot: repo, name: 'wt-landed', branch: 'DESKTOP-2/shipped', config: config(), home });
+    await writeFiles(join(trees, 'wt-landed'), { 'packages/ui/src/shipped.ts': 'export const shipped = true;\n' });
+    await commitAll(join(trees, 'wt-landed'), 'feat(ui): shipped');
+
+    const removed = await remove({ repoRoot: repo, name: 'wt-landed', landed: true, issue: 2, config: config(), home });
+
+    assert.equal(removed.ok, true, removed.error);
+    assert.equal(removed.removed, true);
+    assert.equal(
+      (await list(repo)).some((tree) => tree.path.endsWith('wt-landed')),
+      false,
+    );
   });
 
   test('--force removes it, and says so in the journal', async () => {
