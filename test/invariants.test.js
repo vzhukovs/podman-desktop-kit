@@ -28,7 +28,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 const LIB = fileURLToPath(new URL('../lib/', import.meta.url));
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -367,6 +367,48 @@ describe('the flag table describes the commands', () => {
     const unread = [...new Set(Object.values(COMMAND_FLAGS).flat())].filter((name) => !read.has(name)).sort();
 
     assert.deepEqual(unread, [], 'a declared flag nothing reads is accepted and then ignored, which is where this started');
+  });
+});
+
+// The suite has to actually run on every platform CI claims to cover, and one
+// character decided whether it did.
+//
+// `node --test 'test/*.test.js'` expands the pattern in node, not in the shell —
+// single quotes stop a POSIX shell globbing it, which is what made the form look
+// correct. cmd.exe does not treat `'` as a quote at all, so the Windows runner
+// passed node the pattern with the quotes still attached, node matched no files,
+// and the job reported success having run **zero** tests. Green for as long as
+// the repository had CI.
+//
+// That is the failure this codebase keeps meeting from different directions: a
+// run that executed nothing is not a green run. It is why `e2e-stability` counts
+// tests rather than trusting an exit code, and why section 13 requires an
+// artefact to remove a row rather than an absence of complaints.
+describe('the suite runs where CI says it runs', () => {
+  test('the test script uses no single quotes, which cmd.exe does not strip', async () => {
+    const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
+
+    assert.doesNotMatch(
+      pkg.scripts.test,
+      /'/,
+      'single quotes reach node as part of the pattern on Windows, so it matches nothing and exits 0',
+    );
+  });
+
+  test('and names a pattern that matches the suite', async () => {
+    const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
+    const pattern = /--test\s+"?([^"\s]+)"?/.exec(pkg.scripts.test)?.[1];
+
+    assert.ok(pattern, `no test pattern in "${pkg.scripts.test}"`);
+
+    // Resolved the way node resolves it, so a pattern that has drifted from the
+    // directory layout fails here rather than by running nothing.
+    const [dir, file] = [dirname(pattern), basename(pattern)];
+    const found = (await readdir(join(ROOT, dir))).filter((name) =>
+      new RegExp(`^${file.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`).test(name),
+    );
+
+    assert.ok(found.length > 0, `${pattern} matches no files`);
   });
 });
 
