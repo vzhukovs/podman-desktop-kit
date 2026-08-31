@@ -680,7 +680,23 @@ describe('finishing', () => {
   });
 });
 
-describe('launching the application under CDP', () => {
+/**
+ * Whether `launch` would refuse before spawning anything.
+ *
+ * The same question `displayProblem` answers, asked of this process rather than
+ * of a hypothetical one — and asked because these seven tests cannot run where
+ * the answer is yes. A headless Linux runner has neither DISPLAY nor
+ * WAYLAND_DISPLAY, so the application would start and exit before CDP came up,
+ * which is exactly what the library refuses to pretend it can do.
+ *
+ * Skipped rather than adapted: the refusal itself is covered by
+ * `displayProblem`'s own test below, and the thing these seven exist to
+ * exercise — a real detached spawn, polled and then killed — has no meaning
+ * without something to spawn into. `xvfb-run -a npm test` runs them on Linux.
+ */
+const headless = validation.displayProblem(process.env, process.platform) !== null;
+
+describe('launching the application under CDP', { skip: headless ? 'no display: run under xvfb-run to exercise these' : false }, () => {
   // A real process, spawned the way the real one is, answering on /json/version
   // the way Electron does. Only the application is a stand-in — everything the
   // code under test does (detached spawn, polling, killing) is the real thing,
