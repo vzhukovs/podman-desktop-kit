@@ -32,8 +32,8 @@ import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { platform, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
@@ -804,10 +804,19 @@ setTimeout(() => {
   });
 
   test('a working tree with electron installed needs no packaged binary', async () => {
-    await mkdir(join(repo, 'node_modules', '.bin'), { recursive: true });
-    const electron = join(repo, 'node_modules', '.bin', 'electron');
-    await writeFile(electron, '#!/bin/sh\nexit 0\n');
-    await chmod(electron, 0o755);
+    // What npm installs is not the same file on both platforms, and only one of
+    // them can be spawned. On POSIX `.bin/electron` is the executable; on
+    // Windows it is a shell script beside `electron.cmd`, and the program is
+    // `electron/dist/electron.exe`. The fixture installs whichever one this
+    // platform would actually launch.
+    const windows = platform() === 'win32';
+    const electron = windows
+      ? join(repo, 'node_modules', 'electron', 'dist', 'electron.exe')
+      : join(repo, 'node_modules', '.bin', 'electron');
+
+    await mkdir(dirname(electron), { recursive: true });
+    await writeFile(electron, windows ? 'MZ\n' : '#!/bin/sh\nexit 0\n');
+    if (!windows) await chmod(electron, 0o755);
 
     const resolved = await validation.resolveBinary({ repoRoot: repo, config: {}, env: {} });
 

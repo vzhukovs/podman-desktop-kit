@@ -96,6 +96,14 @@ export async function initRepo(prefix = 'pdkit-fixture-') {
   await git(['config', 'user.name', 'Fixture'], root);
   await git(['config', 'commit.gpgsign', 'false'], root);
 
+  // Windows runners set `core.autocrlf=true` globally, so a fixture that writes
+  // `\n`, commits it and reads it back out of a worktree gets `\r\n` — and the
+  // test then reports a content mismatch the product had nothing to do with.
+  // The repository's own `.gitattributes` cannot help here: these are fresh
+  // `git init` repositories in a temp directory, with no attributes of their own.
+  await git(['config', 'core.autocrlf', 'false'], root);
+  await git(['config', 'core.eol', 'lf'], root);
+
   return root;
 }
 
