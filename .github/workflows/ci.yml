@@ -38,18 +38,10 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
-    # Windows reports and does not block, and the number is the reason rather
-    # than the excuse: 96 assertions still fail there, all of them path
-    # separators in stored records (`tests\playwright\…` where the fixture wrote
-    # `tests/playwright/…`) or CRLF in a captured process's stdout.
-    #
-    # It ran nothing at all until 3c3cce4 and could not run `pdkit` at all until
-    # f907b02, so this is the first honest reading the platform has produced.
-    # Blocking on it now would freeze the repository behind a port nobody has
-    # scoped; hiding it would repeat the failure that made the job green while it
-    # tested nothing. So it runs, it fails visibly, and section 13 says what that
-    # does and does not mean.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    # All three block. Windows was `continue-on-error` for four commits, from the
+    # run that first showed 96 real failures to the one that showed none, and it
+    # is not any more: a job allowed to fail is a job whose result nobody reads,
+    # which is the same place this started.
 
     steps:
       - uses: actions/checkout@v4

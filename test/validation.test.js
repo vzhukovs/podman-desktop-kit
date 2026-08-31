@@ -700,7 +700,23 @@ describe('finishing', () => {
  */
 const headless = validation.displayProblem(process.env, process.platform) !== null;
 
-describe('launching the application under CDP', { skip: headless ? 'no display: run under xvfb-run to exercise these' : false }, () => {
+/**
+ * For the tests that actually start something, and only those.
+ *
+ * Skipping the whole block was the first attempt and it was too broad in a way
+ * the numbers showed: ubuntu reported **962** tests where macOS and Windows
+ * reported 976. A skipped `describe` does not enumerate its subtests, so
+ * fourteen were neither run nor reported — the same shape as a CI job that goes
+ * green having executed nothing, which is the failure this repository keeps
+ * meeting. Seven of those fourteen never needed a display at all, including the
+ * test of `displayProblem` itself.
+ *
+ * At test level the runner counts them as skipped, so the three platforms agree
+ * on the total and the report says which ones did not run.
+ */
+const needsDisplay = { skip: headless ? 'no display: run under xvfb-run to exercise this' : false };
+
+describe('launching the application under CDP', () => {
   // A real process, spawned the way the real one is, answering on /json/version
   // the way Electron does. Only the application is a stand-in — everything the
   // code under test does (detached spawn, polling, killing) is the real thing,
@@ -833,7 +849,7 @@ setTimeout(() => {
     assert.match(resolved.error, /PODMAN_DESKTOP_BINARY/);
   });
 
-  test('a launched application is recorded with its endpoint, and answers there', async () => {
+  test('a launched application is recorded with its endpoint, and answers there', needsDisplay, async () => {
     const app = await stub('app.js', APP);
     const port = await freePort();
 
@@ -858,7 +874,7 @@ setTimeout(() => {
     assert.equal(record.app.pid, result.app.pid);
   });
 
-  test('launching twice does not start a second copy on the same port', async () => {
+  test('launching twice does not start a second copy on the same port', needsDisplay, async () => {
     const app = await stub('app-twice.js', APP);
     const port = await freePort();
     const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
@@ -897,7 +913,7 @@ setTimeout(() => {
     }
   });
 
-  test('an application that dies before CDP comes up says so, without waiting out the timeout', async () => {
+  test('an application that dies before CDP comes up says so, without waiting out the timeout', needsDisplay, async () => {
     const app = await stub('app-dies.js', 'process.exit(7);\n');
     const port = await freePort();
 
@@ -916,7 +932,7 @@ setTimeout(() => {
     assert.ok(Date.now() - started < 10_000, 'the death is the finding; waiting out 30s to report it would hide the cause');
   });
 
-  test('an application that never answers is killed rather than left running', async () => {
+  test('an application that never answers is killed rather than left running', needsDisplay, async () => {
     const app = await stub('app-silent.js', 'setInterval(() => {}, 1000);\n');
     const port = await freePort();
 
@@ -934,7 +950,7 @@ setTimeout(() => {
     assert.equal((await validation.read(ISSUE, { home }))?.app ?? null, null, 'a failed launch records no running app');
   });
 
-  test('stopping kills the process and clears the record', async () => {
+  test('stopping kills the process and clears the record', needsDisplay, async () => {
     const app = await stub('app-stop.js', APP);
     const port = await freePort();
 
@@ -967,7 +983,7 @@ setTimeout(() => {
   // that matters: the record had been removed while the application was still
   // up, and `stop` said "nothing was running" about a live Electron process
   // holding the debug port.
-  test('a lost record does not turn a running application into "nothing was running"', async () => {
+  test('a lost record does not turn a running application into "nothing was running"', needsDisplay, async () => {
     const app = await stub('app-orphan.js', APP);
     const port = await freePort();
 
@@ -1022,7 +1038,7 @@ setTimeout(() => {
   });
 
   // The relaunch caveat, which is only worth printing the second time round.
-  test('a second launch is marked as a relaunch, and the first is not', async () => {
+  test('a second launch is marked as a relaunch, and the first is not', needsDisplay, async () => {
     const app = await stub('relaunch.js', APP);
     const port = await freePort();
     const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
