@@ -1,0 +1,22 @@
+# Line endings are LF everywhere, including on a Windows checkout.
+#
+# Not a style preference. Two things in this repository hash file contents and
+# compare the result: `lib/evidence.js` digests a receipt so an edited one can be
+# refused, and `lib/slice.js` digests a diff so a stale verification cannot pass
+# as a fresh one. CRLF changes the bytes, so the same file checked out on Windows
+# produces a different digest and both checks fail against evidence nobody
+# touched — which is the one failure they exist to report.
+#
+# The SPDX header check reads the same way: it compares the first bytes of every
+# module against a constant written with \n.
+#
+# `bin/pdkit` needs it for a third reason. A shebang line followed by \r makes
+# the kernel look for an interpreter named "node\r", and the plugin puts that
+# file on PATH.
+* text=auto eol=lf
+
+# Binary, so git leaves them alone.
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
