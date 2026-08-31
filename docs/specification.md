@@ -400,7 +400,25 @@ never the fork.
    **derived** from what is attached rather than declared: a capture exiting zero
    is `pass`, non-zero is `fail`, an artefact with an observation and no run is
    `observed`, nothing is `unverified`. `pdkit validate attach` has no
-   `--status`.
+   `--status` — and until the flag table below, "has no" meant only that nothing
+   read one. The CLI took it and ignored it, so the invariant was enforced by
+   this paragraph and by nothing else.
+
+**Every command declares the flags it reads, and the dispatcher refuses the
+rest.** `parseArgs` accepts any `--word`; before the table, whether anything read
+it was nobody's question. `pdkit issue fetch <n> --body` exited zero and printed
+a summary with no body, twice under two spellings, on the first live run. The
+worse case is a command that writes: `--force` and `--confirm` are one letter
+from flags that exist on a neighbouring command, and a misspelling reads as the
+safe thing having been asked for.
+
+The table is per command rather than per subcommand, so `pdkit gate close --ttl`
+is accepted and ignored — a narrower error for a much larger table, and the
+wrong trade. `hook` is exempt: it is invoked by the host, and refusing an
+argument a future host adds would take the gate down to report a typo nobody
+made. Two structural tests keep the table honest, and the second is the load-
+bearing one: a flag a handler reads but does not declare is a working feature the
+dispatcher now refuses before the handler sees it.
 
 `active/` is separate from `state.json` deliberately, and does not breach
 invariant 1. `state.json` describes an **issue**. "What is running right now" is

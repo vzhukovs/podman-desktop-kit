@@ -312,6 +312,64 @@ describe('skills only name commands that exist', () => {
   });
 });
 
+// The unknown-flag check is only as good as its table, and a table kept by hand
+// beside the code it describes is a table that falls behind. Both halves of the
+// drift are checked here rather than in a behaviour test, because neither is
+// about what a command does: one is about a command having a row at all, the
+// other about a handler reading a flag nobody declared.
+//
+// The second is the one that matters. A handler that gains a flag while the
+// table does not is a flag the dispatcher refuses before the handler ever sees
+// it — a working feature made unreachable, and by the check that exists to stop
+// exactly that kind of silence.
+describe('the flag table describes the commands', () => {
+  /** The names in `flags.x` and `flags['x']`, from source with comments cut. */
+  function flagsRead(source) {
+    const stripped = code(source);
+    return new Set([
+      ...[...stripped.matchAll(/flags\.([A-Za-z_][\w]*)/g)].map((match) => match[1]),
+      ...[...stripped.matchAll(/flags\['([^']+)'\]/g)].map((match) => match[1]),
+    ]);
+  }
+
+  test('every command the dispatcher accepts has a row', async () => {
+    const { COMMANDS, COMMAND_FLAGS } = await import('../lib/cli.js');
+
+    // `hook` is exempt from the check and therefore from the table: it is
+    // invoked by the host, and refusing an argument a future host adds would
+    // take the gate down to report a typo nobody made.
+    const missing = COMMANDS.filter((command) => command !== 'hook' && !(command in COMMAND_FLAGS));
+
+    assert.deepEqual(missing, []);
+  });
+
+  test('and names no command the dispatcher does not', async () => {
+    const { COMMANDS, COMMAND_FLAGS } = await import('../lib/cli.js');
+    const stale = Object.keys(COMMAND_FLAGS).filter((command) => !COMMANDS.includes(command));
+
+    assert.deepEqual(stale, []);
+  });
+
+  test('every flag any handler reads is declared somewhere', async () => {
+    const { COMMAND_FLAGS, GLOBAL_FLAGS } = await import('../lib/cli.js');
+    const source = await readFile(join(LIB, 'cli.js'), 'utf8');
+
+    const declared = new Set([...Object.values(COMMAND_FLAGS).flat(), ...GLOBAL_FLAGS, 'version']);
+    const undeclared = [...flagsRead(source)].filter((name) => !declared.has(name)).sort();
+
+    assert.deepEqual(undeclared, [], 'a handler reads a flag the dispatcher will refuse before it arrives');
+  });
+
+  test('and no row declares a flag nothing reads', async () => {
+    const { COMMAND_FLAGS } = await import('../lib/cli.js');
+    const read = flagsRead(await readFile(join(LIB, 'cli.js'), 'utf8'));
+
+    const unread = [...new Set(Object.values(COMMAND_FLAGS).flat())].filter((name) => !read.has(name)).sort();
+
+    assert.deepEqual(unread, [], 'a declared flag nothing reads is accepted and then ignored, which is where this started');
+  });
+});
+
 describe('licensing', () => {
   // The house format, stated here in full rather than sampled from a file that
   // happens to carry it. knowledge/upstream-rules.md tells contributors that a
