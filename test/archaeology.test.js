@@ -265,7 +265,9 @@ describe('the facts file', () => {
       const report = await dig({ exec: fakeGh(LIVE) });
       const path = await save(report, { home });
 
-      assert.match(path, /issues\/12775\/archaeology\.json$/);
+      // Built rather than matched with a slash-bearing regex: `save` returns a
+      // native path, and on Windows that is `issues\12775\archaeology.json`.
+      assert.equal(path, join(home, 'issues', '12775', 'archaeology.json'));
       assert.equal((await read(12775, { home })).attempt.number, 16294);
     } finally {
       await rm(home, { recursive: true, force: true });

@@ -31,7 +31,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { access, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { cleanup, commitAll, git, initRepo, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
 import { create, list, prepare, remove, rootFor, verifyName } from '../lib/worktree.js';
@@ -56,7 +56,7 @@ function config() {
 before(async () => {
   repo = await initRepo('pdkit-worktree-');
   home = await initRepo('pdkit-worktree-home-');
-  trees = join(repo, '..', `${repo.split('/').pop()}-trees`);
+  trees = join(repo, '..', `${basename(repo)}-trees`);
 
   await seedWorkspace(repo);
   await writeFiles(repo, { '.env': 'SECRET=1\n' });

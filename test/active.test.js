@@ -27,7 +27,7 @@ import { test, describe, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { current, keyFor, list, start, stop } from '../lib/active.js';
 import { paths } from '../lib/config.js';
@@ -54,7 +54,10 @@ describe('the pointer', () => {
     const found = await current({ worktree: '/work/fork', home });
     assert.equal(found.issue, 18248);
     assert.equal(found.taskId, 'T1');
-    assert.equal(found.worktree, '/work/fork');
+    // Resolved, which is what the pointer stores and what keyFor hashes. On
+    // Windows `resolve('/work/fork')` gains the current drive, so comparing
+    // against the literal asserted that the path had NOT been normalised.
+    assert.equal(found.worktree, resolve('/work/fork'));
     assert.ok(Date.parse(found.startedAt) > 0);
   });
 

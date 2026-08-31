@@ -29,7 +29,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { access, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
@@ -255,9 +255,29 @@ describe('the validation and config-drift checks', () => {
     assert.equal(app.level, 'optional', 'an unbuilt tree does not stop the rest of the plugin working');
   });
 
-  test('a configured binary that is not executable is a warning that names the source', async () => {
-    await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${join(repo, 'not-executable')}\n`);
-    await writeFile(join(repo, 'not-executable'), 'x\n');
+  // The execute bit is POSIX. On Windows `access` succeeds for any file that
+  // exists whatever mode is asked for, so there is no such thing there as a
+  // file that is present and not executable — and asserting one would be
+  // asserting against the platform rather than against the check.
+  test(
+    'a configured binary that is not executable is a warning that names the source',
+    { skip: platform() === 'win32' ? 'no execute bit on Windows' : false },
+    async () => {
+      await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${join(repo, 'not-executable')}\n`);
+      await writeFile(join(repo, 'not-executable'), 'x\n');
+
+      const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
+      const app = find(report.checks, 'validate:app');
+
+      assert.equal(app.status, 'warn');
+      assert.match(app.detail, /validation\.app\.binary points at/);
+    },
+  );
+
+  // The half of the same check that every platform can answer, and the one a
+  // misconfigured path actually hits.
+  test('a configured binary that is not there is a warning that names the source', async () => {
+    await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${join(repo, 'absent-binary')}\n`);
 
     const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
     const app = find(report.checks, 'validate:app');
