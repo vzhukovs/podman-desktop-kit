@@ -43,6 +43,20 @@ import * as validation from '../lib/validation.js';
 
 const ISSUE = 8801;
 
+/**
+ * npm rather than pnpm, for the reason slice.test.js gives: the fixture's
+ * scripts are plain node and the run has to actually happen.
+ *
+ * Passed explicitly, and that is the whole point. Without a config
+ * `specCommand` falls back to `repo.package_manager ?? 'pnpm'`, so these tests
+ * shelled out to pnpm and passed only on a machine that happened to have it.
+ * The first CI run this repository ever had failed here on ubuntu and macOS
+ * with `exit 127` — command not found — while the suite had been green locally
+ * for a month. A dependency nothing declares is one the developer's laptop is
+ * quietly satisfying.
+ */
+const CONFIG = { repo: { package_manager: 'npm' } };
+
 let home;
 let repo;
 
@@ -460,7 +474,7 @@ describe('running the codified test', () => {
     const spec = await writeSpec('run.spec.ts', 'test("e", () => {});\n');
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
 
-    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, requirement: 'R1' });
+    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, requirement: 'R1', config: CONFIG });
 
     assert.equal(result.ok, true, result.error);
     assert.equal(validation.statusOf(result.step), 'pass');
@@ -476,7 +490,7 @@ describe('running the codified test', () => {
     const spec = await writeSpec('red.spec.ts', 'test("f", () => {});\n');
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'false' } }));
 
-    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec });
+    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, config: CONFIG });
 
     assert.equal(result.ok, true);
     assert.equal(validation.statusOf(result.step), 'fail');
@@ -491,7 +505,7 @@ describe('stability', () => {
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
     await validation.codify({ issue, home, repoRoot: repo, spec });
 
-    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3, config: CONFIG });
 
     assert.equal(result.ok, true, result.error);
     assert.equal(result.consecutive, 3);
@@ -509,7 +523,7 @@ describe('stability', () => {
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'false' } }));
     await validation.codify({ issue, home, repoRoot: repo, spec });
 
-    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3, config: CONFIG });
 
     assert.equal(result.ok, false);
     assert.equal(result.performed, 1);
@@ -518,7 +532,7 @@ describe('stability', () => {
   });
 
   test('a series cannot be run before a candidate exists', async () => {
-    const result = await validation.stability({ issue: 999_996, home, repoRoot: repo, runs: 3 });
+    const result = await validation.stability({ issue: 999_996, home, repoRoot: repo, runs: 3, config: CONFIG });
 
     assert.equal(result.ok, false);
     assert.match(result.error, /codify/);
@@ -529,10 +543,10 @@ describe('stability', () => {
     const spec = await writeSpec('edited.spec.ts', 'test("i", () => {});\n');
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
     await validation.codify({ issue, home, repoRoot: repo, spec });
-    await validation.stability({ issue, home, repoRoot: repo, runs: 1 });
+    await validation.stability({ issue, home, repoRoot: repo, runs: 1, config: CONFIG });
 
     await writeFile(join(repo, spec), 'test("i", () => { /* now different */ });\n');
-    const again = await validation.stability({ issue, home, repoRoot: repo, runs: 2 });
+    const again = await validation.stability({ issue, home, repoRoot: repo, runs: 2, config: CONFIG });
 
     assert.equal(again.ok, true, again.error);
     assert.equal(again.consecutive, 2, 'the run recorded against the old contents does not count towards the new series');
@@ -546,7 +560,7 @@ describe('stability', () => {
     await validation.codify({ issue, home, repoRoot: repo, spec });
     await rm(join(repo, spec));
 
-    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3, config: CONFIG });
 
     assert.equal(result.ok, false);
     assert.match(result.error, /no longer in the repository/);
@@ -569,7 +583,7 @@ describe('stability', () => {
     );
     await validation.codify({ issue, home, repoRoot: repo, spec });
 
-    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3 });
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 3, config: CONFIG });
 
     assert.equal(result.ok, false);
     assert.equal(result.performed, 1, 'the series stops on the first one rather than repeating an empty suite');
@@ -588,7 +602,7 @@ describe('stability', () => {
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
     await validation.codify({ issue, home, repoRoot: repo, spec });
 
-    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 2 });
+    const result = await validation.stability({ issue, home, repoRoot: repo, runs: 2, config: CONFIG });
 
     assert.equal(result.ok, true, result.error);
     assert.equal(result.consecutive, 2, 'no summary means no claim, not a refusal');
