@@ -685,7 +685,7 @@ over" must not be the thing that drops it.
 
 ## What preflight actually runs
 
-`pdkit preflight <issue>` runs twenty checks, and on podman-desktop it takes
+`pdkit preflight <issue>` runs twenty-one checks, and on podman-desktop it takes
 minutes, because it runs the repository's real scripts. Script names are resolved
 from the repository's own `package.json` — there is no `pnpm lint` there, and
 `pnpm test` drags in the e2e suite.
