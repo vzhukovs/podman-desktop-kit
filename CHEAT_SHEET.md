@@ -100,7 +100,7 @@ the reporter still has to confirm.
 | `/pd:validate <n>` | the code is written | `implemented` | evidence from the running app → `validated` |
 | `/pd:audit <n>` | validation is done | `validated` | the diff against the plan, in fresh context → `audited` |
 | `/pd:slice <n>` | the audit is clean | `audited` | a verified slice graph → `sliced` → **you approve** → `slices-approved` |
-| `/pd:preflight <n>` | before every push | the slice branch cut | twenty checks, in two passes → `preflight-green` |
+| `/pd:preflight <n>` | before every push | the slice branch cut | twenty-one checks, in two passes → `preflight-green` |
 | `/pd:pr <n> [slice]` | preflight is green | `preflight-green` and a body | push and pull request → `pr-open`. **You confirm, per branch** |
 | `/pd:pr-status` | any time | — | CI, threads and idleness across open PRs. Read-only |
 | `/pd:pr-sync <pr>` | a reviewer answered | an open pull request | thread triage, the fixes, draft replies |
@@ -242,7 +242,7 @@ spelled command is not a fix.
 
 ## What preflight will ask of you
 
-Twenty checks. Every one blocks except the two marked `warn`.
+Twenty-one checks. Every one blocks except the two marked `warn`.
 
 | Check | | What satisfies it |
 |---|---|---|
@@ -259,6 +259,7 @@ Twenty checks. Every one blocks except the two marked `warn`.
 | `slice-standalone` | | the slice built alone, green, and the branch still matches it |
 | `branch-name` | | `DESKTOP-<issue>/[<index>-]<slug>` |
 | `quickfix-size` | `warn` | the diff still fits the quickfix thresholds |
+| `pr-body-template` | | the body has every section the template declares, footer and test checkbox included |
 | `steps-to-check` | | ≥3 numbered steps in the body, each with an expected result |
 | `r-coverage` | | every frozen R-ID appears in the body |
 | `e2e-stability` | | a new Playwright spec passed three times in a row, on its current contents |

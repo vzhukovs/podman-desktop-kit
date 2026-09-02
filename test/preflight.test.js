@@ -607,6 +607,64 @@ describe('the artefact checks', () => {
     assert.equal(result.summary, '3 steps, each with an expected result');
   });
 
+  // Six checks read the body and each reads a part of it; none asked whether
+  // the body is the shape the template declares. On 18834 a body written by
+  // hand rather than rendered passed all six while missing upstream's own test
+  // checkbox and the attribution footer — and was published that way.
+  describe('pr-body-template', () => {
+    /** The template, filled in, as `pdkit render prBody` would produce it. */
+    async function rendered() {
+      const template = await readFile(join(process.cwd(), 'templates', 'pr-body.md'), 'utf8');
+      return template.replaceAll(/\{\{\w+\}\}/g, 'text');
+    }
+
+    test('a rendered body passes', async () => {
+      const result = await only('pr-body-template', { prBody: await rendered() });
+
+      assert.equal(result.status, 'pass');
+    });
+
+    test('a body missing the attribution footer fails', async () => {
+      const result = await only('pr-body-template', { prBody: (await rendered()).replace(/<sub>[\s\S]*<\/sub>/, '') });
+
+      assert.equal(result.status, 'fail');
+      assert.match(result.output, /Prepared with podman-desktop-kit/);
+      assert.match(result.remedy, /pdkit render prBody/);
+    });
+
+    // Upstream's line, not ours, and the half that costs a reviewer something.
+    test("a body missing upstream's test checkbox fails", async () => {
+      const result = await only('pr-body-template', {
+        prBody: (await rendered()).replace('- [ ] Tests are covering the bug fix or the new feature', ''),
+      });
+
+      assert.equal(result.status, 'fail');
+      assert.match(result.output, /Tests are covering/);
+    });
+
+    test('a missing section is named too', async () => {
+      const result = await only('pr-body-template', { prBody: (await rendered()).replace('### How to test this PR?', '') });
+
+      assert.equal(result.status, 'fail');
+      assert.match(result.output, /How to test this PR/);
+    });
+
+    // Extra content is not a defect. Reporting it would push whoever wrote the
+    // body to say less, which is the opposite of what a reviewer wants.
+    test('saying more than the template asked for is fine', async () => {
+      const result = await only('pr-body-template', { prBody: `${await rendered()}\n\n### Anything else\n\nA note.\n` });
+
+      assert.equal(result.status, 'pass');
+    });
+
+    test('with no body it defers rather than failing', async () => {
+      const result = await only('pr-body-template', { prBody: null });
+
+      assert.equal(result.status, 'skip');
+      assert.match(result.remedy, /has to read it/);
+    });
+  });
+
   // The other side of the bound above, and the failure it produced on the first
   // multi-slice live run: eight steps written as `**1. Set up**` were reported
   // as "0 steps, at least 3 are required" with a remedy about writing more of

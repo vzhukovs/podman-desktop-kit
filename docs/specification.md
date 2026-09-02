@@ -1398,7 +1398,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 
 ## 7. Preflight — the deterministic gates
 
-`pdkit preflight [--slice N]` returns a machine-readable report. Twenty checks:
+`pdkit preflight [--slice N]` returns a machine-readable report. Twenty-one checks:
 
 | Check | How | Blocking |
 |---|---|---|
@@ -1415,6 +1415,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 | **API-surface grep** | every new or changed exported type is grepped in `extension-api.d.ts`; found means it is public API, not an internal utility | ✅ |
 | slice standalone | the `pdkit slice verify` result from `slices.json` plus a digest comparison. A stale result is `fail`, not `pass`; a red run against a red baseline is `warn`, marked inconclusive | ✅ for slices with `base: main` |
 | branch name | matches `DESKTOP-<n>/[<i>-]<slug>` | ✅ |
+| **PR body from the template** | every section, fixed line and footer `templates/pr-body.md` declares is in the body. Six checks read the body and each reads a part of it; this one asks whether it is the shape upstream's template wants at all | ✅ |
 | steps-to-check | ≥ 3 steps, each with an expected result. Applies on `quickfix` too | ✅ |
 | R-ID coverage | every R-ID closed by a task and named in the body. On a sliced issue, **this slice's** R-IDs, not the whole frozen set. **Skipped on `quickfix`** | ✅ (except quickfix) |
 | e2e stability | a new `tests/playwright` test passed `validation.e2e_stability_runs` times in a row; the series is tied to a digest of the spec, and a stale one is `fail` | ✅ if e2e was added |

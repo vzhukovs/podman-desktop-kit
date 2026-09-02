@@ -770,6 +770,48 @@ describe('materialize', () => {
     await git(['reset', '--hard', 'HEAD~1'], repo);
   });
 
+  // The failure a live run spent three verification passes and a wrong
+  // diagnosis on (18834, 2026-09-02).
+  //
+  // After materialization the branch IS the slice: a review fix lands there,
+  // not in the working branch it was cut from. `verifyBranch` says exactly that
+  // and was reachable only from `cascade`, which has never run — so every
+  // `slice verify` digested the frozen `graph.source.ref` instead, recorded a
+  // green nobody could match, and `slice-standalone` called it stale on the
+  // next line. Re-running verify reproduced the same stale digest forever; only
+  // re-cutting the graph escaped it.
+  test('a slice verified after its branch moved is fresh, not stale', async () => {
+    const branch = `DESKTOP-${ISSUE}/1-extension-api-run-options`;
+    await git(['checkout', branch], repo);
+    await writeFiles(repo, { [API]: '// SPDX-License-Identifier: Apache-2.0\nexport const version = 1;\nexport interface RunOptions { env?: string; cwd?: string }\n' });
+    await commitAll(repo, 'fix(extension-api): what the reviewer asked for');
+
+    const verified = await slice.verifySlice({
+      issue: ISSUE,
+      index: 1,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+    assert.equal(verified.ok, true, verified.error);
+
+    // The question the gate asks immediately afterwards, from the branch — which
+    // is what preflight passes as `ref`.
+    const fresh = await slice.checkFreshness({
+      graph: await slice.read(ISSUE, { home }),
+      index: 1,
+      repoRoot: repo,
+      base: 'main',
+      ref: branch,
+    });
+
+    assert.equal(fresh.fresh, true, `verify wrote a digest the gate calls stale: ${fresh.reason}`);
+
+    await git(['reset', '--hard', 'HEAD~1'], repo);
+    await git(['checkout', `DESKTOP-${ISSUE}/work`], repo);
+  });
+
   // It used to leave the trailer to the hook when one was installed. The hook
   // appends with `echo >>`, and a message made from a single -m has no blank
   // line after the subject — so the trailer joined the subject paragraph and
