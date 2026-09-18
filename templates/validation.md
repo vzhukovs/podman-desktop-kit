@@ -23,6 +23,15 @@
      not checked reads exactly like a check that passed. -->
 {{gaps}}
 
+## Set aside
+<!-- Steps superseded by a later one, with the reason. A step is set aside when
+     what it measured was the environment rather than the change — an
+     application already holding a lock, a port in use — and it is never
+     removed: the run stays, the reason stays, and the step that replaced it is
+     named. `pdkit validate supersede <Vk> --by <Vn> --reason "<what happened>"`
+     is the only thing that writes here. -->
+{{superseded}}
+
 ## e2e candidate
 <!-- The test the manual scenario was codified into, and the consecutive runs
      it survived. A checklist is verified once, by one person, today; a test is

@@ -252,6 +252,191 @@ describe('the outcome of the whole validation', () => {
   });
 });
 
+// A step shows more than one thing at a time: one screenshot of a list carries
+// the new column, the sort order and the empty state. The record held exactly
+// one R-ID, so the other two were described in prose and traced by nobody.
+describe('the R-IDs a step demonstrates', () => {
+  test('several of them, listed or written as one string', async () => {
+    const first = await validation.attach({ issue: ISSUE, home, title: 'the list', requirements: ['R1', 'R2'] });
+    const second = await validation.attach({ issue: ISSUE, home, title: 'the details', requirements: 'R2, R3' });
+
+    assert.deepEqual(first.step.requirements, ['R1', 'R2']);
+    assert.deepEqual(second.step.requirements, ['R2', 'R3']);
+  });
+
+  test('written however they arrive, and never twice', () => {
+    assert.deepEqual(validation.requirementsOf('r1, R2 R2'), ['R1', 'R2']);
+    assert.deepEqual(validation.requirementsOf(['R3', ' r4 ']), ['R3', 'R4']);
+    assert.deepEqual(validation.requirementsOf(null), []);
+    assert.deepEqual(validation.requirementsOf(true), [], 'a flag typed without a value is not an R-ID');
+  });
+
+  test('a record written when a step could hold one is read as the list it meant', async () => {
+    await validation.attach({ issue: ISSUE, home, title: 'from an older version' });
+
+    const file = join(home, 'issues', String(ISSUE), 'validation.json');
+    const raw = JSON.parse(await readFile(file, 'utf8'));
+    delete raw.steps[0].requirements;
+    raw.steps[0].requirement = 'R7';
+    await writeFile(file, JSON.stringify(raw, null, 2));
+
+    const record = await validation.read(ISSUE, { home });
+    assert.deepEqual(record.steps[0].requirements, ['R7']);
+
+    // And the singular key does not survive the next write, so two fields never
+    // end up answering the same question.
+    await validation.attach({ issue: ISSUE, home, title: 'and one written now' });
+    const saved = JSON.parse(await readFile(file, 'utf8'));
+    assert.equal('requirement' in saved.steps[0], false);
+    assert.deepEqual(saved.steps[0].requirements, ['R7']);
+  });
+
+  test('the table names all of them', async () => {
+    await validation.attach({ issue: ISSUE, home, title: 'the list', requirements: ['R1', 'R2'] });
+    const rendered = await validation.render({ issue: ISSUE, home });
+
+    assert.match(await readFile(rendered.path, 'utf8'), /\| R1, R2 \| the list/);
+  });
+});
+
+// The live run this comes from: `validate launch` had the application up, the
+// e2e spec could not start a second Electron instance — "An instance of Podman
+// Desktop is already running" — and not one test executed. The same spec passed
+// four times in a row once the window was closed. `finish` takes the worst
+// status in the record, nothing could retire the step, and the issue moved only
+// because somebody edited validation.json by hand.
+describe('setting a step aside', () => {
+  /** @returns {Promise<{red: string, green: string}>} */
+  async function twoRuns() {
+    const red = await validation.attach({
+      issue: ISSUE,
+      home,
+      title: 'e2e: the volume list',
+      requirements: ['R1', 'R2'],
+      run: await capture({ command: exits(1) }),
+    });
+    const green = await validation.attach({
+      issue: ISSUE,
+      home,
+      title: 'e2e: the volume list, with nothing holding the lock',
+      requirements: ['R1'],
+      run: await capture({ command: emits('ok\n') }),
+    });
+
+    return { red: red.step.id, green: green.step.id };
+  }
+
+  test('the outcome stops counting it, and the record still holds it', async () => {
+    const { red, green } = await twoRuns();
+    assert.equal(validation.outcomeOf(await validation.read(ISSUE, { home })).outcome, 'fail');
+
+    const result = await validation.supersede({
+      issue: ISSUE,
+      home,
+      step: red,
+      by: green,
+      reason: 'the application launched for exploration held the Electron single-instance lock; no test executed',
+    });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.step.superseded.by, green);
+
+    const record = await validation.read(ISSUE, { home });
+    assert.equal(validation.outcomeOf(record).outcome, 'pass');
+    assert.equal(record.steps.length, 2, 'nothing is deleted');
+    assert.equal(validation.statusOf(record.steps[0]), 'fail', 'the step it was is the step it stays');
+  });
+
+  test('validation.md says which step replaced it and why', async () => {
+    const { red, green } = await twoRuns();
+    await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the single-instance lock, not the change' });
+
+    const document = await readFile((await validation.render({ issue: ISSUE, home })).path, 'utf8');
+
+    assert.match(document, /## Set aside/);
+    assert.match(document, new RegExp(`\\*\\*${red}\\*\\*.*→ \\*\\*${green}\\*\\*`));
+    assert.match(document, /the single-instance lock, not the change/);
+    assert.match(document, new RegExp(`fail, set aside for ${green}`), 'the steps table keeps the status it earned');
+  });
+
+  test('and the journal keeps the reason too', async () => {
+    const { red, green } = await twoRuns();
+    await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the port was in use' });
+
+    const entry = (await readJournal({ issue: ISSUE }, { home })).find((line) => line.event === 'validation-superseded');
+    assert.ok(entry, 'a supersession that leaves no trace is an edit');
+    assert.match(entry.detail, /the port was in use/);
+  });
+
+  // The whole risk of this command: it must not become a way of typing PASS.
+  test('a step that showed nothing cannot set another one aside', async () => {
+    const { red } = await twoRuns();
+    const empty = await validation.attach({ issue: ISSUE, home, title: 'nothing attached' });
+
+    const result = await validation.supersede({ issue: ISSUE, home, step: red, by: empty.step.id, reason: 'because' });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /unverified/);
+  });
+
+  test('a reason is required, and it is a sentence a person writes', async () => {
+    const { red, green } = await twoRuns();
+    const result = await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: '  ' });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /reason is required/);
+  });
+
+  test('a step that passed has nothing to set aside', async () => {
+    const { red, green } = await twoRuns();
+    const result = await validation.supersede({ issue: ISSUE, home, step: green, by: red, reason: 'no' });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, /passed/);
+  });
+
+  test('twice is refused, and so is a step that does not exist', async () => {
+    const { red, green } = await twoRuns();
+    await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the lock' });
+
+    const again = await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the lock again' });
+    assert.equal(again.ok, false);
+    assert.match(again.error, new RegExp(`already superseded by ${green}`));
+
+    const absent = await validation.supersede({ issue: ISSUE, home, step: 'V99', by: green, reason: 'the lock' });
+    assert.equal(absent.ok, false);
+    assert.match(absent.error, /V99 is not a step/);
+  });
+
+  // The one thing this can lose, and it is said at the moment it happens.
+  test('an R-ID that only the set-aside step carried is named, and stops counting as covered', async () => {
+    const { red, green } = await twoRuns();
+    const result = await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the lock' });
+
+    assert.match(result.note, /R2/);
+
+    const waiting = await validation.steps({ issue: ISSUE, home });
+    assert.deepEqual(waiting.covered, ['R1']);
+  });
+
+  test('finish moves an issue whose only failure was set aside', async () => {
+    await transition(ISSUE, 'triaged', { home });
+    await transition(ISSUE, 'planned', { home });
+    await transition(ISSUE, 'plan-approved', { home });
+    await transition(ISSUE, 'implemented', { home });
+
+    const { red, green } = await twoRuns();
+    assert.equal((await validation.finish({ issue: ISSUE, home })).ok, false, 'the red step blocks it first');
+
+    await validation.supersede({ issue: ISSUE, home, step: red, by: green, reason: 'the single-instance lock' });
+
+    const finished = await validation.finish({ issue: ISSUE, home });
+    assert.equal(finished.ok, true, finished.error);
+    assert.equal(finished.outcome, 'pass');
+    assert.equal(finished.moved, true);
+  });
+});
+
 describe('ids and the journal', () => {
   test('steps are numbered once and do not restart', async () => {
     const first = await validation.attach({ issue: ISSUE, home, title: 'one' });
@@ -345,7 +530,7 @@ describe('the e2e candidate', () => {
 describe('rendering', () => {
   test('validation.md carries the derived status and names the gaps', async () => {
     const run = await capture({ command: emits('ok\n') });
-    await validation.attach({ issue: ISSUE, home, title: 'the spec passes', requirement: 'R1', run });
+    await validation.attach({ issue: ISSUE, home, title: 'the spec passes', requirements: 'R1', run });
     await validation.attach({ issue: ISSUE, home, title: 'needs a real container engine' });
 
     const rendered = await validation.render({ issue: ISSUE, home });
@@ -478,11 +663,11 @@ describe('running the codified test', () => {
     const spec = await writeSpec('run.spec.ts', 'test("e", () => {});\n');
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));
 
-    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, requirement: 'R1', config: CONFIG });
+    const result = await validation.runSpec({ issue: ISSUE, home, repoRoot: repo, spec, requirements: 'R1', config: CONFIG });
 
     assert.equal(result.ok, true, result.error);
     assert.equal(validation.statusOf(result.step), 'pass');
-    assert.equal(result.step.requirement, 'R1');
+    assert.deepEqual(result.step.requirements, ['R1']);
 
     const record = await validation.read(ISSUE, { home });
     assert.equal(record.e2e.consecutive, 1);

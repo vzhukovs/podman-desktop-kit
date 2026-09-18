@@ -30,7 +30,31 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { unknownFlags } from '../lib/cli.js';
+import { parseArgs, unknownFlags } from '../lib/cli.js';
+
+describe('parseArgs', () => {
+  test('a flag typed once is its value, whichever way it was written', () => {
+    assert.deepEqual(parseArgs(['validate', 'attach', '--issue', '18835', '--title=the list']), {
+      command: 'validate',
+      args: ['attach'],
+      flags: { issue: '18835', title: 'the list' },
+    });
+  });
+
+  // A flag that takes several values had no way to carry them: the second
+  // spelling overwrote the first, silently, and the command reported success
+  // for half of what was asked. `validate attach` takes two or three R-IDs.
+  test('a flag typed twice keeps both', () => {
+    const { flags } = parseArgs(['validate', 'attach', '--requirement', 'R1', '--requirement', 'R2']);
+    assert.deepEqual(flags.requirement, ['R1', 'R2']);
+  });
+
+  test('a bare flag is still true, and the value is still the next token', () => {
+    const { flags } = parseArgs(['slice', 'verify', '--all', '--slice', '2']);
+    assert.equal(flags.all, true);
+    assert.equal(flags.slice, '2');
+  });
+});
 
 describe('unknown flags', () => {
   // The live run, on the first issue this plugin took end to end: `issue fetch`

@@ -160,6 +160,9 @@ pdkit plan check <n>                       # the mechanical half of plan review
 pdkit preflight <n> [--slice <i>]          # minutes: it runs the real test, lint and typecheck
 pdkit slice verify --issue <n> --all       # builds each slice alone, from main
 pdkit validate steps --issue <n>           # what is waiting, and what is done
+pdkit validate supersede <Vk> --issue <n> --by <Vn> --reason <t>
+                                           # a step that measured the environment,
+                                           # set aside for one that showed the change
 pdkit drift <n>                            # what landed upstream under this work
 pdkit audit <n> --base main                # facts, no verdict
 ```

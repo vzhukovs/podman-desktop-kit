@@ -49,12 +49,16 @@ Stop it when you are done: `pdkit validate stop --issue <n>`.
 ## 3. Drive it, and attach what you see
 
 ```
-pdkit validate attach --issue <n> --requirement R2 \
+pdkit validate attach --issue <n> --requirement R2 --requirement R5 \
   --title "the dialog does not reappear" \
   --expected "no dialog on the second launch" \
   --observed "no dialog; screenshot attached" \
   --evidence /tmp/second-launch.png
 ```
+
+`--requirement` takes as many as the step demonstrates — one screenshot of a
+list often shows three at once — and `--requirement "R2, R5"` is the same thing.
+Naming one and describing the rest in prose leaves those traced by nobody.
 
 Measured values, not impressions. "The contrast is sufficient" is an opinion;
 `4.6:1` with the screenshot it was read from is evidence.
@@ -99,6 +103,31 @@ Writes `validation.md` and moves the issue. Three outcomes:
 - **fail** — a captured run came back red. The issue does not move; that is a
   finding about the change, not about the process.
 - **unverified** — steps nobody could demonstrate. The issue **does** move.
+
+## When a step measured the environment rather than the change
+
+It happens: the application started for exploration is still holding the
+single-instance lock, a port is in use, a container engine is not running. The
+step is red, `finish` takes the worst status in the record, and the finding is
+about your laptop.
+
+Re-run the scenario, attach that run, and then:
+
+```
+pdkit validate supersede V4 --issue <n> --by V7 \
+  --reason "the app launched for exploration held the Electron single-instance lock; no test executed"
+```
+
+`V4` stays in `validation.md` with its exit code, its run and this reason, under
+`Set aside`; it stops counting towards the outcome. What it cannot do is launder
+a failure: the step named by `--by` has to have demonstrated something itself, a
+step that passed cannot be set aside, and the reason is a sentence you write.
+Editing `validation.json` is not the alternative to this — it is the thing this
+exists to make unnecessary.
+
+If an R-ID was only on the step you set aside, the command says so. It is no
+longer covered, and either the new step should carry it or something still has
+to demonstrate it.
 
 ## When you could not demonstrate something
 

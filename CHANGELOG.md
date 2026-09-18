@@ -11,6 +11,39 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Added
 
+- **`pdkit validate supersede <Vk> --by <Vn> --reason "<what happened>"` retires a
+  step that measured the environment.** On DESKTOP-18835 the e2e spec could not
+  start a second Electron instance — the application `validate launch` had
+  brought up was holding the single-instance lock — and not one test executed.
+  The same spec passed four times in a row once that window was closed. `finish`
+  takes the worst status in the record, nothing could retire the red step, and
+  the issue moved only because `validation.json` was edited by hand: the one act
+  the whole design exists to make unnecessary.
+  - **A record, not an eraser.** The step keeps its exit code, its run and its
+    place in the table, marked `fail, set aside for V7`; the reason and the
+    replacement go under a new `Set aside` section of `validation.md`, and the
+    supersession is journalled as `validation-superseded`. What changes is the
+    arithmetic: `outcomeOf` no longer counts it, and `validation-evidence` stops
+    naming it in preflight.
+  - **Four guards, and they are the reason this is not a way of typing PASS.**
+    The step named by `--by` must have demonstrated something itself — a run that
+    passed, or an artefact with an observation; a step that passed cannot be set
+    aside, because the only use for that is hiding a pass; the reason is required
+    and is a sentence a person writes; and nothing is deleted.
+  - **An R-ID that only the retired step carried is named at the moment it stops
+    counting as covered.** Losing one silently is how a requirement demonstrated
+    once ends up demonstrated never.
+- **A validation step carries every R-ID it demonstrates.** `--requirement` takes
+  as many as apply — `--requirement R1 --requirement R2`, or `--requirement
+  "R1, R2"` — because one screenshot of a list shows the new column, the sort
+  order and the empty state at once, and the record held exactly one. The rest
+  were described in prose and traced by nobody.
+  - A flag typed twice used to keep the second one silently. `parseArgs` now
+    collects repeats into a list, so a command that wants several gets them and
+    one that wants a single value sees something that is not a string and says
+    so, instead of acting on half of what was asked.
+  - Records written before this read as the list they always meant, and the
+    singular key does not survive the next write.
 - **`pdkit reset <issue>` starts one issue over.** A cycle can go wrong early —
   the triage reads the issue as something it is not, the scouts map the wrong
   package — and then every later step inherits the mistake, because every later
