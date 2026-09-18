@@ -673,7 +673,11 @@ blocks approval.
 **Phase 3, the plan** by `templates/plan.md`. Eight requirements; a breach means
 a rewrite:
 
-1. Each task owns its files **exclusively**. Overlap is a planning error.
+1. Each task owns its files **exclusively**. Overlap is a planning error. A task
+   that writes nothing — a whole-suite gate, a measurement — declares
+   `Owns: (none — verification only, writes no files)`, which is read as no files
+   at all; it is legitimate exactly while its `Done when` runs, the hook refuses
+   every write it attempts, and every slice inherits what it satisfies.
 2. `Done when` is an executable command with expected output. Prose is forbidden.
 3. Interfaces between tasks are hoisted into `Frozen interfaces` as real signatures.
 4. A task is 1–3 files.
@@ -848,6 +852,18 @@ Materialisation is the inverse of that diff: a branch from the base,
 `git apply --index --binary`, one commit. **The original working branch is not
 destroyed** — if the graph turns out to be wrong there is nothing to roll back.
 
+**A branch is only the slice while it sits where the slice says.** Once a slice
+branch exists, verification builds it rather than the change set — after
+materialisation the branch is the slice, and a review fix lands there. What makes
+that safe is a base check, and its absence cost a full run: an issue with one
+slice gets the same branch name from `branches.sliced` that `pdkit worktree
+create` gave the working branch, so verify found a branch, built the working tree
+on the commit it had been cut from, and wrote `standalone: true` against `main`
+(18835). A branch whose merge-base with the slice's base is not that base is now
+refused, naming both commits; `standalone` is what the build measured, not what
+the graph intended; and the base ref and its commit are stored with the run, so
+the claim is checkable without `git merge-base` and a suspicion.
+
 **Freshness is checked by digest.** `slices.json` stores, per slice, the `sha256`
 of that exact diff and the base SHA. `slice-standalone` in preflight recomputes
 it in place: a mismatch is a **`fail` demanding a re-run, not a `pass`**. A green
@@ -862,7 +878,7 @@ branch's diff must match, byte for byte, what was verified.
 | `base` is `main` or another slice; the graph is acyclic | which files make a meaningful slice at all |
 | a slice whose standalone run is red cannot branch from `main` | the wording of `Why separate` and `Where to look` |
 | `extension-api` files are in one slice, first, with no other layer | |
-| a slice's R-IDs are derived from the tasks owning its files; the union covers the frozen set | |
+| a slice's R-IDs are derived from the tasks owning its files, plus the requirements of every task that owns no files at all; the union covers the frozen set | |
 | `max_files_per_slice`, and a slice spanning layers — a warning, not a refusal | |
 
 `slices.md` is **rendered from `slices.json`**, never printed by an agent.
@@ -1295,6 +1311,8 @@ The rules the handlers apply:
 | `pre-bash` | `git rebase -i` | deny, hint `git reset --soft <base>` — husky's `commit-msg` appends `Signed-off-by` and then rejects the duplicate it created |
 | `pre-bash` | `git commit --no-verify` | deny |
 | `pre-write` | a path outside the active task's `Owns` | deny |
+| `pre-write` | the active task's `Owns` is recorded and **empty** | deny every path: the plan made it a verification, and a verification writes nothing. Empty is not missing |
+| `pre-write` | no `Owns` recorded for the active task | allow with a message naming `pdkit task sync` — nobody has synced the plan, so nothing is known rather than nothing is owned |
 | `pre-write` | no active task in this working tree | allow — the restriction belongs to executing a planned task, not to having the plugin installed |
 | `post-write` | a new file without the SPDX header | exit 2 with the text to paste |
 | `post-write` | `*.ts` under schemas | remind about `generate:schemas`, mark `schemas_dirty` |

@@ -256,7 +256,7 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `schemas` | | `pnpm generate:schemas` produces no diff |
 | `extension-api` | | the obligations that come with touching the public API |
 | `api-surface` | | added exports are not accidental public surface |
-| `slice-standalone` | | the slice built alone, green, and the branch still matches it |
+| `slice-standalone` | | the slice built alone, green, on the base it declares — and the branch still matches it |
 | `branch-name` | | `DESKTOP-<issue>/[<index>-]<slug>` |
 | `quickfix-size` | `warn` | the diff still fits the quickfix thresholds |
 | `pr-body-template` | | the body has every section the template declares, footer and test checkbox included |

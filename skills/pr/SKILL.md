@@ -54,6 +54,9 @@ it from the branch you are standing on.
      on the quickfix route, a single `Fixes #<n>` and no coverage table.
    - The coverage table lists **this slice's** R-IDs — `pdkit slice show`
      has them. Preflight asks for exactly those, not the whole frozen set.
+     A requirement whose only task owns no files — "refactor only", "no
+     unannounced visible change" — is on every slice, and its row says where it
+     was demonstrated: the whole-tree run, not a `file:line`.
    - `Not in this PR`: name the slices the rest went to, by branch. This is
      the section that stops a reviewer looking for the other half.
    - `Steps to check`: at least three numbered steps, each with an expected

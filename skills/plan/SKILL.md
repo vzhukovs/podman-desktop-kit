@@ -40,7 +40,11 @@ Fill `templates/plan.md`. Every one of these is a requirement, and a plan that
 misses one gets redone rather than patched:
 
 1. **Every task owns its files exclusively.** Two tasks sharing a file is a
-   planning error, not a coordination problem.
+   planning error, not a coordination problem. A task that writes nothing — a
+   whole-suite gate, a measurement — writes `Owns: (none — verification only,
+   writes no files)`, which is read as no files: `plan check` accepts it as long
+   as its `Done when` runs, the hook refuses every write it attempts, and every
+   slice inherits the requirements it satisfies.
 2. **`Done when` is a command and its expected output.** Prose is refused:
    "works correctly" cannot be checked by anyone except its author.
 3. **Interfaces between tasks are frozen, with real signatures**, so two tasks

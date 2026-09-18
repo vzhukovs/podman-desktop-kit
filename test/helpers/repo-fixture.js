@@ -206,7 +206,10 @@ export async function writeTask(input) {
       '- Status: done',
       '',
       '## Owns',
-      ...input.owns.map((path) => `- ${path}`),
+      // A string goes in as written: a verification task's ownership is a
+      // sentence — `(none — verification only, writes no files)` — and what the
+      // parser does with it is exactly what some of this is testing.
+      ...(typeof input.owns === 'string' ? [input.owns] : input.owns.map((path) => `- ${path}`)),
       '',
       '## Done when',
       '```bash',

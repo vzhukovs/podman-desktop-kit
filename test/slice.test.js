@@ -151,6 +151,71 @@ describe('facts', () => {
   });
 });
 
+// The whole-suite gate, and the graph it refused. On 18835 T8 was a task that
+// writes nothing by design — a typecheck, the tests and the linters over the
+// whole tree — and it was the only task claiming R7, R8 and R15. Requirements
+// reach a slice through the files of the tasks that claim them, so those three
+// reached none, and `slice set` refused a one-slice graph in which nothing had
+// been forgotten. The workaround was to spread the three R-IDs over the seven
+// tasks that do write files, which is a sentence about the plan rather than
+// about the work.
+describe('a task that owns no files', () => {
+  const GATE = 4343;
+  let gated;
+
+  before(async () => {
+    await state.transition(GATE, 'triaged', { home });
+    await state.transition(GATE, 'planned', { home });
+    for (let i = 0; i < 5; i += 1) await ids.allocateRequirement(GATE, { home });
+    await ids.freezeRequirements(GATE, { home });
+
+    await writeTask({ home, issue: GATE, id: 'T1', satisfies: ['R1'], owns: [API] });
+    await writeTask({ home, issue: GATE, id: 'T2', satisfies: ['R2'], owns: [EXEC] });
+    await writeTask({ home, issue: GATE, id: 'T3', satisfies: ['R3', 'R4'], owns: ['packages/ui/**', 'tests/playwright/**'] });
+    await writeTask({ home, issue: GATE, id: 'T4', satisfies: ['R5'], owns: '(none — verification only, writes no files)' });
+
+    gated = await slice.facts({
+      issue: GATE,
+      repoRoot: repo,
+      base: 'main',
+      ref: `DESKTOP-${ISSUE}/work`,
+      home,
+      config: CONFIG,
+      packageMap: packageMap(repo),
+    });
+  });
+
+  test('its requirements belong to the whole tree, because they reach no file', () => {
+    assert.deepEqual(gated.wholeTree, ['R5']);
+    assert.equal(
+      gated.files.every((file) => !file.requirements.includes('R5')),
+      true,
+      'R5 has no file of its own — that is the reason it needs collecting',
+    );
+  });
+
+  test('every slice carries them, so a requirement only the gate claims still reaches a pull request', () => {
+    const result = slice.build({ issue: GATE, facts: gated, config: CONFIG, proposal: proposal(GOOD) });
+
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+    for (const entry of result.graph.slices) {
+      assert.ok(entry.requirements.includes('R5'), `slice #${entry.index} dropped the whole-tree requirement`);
+    }
+    // And the file-borne ones are still exactly the file-borne ones.
+    assert.deepEqual(result.graph.slices[0].requirements, ['R1', 'R5']);
+  });
+
+  // The ownership that produced all of this: prose where paths go. Split on its
+  // comma it became two entries, `owns` was not empty, and nothing downstream
+  // could tell the phrases from files.
+  test('the sentence in its Owns section is stored as no files at all', async () => {
+    const parsed = await readFile(join(home, 'issues', String(GATE), 'tasks', 'T4.md'), 'utf8');
+
+    assert.match(parsed, /\(none — verification only, writes no files\)/);
+    assert.deepEqual(gated.files.flatMap((file) => file.tasks).includes('T4'), false, 'a verification task claims no file');
+  });
+});
+
 describe('draft', () => {
   test('groups by layer, in merge order', () => {
     const drafted = slice.draft(collected);
@@ -517,6 +582,12 @@ describe('verify', () => {
     assert.equal(result.verification.standalone, true);
     assert.equal(result.verification.exitCode, 0);
     assert.equal(result.verification.revertsCleanly, true);
+    // What it stood on, named and resolved. `standalone: true` on its own is a
+    // word; beside a commit it is a claim somebody can check with merge-base,
+    // which is what it took to find out that one of these had been recorded
+    // against a base the build never saw (18835).
+    assert.equal(result.verification.base, 'main');
+    assert.equal(result.verification.baseCommit, await git(['rev-parse', 'main'], repo));
     assert.match(result.verification.command, /npm run typecheck && npm run lint:check && npm run test:unit/);
 
     // The evidence is a receipt in the same format, and it validates — which
@@ -593,6 +664,90 @@ describe('verify', () => {
   });
 });
 
+// Problem 2 of the 18835 report, and the reason `standalone` is measured now
+// rather than read off the graph.
+//
+// `pdkit worktree create --branch DESKTOP-18835/1-...` names the working branch
+// from the same template `branches.sliced` gives slice #1, so for an issue with
+// one slice the two names are the same by construction, not by accident. verify
+// found a branch under that name, took it for the materialized slice, built the
+// working tree — which sat on a commit ten files behind `main` — and wrote
+// `standalone: true` against `main`. slices.md said `Base: main | Standalone:
+// ✅`. No build on main had happened, and nothing in the output said so:
+// preflight then read that record as the proof it exists to demand.
+describe('a branch that is not on the base its slice declares', () => {
+  const branch = `DESKTOP-${ISSUE}/3-ui-contrast`;
+  let was;
+  let mainWas;
+  let moved;
+  let before_;
+
+  before(async () => {
+    was = await git(['rev-parse', '--abbrev-ref', 'HEAD'], repo);
+    mainWas = await git(['rev-parse', 'main'], repo);
+    before_ = (await slice.read(ISSUE, { home })).slices.find((entry) => entry.index === 3).verification;
+
+    // The name collision, made the way the flow makes it: a branch carrying the
+    // work, under the name the graph gives slice #3.
+    await git(['branch', branch, was], repo);
+
+    // And then the base moves, the way an upstream does between cutting a
+    // branch and verifying it.
+    await git(['checkout', 'main'], repo);
+    await writeFiles(repo, { 'docs/meanwhile.md': 'what upstream landed while the branch sat\n' });
+    moved = await commitAll(repo, 'docs: what upstream landed meanwhile');
+    await git(['checkout', was], repo);
+  });
+
+  after(async () => {
+    await git(['checkout', was], repo);
+    await git(['branch', '-D', branch], repo);
+    await git(['branch', '-f', 'main', mainWas], repo);
+  });
+
+  test('is refused, and the refusal names the commit it forked from and the one it claims', async () => {
+    const result = await slice.verifySlice({
+      issue: ISSUE,
+      index: 3,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.error, new RegExp(`${branch} forked from ${mainWas.slice(0, 12)}`));
+    assert.match(result.error, new RegExp(`declares main, which is ${moved.slice(0, 12)}`));
+    // Both honest ways out, and neither of them is "verify it anyway".
+    assert.match(result.error, /Rebase it onto main/);
+  });
+
+  test('and nothing is recorded, least of all a standalone it did not build', async () => {
+    const after = (await slice.read(ISSUE, { home })).slices.find((entry) => entry.index === 3).verification;
+
+    assert.deepEqual(after, before_, 'a refused verification must not touch the graph');
+  });
+
+  test('rebased onto the base it declares, the same branch verifies', async () => {
+    await git(['checkout', branch], repo);
+    await git(['rebase', 'main'], repo);
+    await git(['checkout', was], repo);
+
+    const result = await slice.verifySlice({
+      issue: ISSUE,
+      index: 3,
+      repoRoot: repo,
+      home,
+      config: config(),
+      packageMap: packageMap(repo),
+    });
+
+    assert.equal(result.ok, true, result.error ?? result.output);
+    assert.equal(result.verification.standalone, true);
+    assert.equal(result.verification.baseCommit, moved, 'the base it was measured against is the base it now sits on');
+  });
+});
+
 describe('checkFreshness', () => {
   test('a verification of the current diff is fresh', async () => {
     const graph = await slice.read(ISSUE, { home });
@@ -624,6 +779,44 @@ describe('checkFreshness', () => {
     const checked = await slice.checkFreshness({ graph, index: 1, repoRoot: repo, base: 'main' });
     assert.equal(checked.fresh, false);
     assert.match(checked.reason, /never been verified/);
+  });
+});
+
+describe('renderValues', () => {
+  // `pdkit slice render` merged the agent's `--values` file ON TOP of these,
+  // so a file carrying `rows` or `verifiedAt` replaced the measured columns
+  // with whatever it said — in the one document whose columns mean something
+  // precisely because they cannot be typed in.
+  test('a values file adds prose and cannot replace a tick it did not earn', async () => {
+    const graph = await slice.read(ISSUE, { home });
+    const measured = slice.renderValues(graph);
+
+    const merged = slice.renderValues(graph, {
+      rows: '| 1 | mine | — | main | 0 | R1 | ✅ | ✅ |',
+      verifiedAt: 'yesterday, by hand',
+      mergeOrder: '#1',
+      issue: '9999',
+      rationale: '### #1 because the reviewer of the API is not the reviewer of the UI',
+      notes: 'a key of the caller’s own',
+    });
+
+    assert.equal(merged.rows, measured.rows);
+    assert.equal(merged.verifiedAt, measured.verifiedAt);
+    assert.equal(merged.mergeOrder, measured.mergeOrder);
+    assert.equal(merged.issue, measured.issue);
+
+    // The one value an agent writes rather than earns, and anything the
+    // template does not fill from the graph.
+    assert.match(merged.rationale, /because the reviewer/);
+    assert.equal(merged.notes, 'a key of the caller’s own');
+  });
+
+  test('the base each slice was verified against is in the table', async () => {
+    const graph = await slice.read(ISSUE, { home });
+    const verified = graph.slices.find((entry) => entry.verification?.baseCommit);
+
+    assert.ok(verified, 'the fixture has a verified slice');
+    assert.match(slice.renderValues(graph).rows, new RegExp(`from ${verified.verification.baseCommit.slice(0, 12)}`));
   });
 });
 
@@ -795,6 +988,11 @@ describe('materialize', () => {
       packageMap: packageMap(repo),
     });
     assert.equal(verified.ok, true, verified.error);
+    // Built from the branch, and the base it is recorded against is the base
+    // the branch actually sits on.
+    assert.equal(verified.verification.base, 'main');
+    assert.equal(verified.verification.baseCommit, await git(['rev-parse', 'main'], repo));
+    assert.equal(verified.verification.standalone, true);
 
     // The question the gate asks immediately afterwards, from the branch — which
     // is what preflight passes as `ref`.

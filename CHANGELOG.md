@@ -103,6 +103,59 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **A task that writes nothing turned its ownership into two files that do not
+  exist.** A whole-suite gate — typecheck, tests and linters over the whole tree
+  — writes no files by design, and two live runs said so the same way:
+  `Owns: (none — verification only, writes no files)`. The parser split that
+  sentence on its comma and `pdkit task sync` stored the two halves as paths. On
+  DESKTOP-18835 the gate was the only task claiming R7, R8 and R15; the phrases
+  matched no file in the diff, so `slice set` refused a one-slice graph for three
+  requirements nobody had forgotten, and the way out was to spread them over the
+  seven tasks that do write files — a sentence about the plan, not about the work.
+  - **Prose is not a path.** An `Owns` that says `(none`, or nothing at all, is
+    read as no files. Half a sentence is worse than no answer: nothing downstream
+    could tell those two entries from paths, and the empty-ownership rule in
+    `plan check` saw a list of two and passed every time.
+  - **A verification task is a shape a plan may take**, and `plan check` now says
+    so: owning no files is refused only when there is no executable `Done when`
+    either — a task that writes nothing and runs nothing does nothing.
+  - **Empty is not the same as missing, and the pre-write hook is where that
+    matters.** No entry means nobody ran `task sync`, and writes stay
+    unconstrained with a message. An entry that IS empty means the plan gave the
+    task no files, and every write it attempts is refused — otherwise the empty
+    set would be the widest permission in the system instead of the narrowest.
+  - **`slice set` gives its requirements to every slice.** A requirement whose
+    only task owns no files is a claim over the whole change — "refactor only",
+    "no unannounced visible change" — and every pull request cut from it is a
+    place that claim has to hold.
+- **`slice verify` answered for the wrong branch whenever the names matched, and
+  called it standalone.** `pdkit worktree create` names the working branch from
+  the same template `branches.sliced` gives slice #1, so for an issue with one
+  slice the two names are identical by construction. verify found a branch under
+  the slice's name, took it for the materialized slice, built the tree at its tip
+  — ten files behind `main` — and recorded `standalone: true` against `main`.
+  `slices.md` printed `Base: main | Standalone: ✅` for a build on main that had
+  never happened, and `slice-standalone` then read that record as the proof it
+  exists to demand. Found on DESKTOP-18835 by comparing the recorded SHA with
+  `git merge-base` by hand; nothing in the output would have said it.
+  - **The base is checked before anything is built.** A branch whose merge-base
+    with the slice's base is not that base is refused, naming both commits and
+    both ways out: rebase it, or delete it and let verify build the slice from
+    the change set. A refusal rather than a silent fallback — it does not touch
+    somebody's branch, and it says the true thing.
+  - **`standalone` is measured rather than read off the graph.** `baseSlice ===
+    null` is what a slice intends; what makes the word true is where the build
+    stood.
+  - **The verification records the base it used**, ref and commit, and
+    `slices.md`, `pdkit slice` and the preflight summary print it. A green tick
+    beside a SHA is a claim anybody can check; on its own it is a word.
+- **`pdkit slice render` could overwrite a verified column.** The `--values` file
+  was spread on top of the measured values, so a file carrying `rows` or
+  `verifiedAt` replaced the ticks with whatever it said — in the one document
+  whose columns mean something precisely because they cannot be typed in. The
+  comment above the function had claimed the opposite since it was written. The
+  merge now happens inside `renderValues`, which takes the caller's prose,
+  keeps `rationale`, and writes the measured keys over everything else.
 - **`preflight-green` could be typed, and it is the state the push gate opens
   from.** Section 1 has stated the hard rule since 0.1 — a push token is issued
   from that state and nowhere else — and the gate checked it faithfully. Nothing

@@ -115,6 +115,17 @@ describe('parsePlan', () => {
     assert.deepEqual(parsed.tasks.map((task) => task.id), ['T1']);
   });
 
+  // What `Owns` says when a task writes nothing. Split on its comma, this
+  // sentence became two paths that match no file, and every rule downstream
+  // read the task as owning two files nobody could find (18835).
+  test('an ownership written as prose is no files, not two of them', () => {
+    const parsed = parsePlan(
+      plan({ tasks: ['### T1: whole-suite gate', '- Satisfies: R1', '- Owns: (none — verification only, writes no files)', '- Done when: `pnpm test`'].join('\n') }),
+    );
+
+    assert.deepEqual(parsed.tasks[0].owns, []);
+  });
+
   test('an empty plan parses to an empty plan rather than throwing', () => {
     const parsed = parsePlan('');
 
@@ -169,6 +180,16 @@ describe('parseTask', () => {
       'packages/main/src/plugin/container-registry.ts',
       'packages/main/src/plugin/container-registry.spec.ts',
     ]);
+  });
+
+  // The task file is what `pdkit task sync` writes state.json from, so this is
+  // where the sentence turned into ownership: `"T8": ["(none — verification
+  // only", "writes no files)"]` in the record the pre-write hook reads, and a
+  // non-empty list everywhere anything asked (18834 and 18835, both of them).
+  test('an Owns section that says none owns nothing, and says so as an empty list', () => {
+    const gate = file.replace(/## Owns\n[\s\S]*?\n\n/, '## Owns\n(none — verification only, writes no files)\n\n');
+
+    assert.deepEqual(parseTask(gate).owns, []);
   });
 
   // Two runs of the same skill wrote this section two ways: bare paths one day,
@@ -261,6 +282,28 @@ describe('checkPlan', () => {
     assert.ok(result.problems.some((problem) => problem.check === 'coverage' && problem.detail.startsWith('R2')));
   });
 
+  // 18835: T8 was the whole-suite gate, the only task claiming R7, R8 and R15,
+  // and it writes nothing by design. The rule it used to break is the one that
+  // pushed two runs into writing a sentence where paths go.
+  test('a task that owns nothing but runs something is a verification, and passes', async () => {
+    const result = await check({
+      requirements: 'R1, R2',
+      tasks: [
+        '### T1: the change itself',
+        '- Satisfies: R1',
+        '- Owns: packages/main/src/plugin/container-registry.ts',
+        '- Done when: `pnpm test:main`',
+        '',
+        '### T2: whole-suite gate',
+        '- Satisfies: R2',
+        '- Owns: (none — verification only, writes no files)',
+        '- Done when: `pnpm typecheck && pnpm test:unit`',
+      ].join('\n'),
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+  });
+
   test('a task with no requirement is refused', async () => {
     const result = await check({
       requirements: 'R1',
@@ -271,10 +314,12 @@ describe('checkPlan', () => {
     assert.ok(result.problems.some((problem) => problem.check === 'satisfies'));
   });
 
-  test('a task owning nothing is refused', async () => {
+  // The other half of the pair above: writing nothing is a shape a plan may
+  // take, running nothing is not. A task that does neither does nothing.
+  test('a task that owns nothing and runs nothing is refused', async () => {
     const result = await check({
       requirements: 'R1',
-      tasks: ['### T1: one', '- Satisfies: R1', '- Done when: `x`'].join('\n'),
+      tasks: ['### T1: one', '- Satisfies: R1', '- Done when: it looks right'].join('\n'),
     });
 
     assert.equal(result.ok, false);

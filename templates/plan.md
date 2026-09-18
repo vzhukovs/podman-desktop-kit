@@ -30,7 +30,16 @@
      Owns is exclusive: two tasks sharing a file is a planning error, not a
      coordination problem, and the pre-write hook enforces it. Done when is an
      executable command, because "works correctly" cannot be checked by anyone
-     except its author. One to three files per task. -->
+     except its author. One to three files per task.
+
+     A task that writes nothing — a whole-suite gate, a measurement — says so:
+
+       - Owns: (none — verification only, writes no files)
+
+     That is read as no files at all, and it means what it says in both
+     directions: the hook refuses every write such a task attempts, and every
+     slice carries the requirements it satisfies, because a check over the whole
+     tree is a claim every pull request cut from the change has to hold. -->
 {{tasks}}
 
 ## Upstream compliance

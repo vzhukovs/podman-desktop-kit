@@ -42,6 +42,7 @@ import { setOwns } from '../lib/state.js';
 const execFileAsync = promisify(execFile);
 
 const ISSUE = 18248;
+const GATE = 18835;
 const OWNS = ['packages/main/src/plugin/container-registry.ts', 'packages/main/src/**/*.spec.ts'];
 
 let home;
@@ -164,6 +165,45 @@ describe('without a task running', () => {
   // which counts files changed outside every Owns set.
   test('any file in the repository is allowed', async () => {
     const decision = await write(join(repo, 'packages/renderer/src/App.svelte'));
+    assert.equal(decision.block, false);
+  });
+});
+
+// The distinction the hook turns on, and the one 18835 was missing: a record
+// that is absent and a record that is empty say opposite things. This is the
+// empty one — a whole-suite gate, a measurement, a task the plan gave no files
+// on purpose. Allowing its writes would make the empty set the widest
+// permission in the system instead of the narrowest.
+describe('a task the plan gave no files at all', () => {
+  before(async () => {
+    await setOwns(GATE, 'T8', [], { home });
+    await start({ issue: GATE, taskId: 'T8', worktree: repo, home });
+  });
+
+  after(async () => {
+    await stop({ worktree: repo, home });
+  });
+
+  test('every write in the repository is refused, and the refusal says why', async () => {
+    const decision = await write(join(repo, 'packages/renderer/src/App.svelte'));
+
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'owns');
+    assert.match(decision.reason, /owns no files/);
+    assert.match(decision.reason, /verification/);
+    // Where to take it: the plan, not the boundary.
+    assert.match(decision.reason, /amend it/);
+  });
+
+  test('a file it owns cannot exist, pattern or not', async () => {
+    const decision = await write(join(repo, 'packages/main/src/plugin/container-registry.ts'));
+    assert.equal(decision.block, true);
+  });
+
+  // The rule belongs to the tree where the task runs. A receipt under
+  // ~/.pdkit is not a file the plan has an opinion about.
+  test('a file outside the repository is still none of its business', async () => {
+    const decision = await write(join(outside, 'notes.md'), repo);
     assert.equal(decision.block, false);
   });
 });
