@@ -90,6 +90,25 @@ async function pdkit(...args) {
   return stdout;
 }
 
+/**
+ * The same, for a command expected to refuse.
+ *
+ * @param {...string} args
+ * @returns {Promise<{code: number, stdout: string, stderr: string}>}
+ */
+async function refused(...args) {
+  try {
+    const { stdout, stderr } = await exec(process.execPath, [BIN, ...args], {
+      cwd: home,
+      env: { ...process.env, PDKIT_HOME: home },
+      encoding: 'utf8',
+    });
+    return { code: 0, stdout, stderr };
+  } catch (error) {
+    return { code: error.code ?? 1, stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? '') };
+  }
+}
+
 /** Propose one amendment and answer with its ID. */
 async function propose() {
   const out = await pdkit('amendment', 'new', '--issue', String(ISSUE), '--values', join(home, 'values.json'), '--json');
@@ -171,5 +190,52 @@ describe('close: the human output', () => {
 
   test('stays quiet about amendments an issue never had', async () => {
     assert.doesNotMatch(await pdkit('close', String(ISSUE)), /amendment/);
+  });
+});
+
+// `close` re-reads the pull requests it still believes are open, because the
+// merge happens in the browser and nothing local hears about it. What that read
+// costs when it cannot be made is what these two are about: on a machine with
+// no `gh`, no network, or no configured upstream, closing still has to report
+// the facts on disk — and has to say that is what they are.
+//
+// Offline by construction: `repo.upstream` is emptied, so the read fails in
+// lib/gh.js before a process is started. The suite does not talk to GitHub.
+describe('close: pull requests it could not re-read', () => {
+  beforeEach(async () => {
+    await writeFile(join(home, 'config.yaml'), 'repo:\n  upstream: ""\n');
+    await pdkit('pr', 'register', '18562', '--issue', String(ISSUE), '--branch', `DESKTOP-${ISSUE}/fix`);
+  });
+
+  test('the failure is a fact in the report, not a crash', async () => {
+    const facts = JSON.parse(await pdkit('close', String(ISSUE), '--json'));
+
+    assert.deepEqual(facts.refreshed, []);
+    assert.equal(facts.refreshFailed.length, 1);
+    assert.equal(facts.refreshFailed[0].number, 18562);
+    assert.match(facts.refreshFailed[0].error, /repo\.upstream/);
+    // Never read from GitHub, and the report says so rather than implying a
+    // reading of age zero.
+    assert.equal(facts.refreshFailed[0].read, null);
+    assert.equal(facts.refreshFailed[0].age, 'never');
+
+    // And the record it could not replace is still counted, as it stands.
+    assert.deepEqual(facts.pullRequests.open, [18562]);
+  });
+
+  test('the human output says it above everything computed from the record', async () => {
+    const out = await pdkit('close', String(ISSUE));
+
+    assert.match(out, /could not re-read #18562: .*repo\.upstream/);
+    assert.match(out, /counted as it stands in prs\.json, last read never/);
+  });
+
+  // The rollup is unchanged by any of this, and that is the point: a state
+  // nobody could establish is not a state that closes an issue.
+  test('--finish still refuses on the pull request it could not read', async () => {
+    const result = await refused('close', String(ISSUE), '--finish');
+
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /is not finished — #18562/);
   });
 });

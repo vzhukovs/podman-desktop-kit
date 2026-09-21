@@ -673,6 +673,142 @@ describe('refreshing from GitHub', () => {
   });
 });
 
+// What `close` reads before it decides whether an issue may end.
+//
+// The record it reads is the one most likely to be stale: reviews, rebases and
+// the merge itself all happen in the browser, and nothing local hears about any
+// of them. On DESKTOP-17221 prs.json had last been read seven weeks earlier, so
+// `close` reported `pr-open`, `allMerged: false` and a worktree it refused to
+// remove — about a pull request merged that morning. The refusal was correct
+// about what it had been given, which is the shape of defect this catches.
+describe('re-reading what is still open', () => {
+  /** gh, answering from a script. Same shape as the stub in the refresh tests. */
+  function fakeGh(answers) {
+    const seen = [];
+    const exec = (file, args, options, callback) => {
+      const argv = args.join(' ');
+      seen.push(argv);
+
+      const key = argv.includes('graphql')
+        ? 'threads'
+        : argv.includes('check-runs')
+          ? 'runs'
+          : argv.includes('pr list')
+            ? 'peers'
+            : argv.includes('reviews,comments')
+              ? 'discussion'
+              : 'pr';
+
+      queueMicrotask(() => callback(null, JSON.stringify(answers[key] ?? {}), ''));
+      return { stdin: { end: () => {} } };
+    };
+    return { seen, exec };
+  }
+
+  const CONFIG = { repo: { upstream: 'podman-desktop/podman-desktop' } };
+
+  const merged = (number, branch) => ({
+    pr: { number, state: 'MERGED', mergedAt: '2026-09-21T13:30:00Z', headRefName: branch, baseRefName: 'main', statusCheckRollup: [] },
+    threads: { data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [] } } } } },
+    discussion: { reviews: [], comments: [] },
+    runs: { check_runs: [] },
+  });
+
+  test('a merge nobody told the plugin about is found, and the rollup changes with it', async () => {
+    await pr.register({ issue: ISSUE, number: 18562, branch: 'DESKTOP-17221/fix', base: 'main', home });
+    assert.equal((await pr.rollup(ISSUE, { home })).allMerged, false);
+
+    const { exec } = fakeGh(merged(18562, 'DESKTOP-17221/fix'));
+    const result = await pr.refreshOpen({ issue: ISSUE, config: CONFIG, home, exec });
+
+    assert.deepEqual(result.failed, []);
+    assert.deepEqual(result.refreshed, [{ number: 18562, state: 'merged', mergedAt: '2026-09-21T13:30:00Z' }]);
+    assert.equal((await pr.rollup(ISSUE, { home })).allMerged, true, 'without a hand-typed `pr refresh`');
+
+    // The other thing that was broken by the stale record, and the reason it is
+    // asserted here rather than in test/worktree.test.js: `close` will not
+    // remove a squash-merged branch's worktree unless the record says a pull
+    // request landed it, and until this read nothing did.
+    assert.equal(pr.landed(await pr.read(ISSUE, { home }), 'DESKTOP-17221/fix'), 18562);
+  });
+
+  // Closing is not a reason to ask whether somebody else's pull request is
+  // red, and the peer read is the expensive half of a refresh.
+  test('the peer population is not read', async () => {
+    await pr.register({ issue: ISSUE, number: 18562, branch: 'DESKTOP-17221/fix', home });
+
+    const { seen, exec } = fakeGh(merged(18562, 'DESKTOP-17221/fix'));
+    await pr.refreshOpen({ issue: ISSUE, config: CONFIG, home, exec });
+
+    assert.ok(!seen.some((argv) => argv.includes('pr list')));
+  });
+
+  // Two states GitHub does not take back. Re-reading them spends four requests
+  // to be told what the record already says.
+  test('only the open ones cost anything', async () => {
+    await pr.register({ issue: ISSUE, number: 100, branch: 'a', home });
+    await pr.register({ issue: ISSUE, number: 101, branch: 'b', home });
+    await pr.markMerged({ issue: ISSUE, number: 100, home });
+    await pr.markClosed({ issue: ISSUE, number: 101, reason: 'superseded', home });
+
+    const { seen, exec } = fakeGh({});
+    const result = await pr.refreshOpen({ issue: ISSUE, config: CONFIG, home, exec });
+
+    assert.deepEqual(result, { refreshed: [], failed: [] });
+    assert.deepEqual(seen, []);
+  });
+
+  // gh missing, gh unauthenticated, the network down. Closing has to survive
+  // all three: the facts on disk are still worth reporting, and the rollup
+  // refuses on an open pull request anyway — which is the right answer when the
+  // truth could not be established.
+  test('a read that fails is reported with the age of what it could not replace', async () => {
+    await pr.register({ issue: ISSUE, number: 18562, branch: 'DESKTOP-17221/fix', home });
+
+    const exec = (file, args, options, callback) => {
+      queueMicrotask(() => callback(Object.assign(new Error('gh'), { code: 'ENOENT' }), '', ''));
+      return { stdin: { end: () => {} } };
+    };
+
+    const result = await pr.refreshOpen({ issue: ISSUE, config: CONFIG, home, exec });
+
+    assert.deepEqual(result.refreshed, []);
+    assert.equal(result.failed.length, 1);
+    assert.equal(result.failed[0].number, 18562);
+    assert.match(result.failed[0].error, /gh is not installed/);
+    // Never read: the label has to say that rather than imply a reading of
+    // age zero, which is what the dashboard learned the hard way.
+    assert.equal(result.failed[0].reading.label, 'never');
+    assert.equal(result.failed[0].reading.old, true);
+
+    assert.equal((await pr.rollup(ISSUE, { home })).allMerged, false, 'an unestablished state cannot close an issue');
+  });
+
+  // An issue with three slices whose second read times out still knows the
+  // truth about the other two.
+  test('one failure does not take the others down with it', async () => {
+    await pr.register({ issue: ISSUE, number: 200, branch: 'one', home });
+    await pr.register({ issue: ISSUE, number: 201, branch: 'two', home });
+
+    const answers = merged(200, 'one');
+    const exec = (file, args, options, callback) => {
+      const argv = args.join(' ');
+      if (argv.includes('201')) {
+        queueMicrotask(() => callback(Object.assign(new Error('gh'), { stderr: 'HTTP 502' }), '', 'HTTP 502'));
+        return { stdin: { end: () => {} } };
+      }
+      const key = argv.includes('graphql') ? 'threads' : argv.includes('check-runs') ? 'runs' : argv.includes('reviews,comments') ? 'discussion' : 'pr';
+      queueMicrotask(() => callback(null, JSON.stringify(answers[key] ?? {}), ''));
+      return { stdin: { end: () => {} } };
+    };
+
+    const result = await pr.refreshOpen({ issue: ISSUE, config: CONFIG, home, exec });
+
+    assert.deepEqual(result.refreshed.map((entry) => entry.number), [200]);
+    assert.deepEqual(result.failed.map((entry) => entry.number), [201]);
+  });
+});
+
 describe('staleness and rendering', () => {
   const record = (extra) => ({
     number: 17577,

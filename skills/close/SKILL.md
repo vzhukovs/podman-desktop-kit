@@ -12,6 +12,17 @@ model: sonnet
    amendments happened, what the journal recorded as notable, which worktrees
    are still on disk.
 
+   It re-reads every pull request the record still calls open before it answers.
+   The merge happens in the browser, usually long after anything local last ran
+   `pdkit pr refresh`, so the stale copy is the normal case rather than the
+   exception — and this is the one command where believing it would end the
+   issue in the wrong state.
+
+   A read that could not be made is in `refreshFailed`, with how old the record
+   it could not replace is. That is not a reason to stop: the facts on disk are
+   still worth reading, and `--finish` refuses on a pull request whose state
+   nobody could establish anyway.
+
 2. **Check the rollup before anything else.** An issue is finished when *every*
    one of its pull requests has landed. One merged slice of three is not a
    finished issue, and a pull request the maintainer closed is unfinished work
@@ -45,6 +56,20 @@ model: sonnet
    its worktrees. Removal refuses on a tree holding an unmerged branch, because
    that is the one case where tidying up loses work. `--force` only once you
    mean to abandon those commits.
+
+   Three outcomes per tree, and they are worth telling apart:
+
+   - `removed` — gone.
+   - `removed — git left files behind; deleted` — `git worktree remove` failed
+     after it had already dropped the registration, which git does first. The
+     directory was deleted here and the journal says so. Nothing to do.
+   - `unregistered but still on disk: <path>` — the same failure, and the
+     leftover could not be deleted either. **Only this one needs a person.** Git
+     no longer tracks that path, so no later `close` will offer it again and the
+     next `worktree create` there will fail on it.
+
+   `kept` means what it says: the tree is still registered, git refused, and
+   nothing was touched.
 
 ## When the issue was answered rather than changed
 

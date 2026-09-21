@@ -241,6 +241,62 @@ describe('remove', () => {
     assert.equal(result.ok, true);
   });
 
+  // DESKTOP-17221, and the reason this needs an injected git: the failure does
+  // not reproduce on demand. `git worktree remove` failed with "failed to
+  // delete '<path>': Directory not empty" after it had already deleted
+  // .git/worktrees/DESKTOP-17221 — git removes the administrative directory
+  // first — so 1.1 GB sat on disk, unregistered, invisible to `worktree list`
+  // and therefore to the next `close`, while the command reported it as kept.
+  // A second `rm -rf` by hand worked immediately; nothing explained the first.
+  test('a removal git abandoned halfway is finished, not reported as kept', async () => {
+    await create({ repoRoot: repo, name: 'wt-partial', branch: 'DESKTOP-3/partial', config: config(), home });
+    const path = join(trees, 'wt-partial');
+
+    const exec = async (file, args) => {
+      assert.deepEqual(args.slice(0, 2), ['worktree', 'remove'], 'only the removal itself is stubbed');
+      // What git did: the registration is gone, the tree is not, and it failed.
+      await rm(join(repo, '.git', 'worktrees', 'wt-partial'), { recursive: true, force: true });
+      throw Object.assign(new Error('git exited 128'), {
+        stderr: `fatal: failed to delete '${path}': Directory not empty`,
+      });
+    };
+
+    const result = await remove({ repoRoot: repo, name: 'wt-partial', landed: true, issue: 3, config: config(), home, exec });
+
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.removed, true);
+    assert.equal(result.leftover, true, 'git needed help, and that is a fact the caller reports differently');
+
+    await assert.rejects(access(path), 'the directory git left behind is gone');
+    assert.equal((await list(repo)).some((tree) => tree.path.endsWith('wt-partial')), false);
+
+    // The decision to remove was taken and carried out. A journal that recorded
+    // only the tidy half of that would be a record of what was intended.
+    const entries = await readJournal({ issue: 3 }, { home });
+    assert.match(entries.at(-1).detail, /wt-partial \(DESKTOP-3\/partial\) — git left the directory behind; deleted/);
+  });
+
+  // The other half, and the reason the check is `find` rather than a guess at
+  // which errors mean what: a tree git still has registered was not removed,
+  // and deleting its files here would be the removal the refusal just refused.
+  test('a refusal that leaves the tree registered deletes nothing', async () => {
+    await create({ repoRoot: repo, name: 'wt-refused', branch: 'DESKTOP-4/refused', config: config(), home });
+    const path = join(trees, 'wt-refused');
+
+    const exec = async () => {
+      throw Object.assign(new Error('git exited 128'), { stderr: 'fatal: working tree is dirty, use --force to delete it' });
+    };
+
+    const result = await remove({ repoRoot: repo, name: 'wt-refused', landed: true, issue: 4, config: config(), home, exec });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.unregistered, undefined, 'git still has it; nothing was unregistered');
+    assert.match(result.error, /working tree is dirty/);
+
+    await access(path);
+    assert.ok((await list(repo)).some((tree) => tree.path.endsWith('wt-refused')));
+  });
+
   test('removing what is not there is not an error', async () => {
     const result = await remove({ repoRoot: repo, name: 'wt-never-existed', config: config(), home });
 

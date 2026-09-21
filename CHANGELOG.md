@@ -136,6 +136,49 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`pdkit close` judged whether an issue could end from a record it had not
+  read in seven weeks.** The rollup is the only thing that may move an issue to
+  a terminal state, and it read the local `prs.json` and nothing else. Review,
+  rebase and the merge itself all happen in the browser, so the copy on disk is
+  usually older than the answer — on DESKTOP-17221 `close` reported `pr-open`,
+  `open: [18562]` and `allMerged: false` about a pull request that had merged
+  that morning, and the way out was for the person to guess that
+  `pdkit pr refresh` was the missing step.
+  - **`close` now re-reads every pull request the record still calls open**,
+    before the rollup, through the new `pr.refreshOpen()`. Only the open ones:
+    `merged` and `closed` are the two states GitHub does not take back, and
+    re-reading them spends four requests to be told what the record already
+    says. No peer population either — "is this red job ours" is a question about
+    work in progress, and nothing about closing turns on the answer.
+  - **A read that cannot be made is a fact in the report, not a crash.** `gh`
+    missing, `gh` unauthenticated, the network down: `refreshFailed` names the
+    pull request and how old the record it could not replace is, the facts on
+    disk are still reported, and `--finish` refuses on the open pull request
+    exactly as it should when nobody could establish the state.
+  - **This is also what made the squash-merge fix unreachable.** Removing the
+    worktree of a landed branch rests on `mergedAt` in the same record, so a
+    stale copy refused to clean up after a merge it had not heard about.
+- **A worktree git half-removed was reported as kept, and then invisible.**
+  `git worktree remove` deletes the administrative directory before the working
+  tree, so a failure part-way leaves a registration gone and a directory behind.
+  `remove()` returned git's error, `close` printed `kept`, and the 1.1 GB left
+  at `pd-worktrees/DESKTOP-17221` was tracked by nothing: `worktree list` does
+  not report it, so no later `close` would offer it, and the next
+  `worktree create` at that path would have failed on it.
+  - **The two failures are now told apart by asking git.** Still registered
+    means git refused and nothing moved — unchanged behaviour, unchanged
+    message. Not registered any more means the removal was begun and abandoned,
+    and it is finished here: the leftover deleted, `worktree prune` run, and the
+    journal told, which it previously was not although the decision to remove
+    had been taken and carried out.
+  - **Deleting happens inside the worktree root or not at all.** The bound is
+    checked where the deletion is, rather than inherited from a caller's
+    `basename()` — this is the only place in the plugin that removes a directory
+    git is no longer tracking.
+  - **`close` distinguishes three outcomes**, and `kept` is now only said of a
+    tree git still has: `removed`, `removed — git left files behind; deleted`,
+    and `unregistered but still on disk: <path>`, which is the one that needs a
+    person.
 - **`pdkit close` reported every amendment as awaiting approval, including the
   approved ones.** The harvest built its `amendments` line out of the journal's
   `amendment-proposed` entry and printed that entry's detail verbatim — a string
