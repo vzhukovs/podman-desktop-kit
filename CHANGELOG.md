@@ -9,6 +9,37 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then **`pdkit doctor --gate-selftest`**, once. The gate is registered by the
+manifest and executed by the host, so an upgrade that broke that wiring leaves
+every test green and the plugin gating nothing — this is the only check that can
+tell.
+
+Nothing in `$PDKIT_HOME` has to be moved or edited. `preflight.json`,
+`validation.json`'s R-ID lists and `archive/` are written on first use, and
+records written by 0.1.0 are read as they stand.
+
+Two changes are visible to a cycle that is already in flight:
+
+- **An issue at `slices-approved` can no longer be moved to `preflight-green` by
+  hand.** The transition now asks `preflight.json` for a run on the current head
+  commit, which 0.1.0 never wrote. Run `pdkit preflight <issue>` — both passes,
+  the second once the pull request body exists — and the move goes through as it
+  did. Issues already past that state are untouched, and `pdkit issue adopt`
+  stays exempt, because work that predates the plugin never ran preflight.
+- **A push token carries two uses**, `push` then `pr`, spent separately. The
+  published sequence — `gate open`, `git push`, `pdkit pr create` — works as
+  documented for the first time. One token still means one push.
+
 ### Added
 
 - **`pdkit validate supersede <Vk> --by <Vn> --reason "<what happened>"` retires a
@@ -833,5 +864,6 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vzhukovs/podman-desktop-kit/releases/tag/v0.1.0

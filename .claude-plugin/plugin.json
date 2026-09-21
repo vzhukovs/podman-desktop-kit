@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "pd",
   "displayName": "Podman Desktop Kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Workflow kit for working upstream issues in podman-desktop: triage, plan, slice into atomic PRs, review.",
   "author": {
     "name": "Vladyslav Zhukovskyi"
