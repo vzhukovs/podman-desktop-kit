@@ -136,6 +136,24 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`pdkit close` reported every amendment as awaiting approval, including the
+  approved ones.** The harvest built its `amendments` line out of the journal's
+  `amendment-proposed` entry and printed that entry's detail verbatim — a string
+  written at the moment of proposal, reading `A1 — awaiting approval` for ever
+  after. `pdkit amendment approve` rewrites the file and journals a decision of
+  its own; `close` read neither. On DESKTOP-18835 two amendments approved three
+  days earlier were both reported as though nobody had decided, in the one report
+  anybody reads about what happened to the plan.
+  - **The status is read off the amendment file**, which is where
+    `parseAmendment` has always said it belongs: the file is the artefact a
+    person opens, and it is the thing approval rewrites. A status settled by hand
+    is therefore read too.
+  - **Who decided, and why, still comes out of the journal** — the half the file
+    does not keep. `A1 — approved (by a maintainer)`, and a rejection carries the
+    reason that is the only record of why the plan did not move.
+  - **The human output says it as well.** The field existed only under `--json`,
+    so the half of the harvest that is about the plan was invisible to the person
+    the harvest is for.
 - **A task that writes nothing turned its ownership into two files that do not
   exist.** A whole-suite gate — typecheck, tests and linters over the whole tree
   — writes no files by design, and two live runs said so the same way:

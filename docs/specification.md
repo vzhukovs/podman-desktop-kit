@@ -1120,9 +1120,11 @@ one history that cannot be rebuilt.
 
 ### `/pd:close <issue>` — the end of the cycle
 
-`pdkit close --issue <n>` collects facts: what merged and when, what amendments
-there were, which drift and regression events the journal recorded, which checks
-went red on the way. Which of that is knowledge worth adding to `knowledge/` is
+`pdkit close --issue <n>` collects facts: what merged and when, how each
+amendment ended up — its status read from the amendment file, which is what
+`amendment approve` rewrites, and who decided it read from the journal, which is
+the half the file does not keep — which drift and regression events the journal
+recorded, which checks went red on the way. Which of that is knowledge worth adding to `knowledge/` is
 the human's call; `close` writes nothing there itself.
 
 Two mechanical steps: cleaning up the issue's working trees (`worktree remove`,
