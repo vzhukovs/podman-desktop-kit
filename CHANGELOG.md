@@ -33,6 +33,12 @@ fixes — see [RELEASING.md](RELEASING.md).
     it is not a guess — and an agent that ran in a checkout on somebody else's
     branch is recorded with no issue rather than attributed to one. In the file
     nothing may rewrite, a wrong attribution is worse than none.
+  - **It stays out of the re-anchoring summary.** `SessionStart` injects the
+    last eight entries of an issue, and one `/pd:exec` with five implementers
+    would have filled that window with "an agent finished" — pushing out the
+    receipt, the approval and the freeze, which are what somebody returning to
+    the work needs. The entries stay in the journal, where the counting reads
+    them; what they do not get is the context budget.
   - Read it with `pdkit journal --issue <n> --event agent-done`; `--event` was
     already a flag on that command.
 

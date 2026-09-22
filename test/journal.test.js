@@ -237,6 +237,51 @@ describe('conflict entries', () => {
 // detail used to reach the command line: `1h` sorted above every date so the
 // whole journal came back, `24h` sorted below every date so nothing did. Two
 // opposite wrong answers, neither of them an error.
+// What SessionStart injects, and what it must not spend its budget on.
+//
+// The summary exists to remind somebody returning to the work of what happened.
+// `agent-done` is written once per subagent completion, so one `/pd:exec` with
+// five implementers produces five entries — and eight slots of "an agent
+// finished" would push out the receipt, the approval and the freeze, leaving a
+// summary that restores nothing. The entries stay in the journal, where the
+// counting reads them.
+describe('re-anchoring', () => {
+  const ISSUE = 4242;
+
+  before(async () => {
+    for (const [event, detail] of [
+      ['triaged', 'quickfix'],
+      ['requirements-frozen', 'R1,R2 frozen'],
+      ['plan-approved', 'approved by a human'],
+      ['agent-done', 'agent task a1'],
+      ['agent-done', 'agent task a2'],
+      ['agent-done', 'agent task a3'],
+      ['agent-done', 'agent task a4'],
+      ['agent-done', 'agent task a5'],
+      ['task-receipt', 'T1 accepted'],
+    ]) {
+      await journal.append({ issue: ISSUE, event, detail }, { home });
+    }
+  });
+
+  test('the story survives a run that dispatched five agents', async () => {
+    const summary = await journal.reanchor(ISSUE, { home });
+
+    assert.ok(!summary.includes('agent-done'), 'bookkeeping does not get the context budget');
+    for (const kept of ['triaged', 'requirements-frozen', 'plan-approved', 'task-receipt']) {
+      assert.ok(summary.includes(kept), `${kept} is what somebody returning needs`);
+    }
+  });
+
+  // Left out of the summary, not out of the record: the count is what the
+  // entries exist for.
+  test('the entries are still there to be counted', async () => {
+    const runs = (await journal.read({ issue: ISSUE, event: 'agent-done' }, { home }));
+
+    assert.equal(runs.length, 5);
+  });
+});
+
 describe('what --since accepts', () => {
   const { resolveSince } = journal;
   const NOW = Date.parse('2026-08-02T12:00:00Z');
