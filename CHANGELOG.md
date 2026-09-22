@@ -9,6 +9,29 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then **`pdkit doctor --gate-selftest`**, once — the gate is registered by the
+manifest and executed by the host, so an upgrade that broke that wiring leaves
+every test green and the plugin gating nothing.
+
+Nothing in `$PDKIT_HOME` has to be moved or edited, and an issue in flight is
+unaffected: no state transition changed, and `pdkit pr render` fills the new
+`## Requirements` section of `prs/<k>.md` the next time it runs.
+
+One thing to know if you script around preflight: **`r-coverage` is gone**, so a
+run reports one fewer check and the R-IDs it demanded are no longer expected in
+the pull request body. What it protected is unchanged — `pdkit slice set` still
+refuses a graph in which a frozen requirement reaches no slice.
+
 ### Changed
 
 - **The pull request body says less, and the steps say as much as ever.** On
@@ -914,6 +937,7 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vzhukovs/podman-desktop-kit/releases/tag/v0.1.0
