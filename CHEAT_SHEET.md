@@ -37,6 +37,7 @@ the one check the test suite cannot replace.
 
 ```
 /pd:triage <n>       → route + drafted requirements
+                       further lines of the same message → Prior context
 /pd:plan <n>         → reconnaissance, open questions, plan
 /pd:plan-review <n>  → adversarial review              [you approve the plan]
 /pd:exec <n>         → implementation, a receipt per task
@@ -93,7 +94,7 @@ the reporter still has to confirm.
 |---|---|---|---|
 | `/pd:doctor` | before anything, or when something misbehaves | — | tools, config, `$PDKIT_HOME`, hooks, MCP |
 | `/pd:sync` | "where am I" | — | fork vs upstream, every worktree. Read-only |
-| `/pd:triage <n>` | a new issue — or no number, to pick one | — | route, drafted requirements → `triaged` |
+| `/pd:triage <n>` | a new issue — or no number, to pick one. Anything typed after the first line is recorded as prior context | — | route, drafted requirements → `triaged` |
 | `/pd:plan <n>` | the route is standard | `triaged` | scouts, `research.md`, `plan.md`, task files → `planned` |
 | `/pd:plan-review <n>` | a plan exists | `planned` | must-change findings; repeat until clean → **you approve** → `plan-approved` |
 | `/pd:exec <n> [task]` | the plan is approved | `plan-approved` | code, one worker per task, a receipt each → `implemented` |
@@ -299,7 +300,7 @@ package-map.json    which package and layer owns which path
 gates/              live consent tokens
 reviews/<k>.md      reviews of other people's pull requests
 issues/<n>/
-  issue.md          triage: the issue as read, and the drafted R-set
+  issue.md          triage: the issue as read, what you knew going in, the R-set
   research.md       what the scouts found
   plan.md           the plan, its file-ownership map and done-criteria
   tasks/T1.md       one per task: what it owns, and when it is done

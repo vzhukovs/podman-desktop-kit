@@ -9,6 +9,38 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **The context a person has when they start an issue now has somewhere to
+  live.** Related work already merged, an approach to repeat or to avoid, a trap
+  the last attempt hit, a pull request worth reading before the code — none of
+  it is in the issue text, and until now the only place to say it was the chat
+  message that started the triage. That message dies with the session, so
+  `/pd:plan` three days later never saw it, which is the argument this whole
+  plugin makes about keeping state on disk.
+  - **The rule is a line boundary, so nothing has to parse it.** The first line
+    of `/pd:triage <n>` is the invocation; everything after it in the same
+    message is prior context, and it lands in a new `## Prior context` section
+    of `issue.md`.
+  - **Verbatim, not summarised.** A summary is the plugin's reading of what
+    somebody told it, and a wrong reading does not stay where it was made — it
+    reaches the plan, the tasks and the audit as a record everything downstream
+    trusts. The section is read back before the file is written, the way the
+    `[inferred]` requirements already are.
+  - **`[operator]`** joins `[issue]`, `[paraphrase]`, `[inferred]` and
+    `[review]` as a requirement's source. A requirement stated by whoever
+    started the triage is not `[issue]` — that tag means a maintainer can be
+    pointed at the line that says it — and it is not `[inferred]` either,
+    because the plugin concluded nothing.
+  - **Nothing given is written down as nothing given.** The template declares
+    the placeholder, so `render()` refuses without it — `render(issue): nothing
+    given for {{priorContext}}` — and `none given` is what most triages will
+    say. An empty section reads as forgotten rather than as absent, which is the
+    same reason a PR body says "n/a — no UI change".
+  - What survives a second triage is the journal: `pdkit state <n> --to triaged
+    --reason "…"` says whether context came with the command, and neither
+    `issue rework` nor `reset` may delete a journal entry.
+
 ## [0.3.0] - 2026-09-22
 
 ### Upgrading

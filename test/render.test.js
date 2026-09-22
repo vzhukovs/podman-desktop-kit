@@ -169,6 +169,20 @@ describe('validateSections', () => {
     assert.deepEqual(result.missing, ['How to test this PR?']);
   });
 
+  // The context a person has at the start of an issue — related work, an
+  // approach to repeat, a trap the last attempt hit — used to live in whatever
+  // chat message started the triage, and died with it. `## Prior context` is
+  // where it goes instead, and the template declaring it is what makes the
+  // section impossible to quietly omit: an issue.md without it is missing
+  // something rather than saying less.
+  test('an issue record without its prior context is missing a section', async () => {
+    const text = (await render('issue', await fillAll('issue'))).replace(/## Prior context/, '');
+    const result = await validateSections('issue', text);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.missing, ['Prior context']);
+  });
+
   test('a heading whose text varies per issue still matches', async () => {
     const result = await validateSections('plan', '# PLAN: DESKTOP-18248\n');
 
@@ -202,6 +216,19 @@ describe('missing', () => {
     assert.ok(absent.length > 0);
     assert.ok(absent.includes('trigger'), absent.join(', '));
     assert.equal(absent.includes('issue'), false, 'what was given is not missing');
+  });
+
+  // Nothing given is written down as nothing given: the render refuses rather
+  // than leaving the section out, so "most triages have no prior context" does
+  // not quietly become "most issue records do not say".
+  test('prior context is a value the issue record cannot be rendered without', async () => {
+    const values = await fillAll('issue');
+    delete values.priorContext;
+
+    assert.deepEqual(await missing('issue', values), ['priorContext']);
+    await assert.rejects(() => render('issue', values), /nothing given for \{\{priorContext\}\}/);
+
+    await render('issue', { ...values, priorContext: 'none given' });
   });
 
   test('is empty exactly when the render succeeds', async () => {

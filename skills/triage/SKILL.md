@@ -1,13 +1,38 @@
 ---
 name: triage
 description: "Triage an upstream podman-desktop issue: dedup, classify, draft requirements, and pick a route. Without an issue number, shortlist what is worth taking."
-argument-hint: "[<issue-number|url>] [--label <a,b>]"
+argument-hint: "[<issue-number|url>] [--label <a,b>] — further lines become prior context"
 disable-model-invocation: true
 model: opus
 ---
 
 Decide whether planning is needed at all. Half the value of this plugin is
 here — the other half is spent by people who skipped it.
+
+## 0a. What came with the command
+
+**The first line is the invocation — the issue number or URL, and `--label`.
+Everything after it, in the same message, is prior context.** It goes into
+`## Prior context` of `issue.md`, and it goes there **verbatim**.
+
+That is the whole rule, and it needs no parsing because it is a line boundary.
+
+Verbatim rather than summarised, for the reason section 4 reads the `[inferred]`
+list back: a summary is this plugin's reading of what somebody told it, and a
+wrong reading does not stay where it was made — it reaches the plan, the tasks
+and the audit as a record everything downstream trusts.
+
+What it is for is the thing that has no other home: work already related to this
+issue, an approach to repeat or to avoid, a trap the last attempt hit, pull
+requests worth reading before the code. Typed into a chat message that dies with
+the session, none of it reaches `/pd:plan` three days later — which is the whole
+argument for this plugin keeping state on disk at all.
+
+A requirement drawn from it is tagged `[operator]` in section 4. Not `[issue]`:
+that tag means a maintainer can be pointed at the line that says it.
+
+Nothing came with the command? Then `## Prior context` says `none given`. Most
+triages will, and it is an answer — an empty section reads as forgotten.
 
 ## 0. No issue number? Then the question is which one
 
@@ -97,6 +122,7 @@ dependency. Anything else is `standard` or larger.
 - `[issue]` — stated in the issue, in its words
 - `[paraphrase]` — the same thing, reworded
 - `[inferred]` — you concluded it
+- `[operator]` — stated in the prior context that came with the command
 
 **Read the `[inferred]` list back to the user before writing anything to
 disk.** Show it on its own, not buried in a summary. This is the cheap defence
@@ -200,7 +226,18 @@ Two things to carry into the requirements, and they are easy to lose:
 ## 6. Record
 
 Render `templates/issue.md` with `pdkit render issue --issue <n> --values <f>
---path issue.md`, then `pdkit state <n> --to triaged --route <route>`.
+--path issue.md`, then `pdkit state <n> --to triaged --route <route> --reason
+"<verdict, and whether prior context was given>"`.
+
+**Read `## Prior context` back before rendering**, the way section 4 reads the
+`[inferred]` list back. The render refuses without the section — `render(issue):
+nothing given for {{priorContext}}` — but nothing can check that what it holds
+is what you were told, and the moment to catch a dropped half is while it is
+still cheap. Show it as it will be written, not as a summary of it.
+
+Say in the `--reason` whether context came with the command. That line reaches
+the journal, which `pdkit issue rework` and `pdkit reset` both leave alone — so
+it is what survives when `issue.md` is rendered a second time over the first.
 
 The route is recorded there, not implied: `standard`, `quickfix`,
 `multi-slice` or `redo`. `invalid` is not a route — an issue that should not be

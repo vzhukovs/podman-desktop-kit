@@ -101,6 +101,22 @@ that decides. Read the top few, then triage one.
 /pd:pr 12345          → branch, PR body, PR                      [you confirm push]
 ```
 
+**Starting with what you already know.** The first line is the command;
+everything after it in the same message is kept verbatim as prior context:
+
+```
+/pd:triage 12345
+Fourth pass of the pattern from #18831 — containers (#18889) and networks
+(#19048) are in. Repeat the #19048 approach: convert in the store fetcher,
+not in the consumers. Trap: EventStore.performUpdate has no catch, so a
+throwing converter drops the whole update rather than one screen.
+```
+
+That reaches `## Prior context` in `issue.md` and stays there. Said in a chat
+message instead, it would be gone by the time `/pd:plan` runs in a new session
+— and a requirement drawn from it is tagged `[operator]`, so later readers can
+tell what the issue asked for from what you brought to it.
+
 ## 2. A one-line fix
 
 ```

@@ -350,7 +350,7 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 ├── issues/12345/
 │   ├── state.json               # the machine, timestamps, who approved what
 │   ├── preflight.json           # every run, both passes; what `preflight-green` is earned from
-│   ├── issue.md                 # issue snapshot + triage verdict + R-set
+│   ├── issue.md                 # issue snapshot + prior context + verdict + R-set
 │   ├── archaeology.json / .md   # facts about a previous attempt, and their reading
 │   ├── research.md              # the scouts' compressed map, file:line only
 │   ├── plan.md                  # the plan; R-IDs are frozen here
@@ -511,7 +511,7 @@ its own.
 |---|---|---|---|---|---|
 | `/pd:doctor` | — | environment report | — | sonnet | — |
 | `/pd:sync` | — | fork and worktree status | — | sonnet | — |
-| `/pd:triage [<issue>]` | number/URL, or nothing | with a number: `issue.md`, draft R-set, route. Without: a backlog shortlist, and nothing is written | `triaged` / — | opus | — |
+| `/pd:triage [<issue>]` | number/URL on the first line, any further lines as prior context; or nothing | with a number: `issue.md` including what came with the command, draft R-set, route. Without: a backlog shortlist, and nothing is written | `triaged` / — | opus | — |
 | `/pd:plan <issue>` | issue | `research.md`, `plan.md`, open questions | `planned` | opus + sonnet scouts | human: approval |
 | `/pd:plan-review <issue>` | issue | `plan-review.md` | — | opus, fresh | — |
 | `/pd:exec <issue> [T*]` | issue/task | code, commits, `receipts/*` | `implemented` | sonnet workers | — |
@@ -552,6 +552,17 @@ they carry no `disable-model-invocation`.
 Half the value of the plugin is here: it decides **whether planning is needed at
 all**.
 
+0. **What came with the command.** The first line of `/pd:triage <n>` is the
+   invocation; everything after it in the same message is prior context, and it
+   is recorded verbatim under `## Prior context` in `issue.md`. A line boundary
+   rather than a flag, so nothing has to parse it. What it holds is what the
+   issue text cannot: related work already merged, an approach to repeat or to
+   avoid, a trap the previous attempt hit. Typed into a chat message it would
+   die with the session, and `/pd:plan` three days later reads the disk.
+   Verbatim, for the same reason the `[inferred]` list is read back — a summary
+   is the plugin's reading of what it was told, and a wrong reading propagates
+   into the plan as a record everything trusts. `none given` when nothing came,
+   because an empty section reads as forgotten rather than as absent.
 1. `pdkit issue fetch <n>` — body, labels, comments, linked pull requests.
 2. **Dedup**: open pull requests referencing the issue; closed ones (a revert
    means the `redo` route, and `pd-archaeologist`).
@@ -561,10 +572,13 @@ all**.
    ≤ 3 files, no `packages/extension-api`, no schema changes, no new dependencies.
 5. A draft R-set with a **source tag** on every requirement: `[issue]` verbatim,
    `[paraphrase]` reworded, `[inferred]` supplied by the agent, `[review]` stated
-   by a reviewer. The fourth tag appeared during a rework: for an issue returning
-   from review the strongest requirement comes from a maintainer's objection
-   rather than from the issue, and there was no tag for it. A read-back is
-   mandatory: the `[inferred]` list is shown separately, before the file is
+   by a reviewer, `[operator]` stated in the prior context that came with the
+   command. The last two were added the same way, by finding a requirement with
+   nowhere to come from: on a rework the strongest one is a maintainer's
+   objection rather than anything in the issue, and at step 0 it is whatever the
+   person starting the work already knew. Neither may be folded into `[issue]`,
+   which means a maintainer can be pointed at the line that says it. A read-back
+   is mandatory: the `[inferred]` list is shown separately, before the file is
    written. It is a cheap defence against "the plugin invented the requirements".
 6. Verdict: `ROUTE: quickfix | standard | multi-slice | redo | invalid`.
 

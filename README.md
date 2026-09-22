@@ -95,7 +95,7 @@ All orchestrating skills are manual only — nothing starts on its own.
 |---|---|
 | `/pd:doctor` | environment report |
 | `/pd:sync` | fork and worktree status |
-| `/pd:triage [<issue>]` | classify the issue, draft requirements, pick a route. Without a number: shortlist the backlog by what can actually be started |
+| `/pd:triage [<issue>]` | classify the issue, draft requirements, pick a route. Anything typed after the first line is kept as prior context — related work, an approach to repeat, a trap to avoid. Without a number: shortlist the backlog by what can actually be started |
 | `/pd:plan <issue>` | scout the code, then produce a plan with executable done-criteria |
 | `/pd:plan-review <issue>` | adversarial review of the plan, before any code |
 | `/pd:exec <issue> [task]` | implement, one task per worker, receipts required |
