@@ -96,6 +96,79 @@ after(async () => {
 
 const complete = () => taskCompleted({ task_id: 'agent-7', cwd: WORKTREE }, { event: 'task-completed', pluginRoot: '' });
 
+// How much machinery an issue took. Dollars alone cannot tell a big issue from
+// a wasteful one — an issue with seven tasks and two slices is supposed to cost
+// more than a one-task fix — and this hook is the only place that sees every
+// subagent finish. Counted here rather than reported by the session, because a
+// count an agent writes about itself is one it can forget to write.
+//
+// The journal is global and append-only, so these assert on the newest entry
+// and on deltas rather than on totals: entries from the tests above are part of
+// the same file's history, which is the property being relied on everywhere
+// else.
+describe('counting the agents that ran', () => {
+  const agentRuns = async (issue) => (await readJournal({ issue }, { home })).filter((entry) => entry.event === 'agent-done');
+
+  // Back to where the rest of the file expects to stand. `checkout main` cannot
+  // do it: the fixture has no commits, so `main` never became a ref — and
+  // repointing HEAD works on an unborn branch, which is the state under test.
+  after(async () => {
+    await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+  });
+
+  test('a completion is counted, and carries the agent task id', async () => {
+    await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run(), home });
+    await complete();
+
+    const entry = (await agentRuns(ISSUE)).at(-1);
+    assert.ok(entry, 'the run reached the journal');
+    assert.match(entry.detail, /agent task agent-7/);
+    assert.match(entry.detail, /while T1 was active/);
+  });
+
+  // The ordering that makes the count honest. An agent that finishes has run,
+  // whatever the handler then decides about its claim — counting only accepted
+  // completions would make the record cheapest exactly where the work went
+  // worst, which is the opposite of what it is for.
+  test('a refused completion is counted too', async () => {
+    const before = (await agentRuns(ISSUE)).length;
+
+    const decision = await complete();
+    assert.equal(decision.block, true, 'no receipt, so the completion is refused');
+
+    assert.equal((await agentRuns(ISSUE)).length, before + 1);
+  });
+
+  // Scouts, the plan critic, the auditor, the slicer: none of them runs under
+  // an active task, and all of them used to pass through in silence.
+  test('an agent that runs under no task is counted, and the branch says whose it is', async () => {
+    await stop({ worktree: WORKTREE, home });
+    await execFileAsync('git', ['checkout', '-q', '-b', `DESKTOP-${ISSUE}/scouting`], { cwd: WORKTREE });
+
+    const before = (await agentRuns(ISSUE)).length;
+    const decision = await taskCompleted({ task_id: 'agent-9', cwd: WORKTREE }, { event: 'task-completed', pluginRoot: '' });
+
+    assert.equal(decision.block, false, 'no task is active, so there is no claim to check');
+
+    const runs = await agentRuns(ISSUE);
+    assert.equal(runs.length, before + 1, 'attributed to the issue its branch names');
+    assert.match(runs.at(-1).detail, /agent task agent-9/);
+    assert.ok(!/while/.test(runs.at(-1).detail), 'no task was active, and the entry does not invent one');
+  });
+
+  // A wrong attribution is worse than none in the one file nothing may rewrite.
+  test('an agent nothing can attribute is recorded without an issue', async () => {
+    await stop({ worktree: WORKTREE, home });
+    await execFileAsync('git', ['checkout', '-q', '-b', 'some-other-branch'], { cwd: WORKTREE });
+
+    await taskCompleted({ task_id: 'agent-11', cwd: WORKTREE }, { event: 'task-completed', pluginRoot: '' });
+
+    const entry = (await readJournal({}, { home })).filter((line) => line.event === 'agent-done' && line.issue === null).at(-1);
+    assert.ok(entry, 'recorded, and attributed to nobody');
+    assert.match(entry.detail, /agent task agent-11/);
+  });
+});
+
 describe('completing a task', () => {
   test('a task with no receipt cannot be completed, and the refusal is the command', async () => {
     const decision = await complete();

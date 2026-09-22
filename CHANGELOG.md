@@ -11,6 +11,31 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Added
 
+- **The journal counts the agents that ran.** Nothing recorded how much
+  machinery an issue took, and that is the number which survives comparison
+  between issues when a bare cost does not: an issue with seven tasks and two
+  slices is supposed to be dearer than a one-task fix, and without a count the
+  two are indistinguishable from a cheap issue and a wasteful one.
+  - **Measured, not reported.** The `TaskCompleted` hook already fired on every
+    subagent completion and returned early when no task was active — so the
+    scouts, the plan critic, the auditor, the slicer and the reviewers all
+    passed through in silence. It now writes `agent-done` first and decides
+    afterwards: an agent that finishes has run, whatever the handler then makes
+    of its claim, and counting only the accepted completions would make the
+    record cheapest exactly where the work went worst. A count the session wrote
+    about itself would be one it could forget to write.
+  - **It does not say which agent it was.** The payload carries Claude Code's
+    own task identifier and the working directory; the agent's name is not in
+    what the hook is given, and a field invented to hold it would make the entry
+    claim more than was measured.
+  - **The issue comes from the active task pointer, or from the branch, or from
+    nowhere.** `DESKTOP-<issue>/<slug>` is a name this plugin wrote, so reading
+    it is not a guess — and an agent that ran in a checkout on somebody else's
+    branch is recorded with no issue rather than attributed to one. In the file
+    nothing may rewrite, a wrong attribution is worse than none.
+  - Read it with `pdkit journal --issue <n> --event agent-done`; `--event` was
+    already a flag on that command.
+
 - **The context a person has when they start an issue now has somewhere to
   live.** Related work already merged, an approach to repeat or to avoid, a trap
   the last attempt hit, a pull request worth reading before the code — none of

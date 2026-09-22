@@ -466,6 +466,25 @@ browser reaches the plugin by exactly one route, `pdkit pr refresh`. An entry is
 written once, on a state change; a second refresh of the same state writes
 nothing.
 
+**`agent-done` counts the machinery.** The `TaskCompleted` hook is the only place
+that sees every subagent finish — the scouts of `/pd:plan`, the plan critic, the
+auditor, the slicer, the reviewers — and it writes one entry per completion,
+before it decides anything about the claim being made. Counting only the accepted
+completions would make the record cheapest exactly where the work went worst.
+
+It answers "how much machinery did this issue take", which is the question that
+survives comparison between issues when a bare cost does not: an issue with seven
+tasks and two slices is supposed to be dearer than a one-task fix, and the two
+are told apart by `pdkit journal --issue <n> --event agent-done`.
+
+What it does not record is which agent ran. The payload carries Claude Code's own
+task identifier and the working directory; the agent's name is not in what the
+hook is given, and a field invented to hold it would make the entry claim more
+than was measured. The issue comes from the active task pointer when there is one
+and from the branch name when there is not — `DESKTOP-<issue>/<slug>` is a name
+this plugin wrote — and from nothing else: an entry with no issue is honest,
+while one attributed by guess is not.
+
 **Almost every entry is written by whatever produced the fact. There is one
 exception, and it exists because a conflict cannot be observed.** A receipt is a
 capture, a slice verdict is a run, a merge is an API answer — each closed to

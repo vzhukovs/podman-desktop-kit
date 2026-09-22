@@ -295,7 +295,7 @@ Everything lives outside the repository, so service files can never reach a diff
 
 ```text
 config.yaml         your layer: fork slug, thresholds, script names
-journal             append-only, every issue, every event
+journal             append-only, every issue, every event, every agent run
 package-map.json    which package and layer owns which path
 gates/              live consent tokens
 reviews/<k>.md      reviews of other people's pull requests
