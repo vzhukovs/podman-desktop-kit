@@ -9,6 +9,39 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then **`pdkit doctor --gate-selftest`**, once — this release changes a hook, and
+the gate is registered by the manifest and executed by the host, so an upgrade
+that broke that wiring leaves every test green and the plugin gating nothing.
+
+Nothing in `$PDKIT_HOME` has to be moved or edited, and an issue in flight is
+unaffected: no state transition changed, and `issue.md` files written by earlier
+versions are read as they stand — the new `## Prior context` section appears in
+the ones written from now on.
+
+Two things are worth knowing before the next cycle:
+
+- **`/pd:triage` now keeps what you type after the first line.** The issue
+  number or URL goes on the first line as before; anything below it is recorded
+  verbatim as prior context — related work already merged, an approach to repeat
+  or to avoid, a trap the last attempt hit. It was previously available only in
+  the chat message that started the triage, and died with the session.
+- **The journal gains `agent-done`, one entry per subagent completion.** It is
+  the denominator for cost: an issue with seven tasks and two slices is supposed
+  to be dearer than a one-task fix, and until now nothing told those apart from
+  a cheap issue and a wasteful one. Counting starts with this release — the
+  entries are written as the agents finish, and cannot be reconstructed for work
+  that ran before it.
+
 ### Added
 
 - **The journal counts the agents that ran.** Nothing recorded how much
@@ -1000,7 +1033,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vzhukovs/podman-desktop-kit/releases/tag/v0.1.0
