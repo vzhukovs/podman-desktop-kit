@@ -50,23 +50,44 @@ it from the branch you are standing on.
    Write it to a file. The four upstream headings are not ours to rearrange —
    a podman-desktop reviewer scans for their own.
 
+   **The body is for the reviewer; the record is for us.** Anything needed only
+   to service this pull request — R-IDs, the requirement trace, the review
+   history, the reasoning that produced the change — lives in the plan and in
+   `$PDKIT_HOME/issues/<n>/prs/<k>.md`, and is not published. A reviewer on
+   #19317 asked for exactly this and named the part to drop: "the changes per
+   file is not needed".
+
+   Budgets, in characters, which `pr-body-size` measures and does not enforce:
+
+   | Section | Budget |
+   |---|---|
+   | `What does this PR do?` | 600 — two to four sentences |
+   | `Where to look` | 300 — and what to skip |
+   | `Not in this PR` | 120 — one line |
+   | `Screenshot / video of UI` | 200 |
+   | `What issues does this PR fix or reference?` | 200 |
+   | `Notes for reviewers` | 400 |
+   | `How to test this PR?` | **none — do not shorten this one** |
+
    - `Closes #<n>` in the last slice to merge, `Part of #<n>` in the rest;
-     on the quickfix route, a single `Fixes #<n>` and no coverage table.
-   - The coverage table lists **this slice's** R-IDs — `pdkit slice show`
-     has them. Preflight asks for exactly those, not the whole frozen set.
-     A requirement whose only task owns no files — "refactor only", "no
-     unannounced visible change" — is on every slice, and its row says where it
-     was demonstrated: the whole-tree run, not a `file:line`.
-   - `Not in this PR`: name the slices the rest went to, by branch. This is
-     the section that stops a reviewer looking for the other half.
+     on the quickfix route, a single `Fixes #<n>`. **No requirement table** —
+     R-IDs say nothing to somebody who has the issue and the diff, and the
+     trace they carry is already in the record.
+   - `Not in this PR`: on a sliced issue, name the slices the rest went to, by
+     branch — that is what stops a reviewer looking for the other half. On a
+     single pull request, one clause saying there is no other half.
    - `Steps to check`: at least three numbered steps, each with an expected
-     result. Preflight enforces this, including on quickfix.
+     result. Preflight enforces this, including on quickfix. **This is the
+     section to be generous with**: commands to paste, fixtures to create,
+     what should come back, and the cleanup afterwards.
    - `Notes for reviewers`: mandatory when preflight flagged something CI
-     cannot judge. Name the platform you checked on.
+     cannot judge, and then only that plus the platform you checked on. Not the
+     review history, not residual risks, not behaviour nuance nobody can act on.
 
 5. **Preflight, pass two.** `pdkit preflight <n> --body-only --body <file>`.
-   Four checks read the body and could only skip on pass one. **Green here is
-   what the gate is issued from** — pass one alone is not enough.
+   The body-dependent checks could only skip on pass one; the command says how
+   many there are. **Green here is what the gate is issued from** — pass one
+   alone is not enough.
 
 6. **Show the user, and stop.** The exact push command, the exact branch, and
    the full body as it will appear. Not a summary of it: the gate exists so a
@@ -98,7 +119,7 @@ it from the branch you are standing on.
 
    `pdkit state <n> --to preflight-green` is **earned, not asserted**. It reads
    what `pdkit preflight` wrote — for this commit, with every check green and
-   the body-dependent four having actually seen a body. If it refuses, the
+   the body-dependent checks having actually seen a body. If it refuses, the
    answer is a preflight run, never a different way of setting the state.
 
    `pdkit pr create` verifies and spends the token itself. If you open the PR

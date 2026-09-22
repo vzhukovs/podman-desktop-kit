@@ -49,9 +49,8 @@ from the issue, with the code you wrote as evidence rather than as the answer.
 
 - `Steps to check` in the PR body, at least three, each with an expected
   result. Size does not make a reviewer better at guessing.
-- Every preflight check except `r-coverage`, which skips because no R-IDs
-  exist and tracing goes by issue number.
-- The PR body carries `Fixes #<n>` instead of a coverage table.
+- Every preflight check. None of them is waived by the route being small.
+- The PR body carries `Fixes #<n>`, and tracing goes by issue number.
 - No e2e test. It inflates both review and CI time, which contradicts the one
   thing a small PR is for.
 

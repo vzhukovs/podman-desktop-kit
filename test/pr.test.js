@@ -885,6 +885,21 @@ describe('staleness and rendering', () => {
     assert.equal(values.slice, 'single PR');
   });
 
+  // The requirement trace left the published body on podman-desktop#19317,
+  // where a reviewer said our numbering means nothing to somebody holding the
+  // issue and the diff. It did not stop existing: this is where it went, and
+  // the tracking artefact is never published.
+  test('the R-IDs of a pull request reach the tracking record', () => {
+    const values = pr.renderValues(record({ slice: 2 }), { issue: ISSUE, requirements: ['R3', 'R4'] });
+
+    assert.equal(values.requirements, 'R3, R4');
+  });
+
+  test('a route that allocates no R-IDs says so rather than rendering empty', () => {
+    assert.equal(pr.renderValues(record(), { issue: ISSUE }).requirements, 'none recorded');
+    assert.equal(pr.renderValues(record(), { issue: ISSUE, requirements: [] }).requirements, 'none recorded');
+  });
+
   test('the job table names the pull requests a red job is shared with', () => {
     const values = pr.renderValues(
       record({

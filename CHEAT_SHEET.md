@@ -263,8 +263,8 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `branch-name` | | `DESKTOP-<issue>/[<index>-]<slug>` |
 | `quickfix-size` | `warn` | the diff still fits the quickfix thresholds |
 | `pr-body-template` | | the body has every section the template declares, footer and test checkbox included |
+| `pr-body-size` | `warn` | each section of the body against its budget; the steps are bounded, not counted |
 | `steps-to-check` | | ≥3 numbered steps in the body, each with an expected result |
-| `r-coverage` | | every frozen R-ID appears in the body |
 | `e2e-stability` | | a new Playwright spec passed three times in a row, on its current contents |
 | `e2e-environment` | | Notes for reviewers says what the test needs and where it will not run |
 | `validation-evidence` | | every validation step has an artefact, or the body explains |

@@ -9,6 +9,56 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **The pull request body says less, and the steps say as much as ever.** On
+  [podman-desktop#19317](https://github.com/podman-desktop/podman-desktop/pull/19317)
+  a reviewer wrote: "The PR description, is unnecessary long and verbose, IMHO
+  we don't need that much verbosity, this makes it harder to review because of
+  the content to read. We should focus on direct important info, the changes per
+  file is not needed." Measured across the author's thirty pull requests
+  upstream, the break is exactly where this plugin starts writing the body:
+  twenty-two written by hand ran 378–2551 characters, eight written through
+  `/pd:pr` ran 2069–**14015**. The complaint arrived on one of the smaller
+  generated ones, which is the part worth knowing — the reviewer's limit sits
+  below this plugin's most modest result, so "shorter next time" was never going
+  to be enough.
+  - **`How to test this PR?` is not touched, and is the only section with no
+    budget.** It is what a reviewer executes rather than reads. Everything else
+    was cut around it: 600 characters for what the change does, 300 for where to
+    look, 400 for notes, 200 each for the UI evidence and the issue references,
+    120 for what is not in this PR — 1820 in total, which is the shape of
+    #17472, merged without a word about its length.
+  - **What comes out is what a reviewer cannot act on**: the reasoning trail
+    that produced the change (that is the plan, and the plan is not published),
+    the review history (the pull request conversation has it), and registers of
+    residual risk. `Where to look` stays, because naming what may be **skipped**
+    is the opposite of listing the changes per file.
+  - **`pr-body-size` measures it and does not block.** Same reasoning as
+    `quickfix-size`: a gate that stops a correct change over a long paragraph is
+    one people learn to route around, and the cost of being wrong is a reviewer
+    reading two extra sentences. It bounds the steps section without counting it
+    — a number that quietly included the steps would push the one part worth
+    expanding in the direction of the thing the check exists to prevent.
+  - **The requirement trace moved rather than disappeared.** R-IDs are how this
+    plugin tracks its own work and say nothing to somebody holding the issue and
+    the diff, so they now render into `$PDKIT_HOME/issues/<n>/prs/<k>.md`, which
+    is never published, and `pr.requirementsOf()` is the join that gets them
+    there.
+
+### Removed
+
+- **`r-coverage`, the preflight check that required every R-ID to appear in the
+  published body.** It was the reason the body carried a coverage table — the
+  "changes per file" the reviewer named — and the guarantee behind it was never
+  its own: `requirementProblems()` in `lib/slice.js` already refuses to store a
+  graph in which a frozen requirement reaches no slice, and "an R-ID that
+  reaches no PR is a requirement nobody shipped" is its message, not this one's.
+  Outside the quickfix route, where `r-coverage` skipped anyway, a graph is
+  always cut — so this check added no guarantee, only a demand on the shape of
+  the body. **A blocking check that stops blocking is not a silent change**,
+  which is why it is stated here rather than in a diff.
+
 ## [0.2.0] - 2026-09-21
 
 ### Upgrading

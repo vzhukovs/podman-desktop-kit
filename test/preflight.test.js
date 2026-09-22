@@ -775,11 +775,71 @@ describe('the artefact checks', () => {
     assert.equal(result.status, 'fail');
   });
 
-  test('r-coverage: skipped on quickfix, and the report says why', async () => {
-    const result = await only('r-coverage', { route: 'quickfix', prBody: body() });
+  // podman-desktop#19317: "unnecessary long and verbose ... this makes it
+  // harder to review because of the content to read". Measured across the
+  // author's upstream pull requests, the hand-written ones ran 378-2551
+  // characters and the generated ones up to 14015 — and the complaint arrived
+  // on one of the smaller generated ones.
+  describe('pr-body-size', () => {
+    /** A body of a given shape, with every section the check knows. */
+    const sized = ({ what = 'It was broken. Now it is not.', notes = '- Checked on macOS.', steps = '1. Build → it builds\n2. Run → it runs\n3. Restart → still fine' } = {}) =>
+      `### What does this PR do?\n\n${what}\n\n**Where to look**\n\n\`main.ts\` is the logic; the rest is renames.\n\n` +
+      `**Not in this PR**\n\nNothing — one atomic change.\n\n### Screenshot / video of UI\n\nn/a — no UI change.\n\n` +
+      `### What issues does this PR fix or reference?\n\nFixes #5001\n\n### How to test this PR?\n\n${steps}\n\n` +
+      `**Notes for reviewers**\n\n${notes}\n\n- [ ] Tests are covering the bug fix or the new feature\n` +
+      `<sub>Prepared with podman-desktop-kit (Claude Code Plugin)</sub>\n`;
 
-    assert.equal(result.status, 'skip');
-    assert.match(result.summary, /issue number/);
+    test('a body within its budget passes, and never blocks either way', async () => {
+      const result = await only('pr-body-size', { prBody: sized() });
+
+      assert.equal(result.status, 'pass');
+      assert.equal(result.blocking, false);
+      assert.match(result.summary, /steps \d+ chars, not counted/);
+    });
+
+    test('the sections over budget are named, and only those', async () => {
+      const result = await only('pr-body-size', {
+        prBody: sized({ what: 'x'.repeat(2000), notes: 'y'.repeat(1000) }),
+      });
+
+      assert.equal(result.status, 'warn');
+      assert.equal(result.blocking, false, 'a long paragraph must not stop a push');
+      assert.match(result.output, /! what {2}2000\/600/);
+      assert.match(result.output, /! notes for reviewers {2}1000\/400/);
+      assert.match(result.output, /^ {2}where to look/m, 'a section inside its budget is listed without a mark');
+      assert.match(result.remedy, /steps are not the place to save/);
+    });
+
+    // The constraint this whole change was made under: the steps are the one
+    // section a reviewer executes rather than reads, so counting them would
+    // push the one part worth expanding in the direction of the thing this
+    // check exists to prevent.
+    test('steps of any length are bounded, not counted', async () => {
+      const enormous = Array.from({ length: 40 }, (_, index) => `${index + 1}. Do the thing → the thing happened, at length, with fixtures and cleanup`).join('\n');
+      const result = await only('pr-body-size', { prBody: sized({ steps: enormous }) });
+
+      assert.equal(result.status, 'pass', 'a thorough set of steps is not a verbose body');
+      assert.ok(!/steps.*\/\d/.test(result.output ?? ''), 'the steps carry no budget to be measured against');
+    });
+
+    // A bold line of the author's own mid-paragraph is not a section boundary.
+    // Treating it as one would stop counting half way and report the number as
+    // if it had read the whole section.
+    test('only the template markers bound a section', async () => {
+      const result = await only('pr-body-size', {
+        prBody: sized({ what: `**Two things matter.**\n\n${'x'.repeat(900)}` }),
+      });
+
+      assert.equal(result.status, 'warn');
+      assert.match(result.output, /! what {2}9\d\d\/600/, 'the text after the author bold line counts too');
+    });
+
+    test('nothing to read yet is a skip, not a pass', async () => {
+      const result = await only('pr-body-size', { prBody: null });
+
+      assert.equal(result.status, 'skip');
+      assert.match(result.remedy, /has to read it/);
+    });
   });
 
   test('ci-blind-spots: an untouched blind area passes', async () => {
@@ -1119,23 +1179,6 @@ describe('a sliced issue', () => {
 
     assert.equal(report.results[0].status, 'pass', report.results[0].summary);
     assert.match(report.results[0].summary, /slice #1 standalone on main/);
-  });
-
-  test('r-coverage asks for the slice R-IDs, not the whole frozen set', async () => {
-    const prepared = await on({ prBody: 'Part of #7301\n\n| R-ID | … |\n| R1 | adds RunOptions |\n' });
-    const report = await run(prepared, await loadChecks(['r-coverage']));
-
-    // R2 belongs to slice #2 and is deliberately absent from this body.
-    assert.equal(report.results[0].status, 'pass', report.results[0].summary);
-    assert.match(report.results[0].summary, /R1 covered \(slice #1\)/);
-  });
-
-  test('and still fails when the slice’s own R-ID is missing', async () => {
-    const prepared = await on({ prBody: 'Part of #7301, no table at all\n' });
-    const report = await run(prepared, await loadChecks(['r-coverage']));
-
-    assert.equal(report.results[0].status, 'fail');
-    assert.match(report.results[0].summary, /R1 is not mentioned/);
   });
 
   // "Verified" must not decay into "was verified once", and on a materialized

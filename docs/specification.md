@@ -1491,7 +1491,7 @@ argument is the same: in both cases something exists that the gate did not check
 and silence about it reads as checked.
 
 Both of those read the PR body, and both must be listed in `BODY_DEPENDENT` —
-six checks are: `extension-api`, `steps-to-check`, `r-coverage`,
+`extension-api`, `pr-body-template`, `pr-body-size`, `steps-to-check`,
 `ci-blind-spots`, `e2e-environment`, `validation-evidence`. A check that depends
 on the body without declaring it stays forever at its first-pass result, `skip` —
 the worst possible outcome, because it looks like a check that ran.

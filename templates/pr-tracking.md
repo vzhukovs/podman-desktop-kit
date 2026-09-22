@@ -8,6 +8,16 @@
 - Last activity: {{lastActivity}}
 - Refreshed: {{refreshedAt}}
 
+## Requirements
+
+<!-- The R-IDs this pull request carries, from the slice graph. Here and not in
+     the published body: they are how this plugin tracks its own work, and a
+     reviewer holding the issue and the diff has no use for them — said in as
+     many words on podman-desktop#19317. What the trace is for is servicing the
+     pull request afterwards, which happens here. -->
+
+{{requirements}}
+
 ## CI
 
 <!-- Rendered from prs.json by `pdkit pr render`. The verdict column is not
