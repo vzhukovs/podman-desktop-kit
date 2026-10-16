@@ -81,15 +81,18 @@ spent twice.
 8. **Publish, in this order.**
 
    ```
-   pdkit state <n> --to preflight-green
-   pdkit gate open --issue <n> --branch <b>            # push: per branch
-   git push --force-with-lease origin <b>
-   pdkit state <n> --to pr-open
+   pdkit publish --issue <n> --branch <b> --pr <k> [--slice <i>]   # push: per branch
    pdkit gate open --issue <n> --pr <k> --kind reply   # reply: per pull request
    pdkit pr reply <k> --thread <id> --body <f> [--resolve]
    pdkit gate close --pr <k> --kind reply
    pdkit pr render <k> --issue <n>
    ```
+
+   `publish --pr` is the first four lines it replaced — `state --to
+   preflight-green` (earned from preflight, as always), `gate open --branch`,
+   `git push --force-with-lease`, `state --to pr-open` — in that order, stopping
+   at the first refusal. It asks nothing: the person has already read the drafts
+   and the change. The separate commands still work when it stops partway.
 
    Two tokens, because these are two different acts of consent. The push token
    is per branch and is spent on use. The reply token covers **the batch of

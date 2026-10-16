@@ -101,11 +101,29 @@ it from the branch you are standing on.
 8. **Then, and only then:**
 
    ```
+   pdkit publish --issue <n> --branch <b> --title <t> --body <file> [--slice <i>]
+   ```
+
+   It is these four, in this order, and stops at the first that refuses:
+
+   ```
    pdkit state <n> --to preflight-green    # from quickfix or slices-approved
    pdkit gate open --issue <n> --branch <b>
    git push origin <b>
    pdkit pr create --issue <n> --branch <b> --title <t> --body <file>
    ```
+
+   `publish` asks nothing and is not consent: step 6 and 7 are, and they come
+   first. It has no flag to skip preflight, force a push or stretch the token,
+   and none is coming — if one seems needed, say so rather than working around
+   it. The four commands still work alone; use them when `publish` stopped
+   partway and told you which one is left.
+
+   If it stops after the push — `IS PUSHED … NOT opened` — the branch is public
+   and the token is half spent. Do not push again; run the `pdkit pr create` it
+   prints. If the push itself failed, nothing was published: show the person
+   why, and after they confirm again run the same `publish`, which re-reads the
+   preflight record for the commit now checked out.
 
    **One token covers those two writes**, once each: the push spends half, and
    the pull request the push exists for spends the rest. That is one reading —
@@ -122,13 +140,14 @@ it from the branch you are standing on.
    the body-dependent checks having actually seen a body. If it refuses, the
    answer is a preflight run, never a different way of setting the state.
 
-   `pdkit pr create` verifies and spends the token itself. If you open the PR
-   any other way, do it after `gate open` and expect the hook to spend the
-   token on the `gh` call.
+   `pdkit pr create` verifies and spends the token itself, and so does
+   `publish` for its push — the hook never sees a push that `publish` runs. If
+   you open the PR any other way, do it after `gate open` and expect the hook to
+   spend the token on the `gh` call.
 
    On a stacked slice the pull request opens against **its base branch**, not
-   `main` — `pdkit pr create` takes it from the graph, so there is nothing to
-   pass. Against `main` the diff would carry the previous slice's work, and the
+   `main` — `publish` and `pdkit pr create` take it from the graph, so there is
+   nothing to pass. `publish` checks that base before it pushes. Against `main` the diff would carry the previous slice's work, and the
    reviewer would be reading two changes believing they are one.
 
    **From a fork, that base usually does not exist.** The base of a pull
@@ -140,7 +159,7 @@ it from the branch you are standing on.
 
    - **Wait.** Merge the slice below, then open this one. Cleanest, and free if
      the review is not urgent.
-   - **`--base main`, and say so in the body.** The diff will carry the other
+   - **`--base main` (on `publish` or `pr create`), and say so in the body.** The diff will carry the other
      slice until it lands. Then "Not in this PR" has to state that in the first
      line, name the pull request it depends on, and list the files this one
      actually adds — otherwise the body describes a diff the reviewer is not

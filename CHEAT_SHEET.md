@@ -189,8 +189,8 @@ pdkit audit <n> --base main                # facts, no verdict
 
 ```bash
 pdkit slice materialize --issue <n> --slice <i> --subject "fix(main): …"
-pdkit gate open --issue <n> --branch <b>
-pdkit pr create --issue <n> --branch <b> --title <t> --body <file>
+pdkit publish --issue <n> --branch <b> --title <t> --body <file> [--slice <i>]
+pdkit publish --issue <n> --branch <b> --pr <k>   # an open PR, after a review round
 pdkit pr refresh <k>                       # read GitHub into the local record
 pdkit pr ci <k>                            # the CI verdict, measured against other open PRs
 ```
@@ -207,7 +207,9 @@ pdkit worktree remove --issue <n>
 
 ## Publishing: the gate
 
-The order is fixed and not symmetric.
+The order is fixed and not symmetric. `pdkit publish` runs these four in it,
+after the person has read the body, and stops at the first refusal; each still
+works alone for finishing a publication that stopped partway.
 
 ```bash
 pdkit state <n> --to preflight-green       # earned from a real preflight, never asserted

@@ -755,6 +755,16 @@ git push origin DESKTOP-12345/slug
 pdkit pr create --issue 12345 --branch DESKTOP-12345/slug --title … --body body.md
 ```
 
+`pdkit publish --issue 12345 --branch DESKTOP-12345/slug --title … --body body.md`
+is the same sequence, with `pdkit state 12345 --to preflight-green` in front, as
+one command. It asks nothing — the reading happens before it — and has no flag
+that skips or loosens a step. It checks a stacked slice's base before pushing
+rather than after, and if it stops between the push and the pull request it
+says so: the branch is public, the token has its pull-request half left, and
+the `pdkit pr create` to finish with is printed. With `--pr <k>` instead of a
+title and body it updates an open pull request: `push --force-with-lease`, then
+back to `pr-open`.
+
 `gate open` refuses unless the issue is in `preflight-green` and the branch belongs
 to that issue. Both are checked inside `pdkit` rather than asked of the caller.
 

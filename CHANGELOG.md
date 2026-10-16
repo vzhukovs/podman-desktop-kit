@@ -11,6 +11,34 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Added
 
+- **`pdkit publish`: `/pd:pr` step 8 as one command.** The journal held 152
+  push refusals against 22 open pull requests — about seven per real push — and
+  the gate was right every time: what failed was running four commands in the
+  right order. `pdkit publish --issue <n> --branch <b> --title <t> --body <file>
+  [--slice <i>] [--base <b>]` runs `state --to preflight-green`, `gate open`,
+  `git push` and `pr create` in that order and stops at the first refusal.
+  - Nothing about consent moves. It asks nothing; step 6 — the person reading
+    the body and the branch — comes before it, as before. preflight-green is
+    reached by the same transition, from what preflight wrote. One token covers
+    the push and the pull request, once each. There is no flag that skips,
+    forces or extends anything.
+  - It spends the push half of the token itself, before pushing, as the hook
+    does: the push is started from Node, so the hook never sees it.
+  - A stacked slice's base is taken from the graph and checked upstream
+    **before** the push, so a base the fork-to-upstream pull request cannot use
+    is refused with nothing public.
+  - Stopping between the push and the pull request is said in so many words:
+    the branch is public, the token has its pull-request half left until
+    when, and the `pdkit pr create` to finish with.
+  - Run again after a failed push, with the issue already `preflight-green`,
+    it re-reads the preflight record for the commit now checked out instead of
+    setting the state twice; a commit preflight never saw is refused.
+  - `--pr <k>` publishes to an open pull request (`/pd:pr-sync` step 8):
+    `push --force-with-lease`, then back to `pr-open`.
+  - The four commands still work alone, for whoever is standing in the middle
+    of a publication that stopped partway. `pdkit doctor --gate-selftest` now
+    also checks that the hook lets `pdkit publish` through.
+
 - **`pdkit cost`: what an issue cost in tokens, against how much work it was.**
   Reads Claude Code's transcripts (`~/.claude/projects/<slug>/`, or
   `--transcripts`), attributes each API call to the issue of the nearest earlier
