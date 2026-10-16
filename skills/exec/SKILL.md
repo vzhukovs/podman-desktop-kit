@@ -63,7 +63,7 @@ verbatim — not summarised, not trimmed to the interesting part.
 output text, so there is nothing to compose: the choice between "the tests
 passed" and the test runner's own words is not offered.
 
-Two refusals to expect from the TaskCompleted hook, and they mean different
+Two refusals to expect from the SubagentStop hook, and they mean different
 things:
 
 - **no receipt, or one that no longer matches its digest** — run the command

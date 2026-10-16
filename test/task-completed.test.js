@@ -37,6 +37,7 @@ import { record as recordAttempt, unblock as unblockTask } from '../lib/attempts
 import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
+import { HOOK_HANDLERS } from '../lib/hooks/events.js';
 import { handle as taskCompleted } from '../lib/hooks/task-completed.js';
 import { read as readJournal } from '../lib/journal.js';
 import { TRANSITIONS, setOwns, transition } from '../lib/state.js';
@@ -106,6 +107,49 @@ const complete = () => taskCompleted({ task_id: 'agent-7', cwd: WORKTREE }, { ev
 // and on deltas rather than on totals: entries from the tests above are part of
 // the same file's history, which is the property being relied on everywhere
 // else.
+// The structural half of the fix, and the half a unit test can actually hold.
+// Every test below calls the handler directly, so they pass identically whether
+// the host ever runs it or not — which is how a receipt gate wired to
+// `TaskCompleted` stayed green for four months while subagents, which raise
+// `SubagentStop`, never reached it. What can be pinned here is the wiring
+// itself: the manifest names the event subagents raise, and the map sends that
+// event to this module. Whether the host keeps its side of it is what
+// `pdkit doctor` watches, through `agent-done` in the journal.
+describe('the hook is registered where subagents finish', () => {
+  const manifest = async () => JSON.parse(await readFile(join(process.cwd(), 'hooks', 'hooks.json'), 'utf8'));
+  const eventsRouting = (hooks, hostEvent) =>
+    (hooks[hostEvent] ?? []).flatMap((entry) => entry.hooks ?? []).map((hook) => hook.args?.[1]);
+
+  test('SubagentStop runs this module', async () => {
+    const { hooks } = await manifest();
+    const routed = eventsRouting(hooks, 'SubagentStop').filter((event) => HOOK_HANDLERS[event] === 'task-completed.js');
+
+    assert.equal(routed.length, 1, 'exactly one SubagentStop entry reaches lib/hooks/task-completed.js');
+  });
+
+  // No matcher: SubagentStop matches on agent type, and the count is only worth
+  // anything if every type is in it.
+  test('for every agent type', async () => {
+    const { hooks } = await manifest();
+    for (const entry of hooks.SubagentStop) {
+      assert.ok([undefined, '', '*'].includes(entry.matcher), `SubagentStop is narrowed to "${entry.matcher}"`);
+    }
+  });
+
+  // TaskCompleted fires on TaskUpdate and on agent-team teammates, neither of
+  // which this plugin uses. A handler there would count task-list ticks as
+  // subagents, and — the original defect — looks like coverage while being none.
+  test('and no other host event does', async () => {
+    const { hooks } = await manifest();
+    const elsewhere = Object.keys(hooks)
+      .filter((hostEvent) => hostEvent !== 'SubagentStop')
+      .filter((hostEvent) => eventsRouting(hooks, hostEvent).some((event) => HOOK_HANDLERS[event] === 'task-completed.js'));
+
+    assert.deepEqual(elsewhere, []);
+    assert.equal(hooks.TaskCompleted, undefined, 'TaskCompleted is not an event subagents raise');
+  });
+});
+
 describe('counting the agents that ran', () => {
   const agentRuns = async (issue) => (await readJournal({ issue }, { home })).filter((entry) => entry.event === 'agent-done');
 
@@ -154,6 +198,22 @@ describe('counting the agents that ran', () => {
     assert.equal(runs.length, before + 1, 'attributed to the issue its branch names');
     assert.match(runs.at(-1).detail, /agent task agent-9/);
     assert.ok(!/while/.test(runs.at(-1).detail), 'no task was active, and the entry does not invent one');
+  });
+
+  // The payload SubagentStop actually sends, as captured from Claude Code
+  // 2.1.301: `agent_id` and `agent_type`, no `task_id`. Before this the entry
+  // would have read "agent task unnamed" for every run.
+  test('the SubagentStop payload names the run and the kind of agent', async () => {
+    await stop({ worktree: WORKTREE, home });
+    await execFileAsync('git', ['checkout', '-q', '-b', `DESKTOP-${ISSUE}/subagent-stop`], { cwd: WORKTREE });
+
+    await taskCompleted(
+      { hook_event_name: 'SubagentStop', agent_id: 'a8b1072c', agent_type: 'pd:pd-scout', stop_hook_active: false, cwd: WORKTREE },
+      { event: 'subagent-stop', pluginRoot: '' },
+    );
+
+    const entry = (await agentRuns(ISSUE)).at(-1);
+    assert.equal(entry.detail, 'agent task a8b1072c; pd:pd-scout');
   });
 
   // A wrong attribution is worse than none in the one file nothing may rewrite.
@@ -220,6 +280,39 @@ describe('completing a task', () => {
     assert.equal(decision.rule, 'attempts');
     assert.match(decision.reason, /is blocked: 3 failed captures/);
     assert.match(decision.reason, /pdkit task unblock/);
+  });
+
+  // On SubagentStop a refusal keeps the subagent running with the reason as its
+  // next instruction. At the ceiling that instruction is "you are blocked", and
+  // holding the agent a second time would make it try a fourth time — so the
+  // host's second ask (stop_hook_active) is let through, with the same words.
+  test('at the ceiling a subagent already told is let go, not held for a fourth try', async () => {
+    await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run({ exitCode: 1 }), home });
+    for (let i = 0; i < 3; i += 1) {
+      await recordAttempt({ issue: ISSUE, taskId: 'T1', exitCode: 1, home });
+    }
+
+    const decision = await taskCompleted(
+      { agent_id: 'agent-7', stop_hook_active: true, cwd: WORKTREE },
+      { event: 'subagent-stop', pluginRoot: '' },
+    );
+    assert.equal(decision.block, false);
+    assert.equal(decision.rule, 'attempts');
+    assert.match(decision.message, /is blocked: \d+ failed captures/);
+  });
+
+  // Only the ceiling. A missing or red receipt is something the subagent can
+  // still fix, so a second ask is refused like the first.
+  test('below the ceiling a second ask is refused like the first', async () => {
+    await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run({ exitCode: 1 }), home });
+    await unblockTask({ issue: ISSUE, taskId: 'T1', reason: 'reset for the test', home });
+
+    const decision = await taskCompleted(
+      { agent_id: 'agent-7', stop_hook_active: true, cwd: WORKTREE },
+      { event: 'subagent-stop', pluginRoot: '' },
+    );
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'receipt');
   });
 
   test('and an unblock puts the ordinary refusal back', async () => {

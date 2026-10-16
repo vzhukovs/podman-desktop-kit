@@ -9,6 +9,34 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The receipt gate and the `agent-done` count never ran: the hook was
+  registered on the wrong event.** It sat on `TaskCompleted`, which Claude Code
+  raises when a TaskUpdate marks a task-list item complete or an agent-team
+  teammate finishes, never when an Agent-tool subagent returns. A live probe
+  against Claude Code 2.1.301 showed a subagent's return raising `SubagentStop`
+  and nothing on `TaskCompleted`. The journal agreed: four months of use, 79
+  subagent dispatches, zero `agent-done`, zero `task-receipt … accepted`. So one
+  of the three things `docs/architecture.md` calls enforced was enforcing nothing.
+  - The handler is now registered on `SubagentStop` (`pdkit hook subagent-stop`),
+    with no matcher, so every agent type is counted. `TaskCompleted` is no longer
+    registered, because the plugin uses neither of the things it fires for.
+  - `agent-done` now names the agent type the host reports, as in
+    `agent task a57e6dd1…; pd:pd-scout`. The id comes from `agent_id`, because
+    `SubagentStop` sends no `task_id`.
+  - Exit 2 on `SubagentStop` keeps the subagent running with the refusal as its
+    next instruction. That is right for "capture a receipt" and "fix the work".
+    At the attempts ceiling it would force the fourth try the ceiling exists to
+    prevent. So the blocked refusal is delivered once, and when the host asks
+    again (`stop_hook_active`) the subagent is let go with the same message.
+  - **`pdkit doctor` warns when the journal has no `agent-done` for 30 days.**
+    `hooks` only proved that the manifest names a handler that exists. It could
+    not prove that the host ever sends the event, and it stayed green throughout.
+    This is a warning, not a failure, because a fresh install has no history.
+  - After upgrading, run any subagent and check that `pdkit journal --event
+    agent-done` prints a line.
+
 ## [0.4.0] - 2026-09-22
 
 ### Upgrading

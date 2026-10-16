@@ -33,7 +33,8 @@ import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
-import { GATE_PROBES, RETIRED_KEYS, diagnose, gateSelftest, mcpServers, playwrightCdp } from '../lib/doctor.js';
+import { GATE_PROBES, RETIRED_KEYS, checkAgentRuns, diagnose, gateSelftest, mcpServers, playwrightCdp } from '../lib/doctor.js';
+import { append as appendJournal } from '../lib/journal.js';
 import { WRAPPERS } from '../lib/hooks/command-parse.js';
 import { create } from '../lib/worktree.js';
 
@@ -168,6 +169,44 @@ describe('the self-test', () => {
 // Slice verification builds in a worktree, so a root that cannot be written or
 // a tree git has lost track of becomes a verification failure that looks like a
 // failing slice.
+// A hook that never connected looks exactly like one with nothing to catch.
+// The receipt gate sat on an event subagents never raise for four months and
+// every other check here was green, so this one reads what only a live hook
+// writes.
+describe('the agent-done liveness check', () => {
+  let home;
+
+  before(async () => {
+    home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-agents-'));
+  });
+
+  after(async () => {
+    await rm(home, { recursive: true, force: true });
+  });
+
+  test('no history is a warning that says what it may mean, not a failure', async () => {
+    const [entry] = await checkAgentRuns(home);
+
+    assert.equal(entry.status, 'warn');
+    assert.notEqual(entry.level, 'required');
+    assert.match(entry.detail, /SubagentStop hook is not connected/);
+  });
+
+  test('an entry older than the window still warns', async () => {
+    await appendJournal({ issue: 1, event: 'agent-done', detail: 'agent task old' }, { home });
+
+    const [entry] = await checkAgentRuns(home, Date.now() + 31 * 24 * 60 * 60 * 1000);
+    assert.equal(entry.status, 'warn');
+  });
+
+  test('a recent one is green, with the count', async () => {
+    const [entry] = await checkAgentRuns(home, Date.now());
+
+    assert.equal(entry.status, 'ok');
+    assert.match(entry.detail, /^1 in the last 30d/);
+  });
+});
+
 describe('the worktree checks', () => {
   let repo;
   let home;

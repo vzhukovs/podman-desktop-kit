@@ -466,7 +466,7 @@ browser reaches the plugin by exactly one route, `pdkit pr refresh`. An entry is
 written once, on a state change; a second refresh of the same state writes
 nothing.
 
-**`agent-done` counts the machinery.** The `TaskCompleted` hook is the only place
+**`agent-done` counts the machinery.** The `SubagentStop` hook is the only place
 that sees every subagent finish — the scouts of `/pd:plan`, the plan critic, the
 auditor, the slicer, the reviewers — and it writes one entry per completion,
 before it decides anything about the claim being made. Counting only the accepted
@@ -477,10 +477,14 @@ survives comparison between issues when a bare cost does not: an issue with seve
 tasks and two slices is supposed to be dearer than a one-task fix, and the two
 are told apart by `pdkit journal --issue <n> --event agent-done`.
 
-What it does not record is which agent ran. The payload carries Claude Code's own
-task identifier and the working directory; the agent's name is not in what the
-hook is given, and a field invented to hold it would make the entry claim more
-than was measured. The issue comes from the active task pointer when there is one
+Which agent ran is recorded when the host says so: `SubagentStop` carries
+`agent_id` and `agent_type` (`pd:pd-scout`, `general-purpose`), and the entry
+reads `agent task <agent_id>; <agent_type>`. When a field is absent the entry
+leaves it out rather than inventing it. Until 0.4.0 the hook was registered on
+`TaskCompleted`, which Claude Code raises for task-list items and agent-team
+teammates and never for a subagent returning, so neither this count nor the
+receipt gate below ever ran; `pdkit doctor` now warns when `agent-done` has been
+silent for 30 days. The issue comes from the active task pointer when there is one
 and from the branch name when there is not — `DESKTOP-<issue>/<slug>` is a name
 this plugin wrote — and from nothing else: an entry with no issue is honest,
 while one attributed by guess is not.
@@ -1346,7 +1350,7 @@ the command string are applied by code in `lib/hooks/`.
 | `PreToolUse` | `Bash` | `bin/pdkit hook pre-bash` |
 | `PreToolUse` | `Write\|Edit` | `bin/pdkit hook pre-write` |
 | `PostToolUse` | `Write\|Edit` | `bin/pdkit hook post-write` |
-| `TaskCompleted` | — | `bin/pdkit hook task-completed` |
+| `SubagentStop` | — | `bin/pdkit hook subagent-stop` |
 | `SessionStart` | — | `bin/pdkit hook session-start` |
 | `PreCompact` | — | `bin/pdkit hook pre-compact` |
 
@@ -1367,9 +1371,9 @@ The rules the handlers apply:
 | `pre-write` | no active task in this working tree | allow — the restriction belongs to executing a planned task, not to having the plugin installed |
 | `post-write` | a new file without the SPDX header | exit 2 with the text to paste |
 | `post-write` | `*.ts` under schemas | remind about `generate:schemas`, mark `schemas_dirty` |
-| `task-completed` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |
-| `task-completed` | a real receipt with `exitCode ≠ 0` | exit 2: the `Done when` command did not pass |
-| `task-completed` | this is the `exec.max_attempts`-th failure in a row | exit 2, with a **different** message: the task is blocked, and the question is not "fix it and capture again" but "what changed between the second attempt and the third" |
+| `subagent-stop` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |
+| `subagent-stop` | a real receipt with `exitCode ≠ 0` | exit 2: the `Done when` command did not pass |
+| `subagent-stop` | this is the `exec.max_attempts`-th failure in a row | exit 2, with a **different** message: the task is blocked, and the question is not "fix it and capture again" but "what changed between the second attempt and the third". Exit 2 on `SubagentStop` keeps the subagent running, so when the host asks again (`stop_hook_active`) it is let go with the same message rather than held for a fourth try |
 | `session-start` | — | inject the summary: active issue, state, next step. This is re-anchoring |
 | `pre-compact` | — | flush the active state to the journal so compaction does not eat the task context |
 
@@ -1438,7 +1442,7 @@ because what they authorise is the batch of drafts somebody read in one go.
 
 ### Receipts, and why the ceiling holds
 
-The two `task-completed` rows rest not on the strictness of the validator but on
+The two `subagent-stop` rows rest not on the strictness of the validator but on
 **who produces the receipt**. `pdkit` does: `pdkit receipt write --issue <n>
 --task T1` reads the command out of the task's `## Done when`, runs it through
 `lib/evidence.js` (by spawning it directly, so nothing can sit between the
@@ -1924,7 +1928,7 @@ you can point at.**
 | **The plugin as installed from a catalogue over the network.** It now loads from a marketplace entry in `settings.json` — but that entry's source is a local directory | Half the row closed on 18832: the manifest is found through `extraKnownMarketplaces` plus `enabledPlugins`, not only through `--plugin-dir`, and skills and agents resolve from it. What is still untested is the fetch: a marketplace pulled from a remote repository, which is the path every other user takes |
 | **Twelve of the twenty-two skills.** Ten have been invoked through a session; the row above lists them | Each skill body is prose, and prose is the half of this plugin that is not covered by anything. A skill that names a flag `pdkit` no longer has fails at the moment somebody is depending on it, and two of these were caught doing it: `/pd:preflight`, which ran, advised standing on a branch the graph had invented; `/pd:pr`, which did not run but was read and followed, documented a base `pr create` could not open against. **Not invoked is not the same as not exercised**, and the twelve divide on it. `close --finish` finished 18248 and 18832, the `quickfix` route ran three times, `review fetch` and `review render` produced two reports, `pr list` and `drift` are routine — all through `pdkit` in a terminal, with the skill that wraps them never loaded. What is untested there is the prose: the part that says what to do with the output, in what order, and when to stop and ask |
 | **Windows.** ubuntu and macOS are green; Windows runs, reports, and does not block | The job tested **nothing** until 2026-08-31 — `node --test 'test/*.test.js'` passes the pattern to node, and cmd.exe does not strip single quotes, so it matched no files and exited 0. Green for the whole life of the repository. Fixing that revealed the second one: `bin/pdkit` imported `lib/cli.js` by filesystem path, which ESM accepts on POSIX by accident and refuses on Windows as an unknown scheme `d:` — so **`pdkit` had never started there, and the gate had never refused a push on a Windows session**. Both fixed, and the gate now exits 2 as it should. What is left is 96 assertions of path separators in stored records and CRLF in captured stdout, unscoped and unported. The lesson is the one below in three layers: the platform that could have seen this was the platform whose job was reporting success without running |
-| **Four of the six hook events.** `pre-bash` has two genuine firings in the journal, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `task-completed`, `session-start` and `pre-compact` have never been triggered by the host. On 18832 a session *did* write plan and task files through the host's `Write` tool, so `post-write` was almost certainly called — and left no trace either way, because a handler that passes silently is indistinguishable from one that was never wired up. That is the same shape as the flake verdict below, and it is why this row needs an artefact rather than an absence of complaints |
+| **Three of the six hook events.** `pre-bash` has two genuine firings in the journal, `subagent-stop` has host firings recorded as `agent-done` and watched by `pdkit doctor`, and `pre-write` is exercised by `owns:selftest` through the manifest | The self-test spawns the handler the way the host does, which proves the handler works and not that the host calls it. `post-write`, `session-start` and `pre-compact` have never been triggered by the host. The receipt handler shows what that costs: it passed every test for four months while registered on `TaskCompleted`, an event subagents never raise. On 18832 a session *did* write plan and task files through the host's `Write` tool, so `post-write` was almost certainly called — and left no trace either way, because a handler that passes silently is indistinguishable from one that was never wired up. That is the same shape as the flake verdict below, and it is why this row needs an artefact rather than an absence of complaints |
 | **`cascade`, and rebasing dependents.** Two slices with a stacked base ran end to end on 18967 — cut, verified, materialised, preflighted from the predecessor's branch, published — so that half of the row is closed. There is still no `slice-cascade` event in the journal | What the run found is in the section above: the graph carried a base the publish route could not express, and nothing between `slice set` and `gh` compared the two. Both ends now do. What remains untested is a review fix landing in a slice something else is stacked on, which is what `cascade` is for, and it needs a reviewer rather than a fixture |
 | **`replyToThread` with both GraphQL mutations.** `pr-sync` itself has now run against real threads | Narrower than it was and no easier. On #18889 `pr threads` read four threads from two reviewers, `pd-thread-resolver` produced fixes for two of them, and two became approved amendments — everything up to the reply. The replies themselves were posted by the human, by choice, so `addPullRequestReviewThreadReply` and the resolve mutation are still unexecuted. That last step is the one that writes into somebody else's pull request, which is exactly why it will not be closed with synthetic material |
 | **The `redo` route carried through to code** | The facts of a previous attempt are now collected correctly and `archaeology.json` is written by a real query, but no redo has reached a diff: that is a separate issue, not a separate task |
