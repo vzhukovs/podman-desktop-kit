@@ -9,6 +9,37 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`pdkit cost`: what an issue cost in tokens, against how much work it was.**
+  Reads Claude Code's transcripts (`~/.claude/projects/<slug>/`, or
+  `--transcripts`), attributes each API call to the issue of the nearest earlier
+  journal entry within six hours, splits it by phase at the state transitions,
+  and divides by tasks, slices, requirements, changed lines, merged pull
+  requests and agent runs. Issues are grouped by `route` and never compared
+  across routes. The scale is cost units (input + 0.1 cache-read + 1.25
+  cache-write + 5 output, x5 on Opus: list-price ratios, not dollars). Dollars
+  are printed beside them for orientation only.
+  `--issue <n>`, `--since <date>`, `--json`; `--snapshot` writes
+  `$PDKIT_HOME/cost/<date>.json`, and `--compare <date>` puts that snapshot
+  beside the issues journalled since. Like `pdkit stats`, it recommends
+  nothing.
+  - The unattributed share is always printed, as are the caveats on
+    attribution, on changed lines (lockfiles and generated output count), and
+    on comparing routes.
+  - **One call is counted once.** Claude Code writes one response as one line
+    per content block, each carrying the same `message.usage`; summing lines
+    counted most calls two or three times. Calls are keyed by `message.id`, and
+    the number of repeated lines dropped is printed. On the corpus behind
+    specs/2026-10-16-token-cost-analysis.md this halves the parent-session
+    figures in its section 1.
+  - **Subagents are counted.** Their calls are in
+    `<session>/subagents/agent-<id>.jsonl`, not in the session file, and were
+    missing from the first analysis. They are read, kept apart by file rather
+    than by `isSidechain`, and give an agent-run count that does not depend on
+    the `agent-done` journal entry. The journal count is printed beside it.
+  - Missing transcripts are a `skip` with the reason, not a row of zeros.
+
 ### Fixed
 
 - **The receipt gate and the `agent-done` count never ran: the hook was
