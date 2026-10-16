@@ -66,13 +66,16 @@ describe('unknown flags', () => {
       ['body'],
     );
     assert.deepEqual(
-      unknownFlags('issue', { full: true }).map((entry) => entry.name),
-      ['full'],
+      unknownFlags('issue', { comments: 'all' }).map((entry) => entry.name),
+      ['comments'],
     );
   });
 
   test('flags the command does read are not', () => {
     assert.deepEqual(unknownFlags('issue', { label: 'a,b', limit: '20' }), []);
+    // --full was the second spelling that live run tried. It exists now, for
+    // the comments `issue fetch` leaves out — the body was never cut.
+    assert.deepEqual(unknownFlags('issue', { full: true }), []);
     assert.deepEqual(unknownFlags('pr', { issue: '1', branch: 'b', base: 'main', title: 't', body: 'f' }), []);
   });
 

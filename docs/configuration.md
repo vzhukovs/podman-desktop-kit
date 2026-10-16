@@ -139,6 +139,7 @@ the shipped default through.
 | `slicing.verify.prepare` | Build scripts run after every clean, before anything is checked. **The list to look at when every slice comes back inconclusive.** The tree is reset to what git holds on each run, so a package resolving through a `dist/` that is not committed is simply absent there — and a typecheck that consumes it without building it reports hundreds of errors in files no slice touched. podman-desktop needs `build:core-api` and `build:ui`, both found that way, one live run apart. Names the repository does not define are skipped, so the list costs nothing where it does not apply |
 | `worktrees.root` | Where trees go. Beside the fork, never inside it: a checkout under the repository shows up in `git status` and eventually in a pull request |
 | `worktrees.copy_files` | Copied into every new tree, and again after each verification reset — `git clean` takes them |
+| `triage.fetch_comments` | How many comments `issue fetch` prints, newest first; the rest are counted and `--full` prints them. The body is always printed whole and has no setting |
 | `quickfix.max_changed_lines`, `quickfix.max_files` | Thresholds above which a quickfix escalates back to triage |
 | `gates.push_ttl` | How fast consent goes stale. Which states a token may be issued from is not configurable — see `state.GATE_ELIGIBLE` |
 | `validation.e2e` | `prefer`, `required` or `off`. The per-issue decision is made at planning, in the plan's `e2e coverage` field |

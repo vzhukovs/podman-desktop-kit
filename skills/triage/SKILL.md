@@ -87,7 +87,9 @@ Three different situations, and only one of them is this command's:
 ## 1. Read, and dedup before anything else
 
 `pdkit issue fetch <n>` prints the issue and every pull request that
-references it, in any state.
+references it, in any state. The body is whole; of the comments, the newest
+fifteen, with a line saying how many earlier ones were left out. If the answer
+seems to hang on something said early in the thread, `--full` prints them all.
 
 Act on that before analysing anything:
 

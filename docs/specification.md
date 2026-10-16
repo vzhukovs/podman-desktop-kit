@@ -590,7 +590,8 @@ all**.
    is the plugin's reading of what it was told, and a wrong reading propagates
    into the plan as a record everything trusts. `none given` when nothing came,
    because an empty section reads as forgotten rather than as absent.
-1. `pdkit issue fetch <n>` — body, labels, comments, linked pull requests.
+1. `pdkit issue fetch <n>` — body (always whole), labels, the newest
+   `triage.fetch_comments` comments (`--full` for all), linked pull requests.
 2. **Dedup**: open pull requests referencing the issue; closed ones (a revert
    means the `redo` route, and `pd-archaeologist`).
 3. Two or three `pd-scout` runs in parallel locate the affected packages. Reading

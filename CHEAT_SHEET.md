@@ -156,7 +156,8 @@ pdkit journal --event denied       # what the gate refused, and when
 
 ```bash
 pdkit issue list --label bug --limit 20    # the backlog, ordered by what can be started
-pdkit issue fetch <n>                      # the issue, its body and every comment
+pdkit issue fetch <n>                      # the issue, its whole body, the newest comments
+pdkit issue fetch <n> --full               # ... and every comment
 pdkit issue history <n>                    # what was tried before, and what reverted it
 pdkit packages --of <path>                 # which package and layer owns a file
 ```

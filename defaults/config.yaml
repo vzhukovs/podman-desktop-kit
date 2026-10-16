@@ -148,6 +148,13 @@ budget:
     pr: 50
     pr_sync: 60
 
+# What `pdkit issue fetch` prints. The body is always printed whole and is not
+# configurable: it is the requirement. Comments are the newest N, because a
+# discussion converges on its answer and the latest comments are closest to
+# what has to be done; `--full` prints every one.
+triage:
+  fetch_comments: 15
+
 quickfix:
   max_changed_lines: 20
   max_files: 3

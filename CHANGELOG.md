@@ -71,6 +71,14 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`pdkit issue fetch` prints the newest comments, not all of them.** Forty
+  comments on a podman-desktop issue is ordinary, and every one went into the
+  session that opens the dearest phase of the cycle. It now prints the newest
+  `triage.fetch_comments` (15) and a line counting the earlier ones, and
+  `--full` prints them all. The newest rather than the oldest, because a
+  discussion converges on its answer. The body is untouched: still printed
+  whole, with no setting that would cut it. `--json` is unchanged.
+
 - **`pdkit receipt write`, `pdkit validate run` and `pdkit e2e stability` no
   longer print the run.** They wrote the whole capture to stdout, which put it in
   the session's context until the session ended: receipts on disk reach 454 KB,
