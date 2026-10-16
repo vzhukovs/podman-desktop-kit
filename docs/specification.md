@@ -1371,6 +1371,7 @@ The rules the handlers apply:
 | `pre-write` | no active task in this working tree | allow — the restriction belongs to executing a planned task, not to having the plugin installed |
 | `post-write` | a new file without the SPDX header | exit 2 with the text to paste |
 | `post-write` | `*.ts` under schemas | remind about `generate:schemas`, mark `schemas_dirty` |
+| `subagent-stop` | any agent other than `pd:pd-implementer` finishing | allow, after counting it. Only the implementer's finish claims the active task; a payload with no `agent_type` is treated as the implementer |
 | `subagent-stop` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |
 | `subagent-stop` | a real receipt with `exitCode ≠ 0` | exit 2: the `Done when` command did not pass |
 | `subagent-stop` | this is the `exec.max_attempts`-th failure in a row | exit 2, with a **different** message: the task is blocked, and the question is not "fix it and capture again" but "what changed between the second attempt and the third". Exit 2 on `SubagentStop` keeps the subagent running, so when the host asks again (`stop_hook_active`) it is let go with the same message rather than held for a fourth try |

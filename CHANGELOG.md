@@ -30,6 +30,13 @@ fixes — see [RELEASING.md](RELEASING.md).
     At the attempts ceiling it would force the fourth try the ceiling exists to
     prevent. So the blocked refusal is delivered once, and when the host asks
     again (`stop_hook_active`) the subagent is let go with the same message.
+  - **Only `pd:pd-implementer` is held to the receipt.** Before, any subagent
+    that finished while a task was active was asked for that task's receipt.
+    That was harmless while the gate never ran. On `SubagentStop` a refusal
+    keeps the agent running, so a scout or an auditor launched during
+    `/pd:exec` would have been held until it wrote a receipt for work that was
+    never its job. Other agents are still counted. A payload with no
+    `agent_type` is gated rather than let through.
   - **`pdkit doctor` warns when the journal has no `agent-done` for 30 days.**
     `hooks` only proved that the manifest names a handler that exists. It could
     not prove that the host ever sends the event, and it stayed green throughout.

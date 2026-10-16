@@ -38,7 +38,7 @@ import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
 import { HOOK_HANDLERS } from '../lib/hooks/events.js';
-import { handle as taskCompleted } from '../lib/hooks/task-completed.js';
+import { IMPLEMENTER, handle as taskCompleted } from '../lib/hooks/task-completed.js';
 import { read as readJournal } from '../lib/journal.js';
 import { TRANSITIONS, setOwns, transition } from '../lib/state.js';
 
@@ -147,6 +147,51 @@ describe('the hook is registered where subagents finish', () => {
 
     assert.deepEqual(elsewhere, []);
     assert.equal(hooks.TaskCompleted, undefined, 'TaskCompleted is not an event subagents raise');
+  });
+});
+
+// Only the implementer's finish claims a task. On SubagentStop a refusal keeps
+// the agent running, so a scout or an auditor caught by the gate mid-exec would
+// be held until it wrote a receipt for work that was never its job.
+describe('who the gate is for', () => {
+  const finish = (agentType) =>
+    taskCompleted({ agent_id: 'agent-21', agent_type: agentType, cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+
+  test('the implementer is held to the receipt', async () => {
+    const decision = await finish(IMPLEMENTER);
+
+    assert.equal(decision.block, true);
+    assert.match(decision.reason, /there is no receipt/);
+  });
+
+  test('any other agent under an active task is let through, and still counted', async () => {
+    const before = (await readJournal({ issue: ISSUE, event: 'agent-done' }, { home })).length;
+
+    for (const agentType of ['pd:pd-scout', 'pd:pd-auditor', 'general-purpose']) {
+      const decision = await finish(agentType);
+      assert.equal(decision.block, false, `${agentType} is not asked for T1's receipt`);
+    }
+
+    const runs = await readJournal({ issue: ISSUE, event: 'agent-done' }, { home });
+    assert.equal(runs.length, before + 3);
+    assert.match(runs.at(-1).detail, /general-purpose; while T1 was active/);
+  });
+
+  // A host that stops naming agents must not open the gate.
+  test('a finish that does not say who it was is gated', async () => {
+    const decision = await taskCompleted({ agent_id: 'agent-22', cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+    assert.equal(decision.block, true);
+  });
+
+  // The constant and the agent definition are two spellings of one name, and
+  // only one of them is what the host reports. Renaming the agent alone would
+  // turn the gate off without failing anything else.
+  test('the name matches the agent this plugin ships', async () => {
+    const definition = await readFile(join(process.cwd(), 'agents', 'pd-implementer.md'), 'utf8');
+    const name = /^name:\s*(\S+)\s*$/m.exec(definition)?.[1];
+    const plugin = JSON.parse(await readFile(join(process.cwd(), '.claude-plugin', 'plugin.json'), 'utf8')).name;
+
+    assert.equal(IMPLEMENTER, `${plugin}:${name}`);
   });
 });
 
