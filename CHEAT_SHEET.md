@@ -53,6 +53,21 @@ the one check the test suite cannot replace.
 Three decisions are yours and are never inferred: the plan, the slice graph, and
 each push. Everything between them is the plugin's.
 
+**One line, one session.** Close the session when a phase ends and open a new
+one for the next — one per slice through preflight and pr, one per review round.
+Context is re-read whole on every call, so a session costs the square of its
+length: one carried from triage to merge pays for the triage again on every
+turn of pr-sync. Everything the next phase reads is on disk. In a new session:
+
+```bash
+pdkit next <n>                     # one line: what to run now
+```
+
+Opened in the issue's worktree, the session also starts with a summary that
+names the same line and the phase's turn budget (`budget.turns.*`). That budget
+is a guide, not a limit: nothing can count a session's turns, so the skill names
+it when it suggests stopping, and stopping means asking for a restart.
+
 ---
 
 ## Pick your route
@@ -129,6 +144,7 @@ worth typing; `pdkit --help` has the rest.
 
 ```bash
 pdkit state <n>                    # state, route, requirements, what is next
+pdkit next <n>                     # only what is next, as one line
 pdkit slice show --issue <n>       # the graph, and what has been verified
 pdkit pr list                      # every registered PR: CI, review, how idle
 pdkit defer list --issue <n>       # what was set aside and never settled

@@ -58,3 +58,9 @@ from the issue, with the code you wrote as evidence rather than as the answer.
 
 `/pd:pr <issue>` — the same gate, the same body, the same preflight. What was
 skipped is planning, not publishing.
+
+**In a new session**, small as this was. The session that made the fix has read
+the code around it and the test output, and `/pd:pr` needs neither: the branch,
+the commit and `preflight.json` are on disk. Publishing is where a person reads
+the push command, and that is better done at the start of a short session than
+at the end of a longer one. `pdkit next <issue>` prints the line.

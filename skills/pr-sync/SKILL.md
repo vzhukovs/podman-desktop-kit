@@ -112,3 +112,23 @@ reviewer a second reading of an argument they already followed.
 Never resolve a thread the reply did not answer. A resolved thread with nothing
 in it is worse than an open one: it removes the reviewer's marker without
 removing their question.
+
+## When the phase runs long
+
+`budget.turns.pr_sync` is per round, and it is a guide, not a count: nothing in
+the plugin can tell how many turns a session has taken, and neither can you.
+Stop between threads, never inside one. A fix is a commit; a draft reply should
+be a file before you stop — `pr reply` takes its body from one anyway. Then ask
+for a restart, and the new session takes up the threads `pdkit pr threads <k>`
+still shows open.
+
+## Next
+
+The next round on this pull request is `/pd:pr-sync <pr>` again, when the
+reviewer answers — **in a new session**, for the reason every round should be:
+the answer arrives days later, and this round is in `prs/<k>.md`, not in
+anything that needs re-reading on each turn of the next. `/pd:pr-status` shows
+what else is waiting. Once every pull request of the issue has merged,
+`/pd:close <issue>`. If the approach was rejected and the issue went back to
+`triaged`, planning restarts with `/pd:plan <issue>`. `pdkit next <issue>`
+prints whichever line applies.

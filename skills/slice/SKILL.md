@@ -141,7 +141,21 @@ Say that. A diff whose parts cannot be separated without rewriting the work is
 a finding about the plan — the design expects it (specification, section 11), and
 "slicing requires redoing tasks T2–T4" is a real answer, not a failure to slice.
 
+## When the phase runs long
+
+`budget.turns.slice` is the ceiling, as a guide: you cannot count your own
+turns exactly, and nothing else counts them. The graph is stored by `slice set`
+and each verification by `slice verify`, so `pdkit slice show --issue <n>` in a
+new session says exactly where this one stopped. Past the ceiling, ask for that
+session rather than verifying on here.
+
 ## Next
 
 Approval is the user's: `pdkit state <n> --to slices-approved`, and branches are
 cut from it. Then `/pd:preflight <issue>` per slice.
+
+**Each in a new session, and one per slice.** The approval can be given between
+sessions — the graph waits on disk. Taking slices one session at a time keeps
+the third from paying for the first two: context is re-read whole on every
+call, so a slice published at the end of a long session costs what the whole
+session did. `pdkit next <issue>` prints the line.

@@ -131,6 +131,23 @@ preflight:
 exec:
   max_attempts: 3
 
+# Soft ceilings on how long a phase runs, in turns. Context is re-read whole on
+# every call, so a session's cost grows as the square of its length: one phase
+# of 400 turns costs four times what four phases of 100 do. This is not a
+# refusal and cannot be one — no command can see how many turns a session has
+# taken. It is the number a skill names to the person when it suggests stopping;
+# the SessionStart summary prints the one for the phase it opens.
+budget:
+  turns:
+    triage: 40
+    plan: 60
+    exec_per_task: 80
+    validate: 80
+    audit: 40
+    slice: 60
+    pr: 50
+    pr_sync: 60
+
 quickfix:
   max_changed_lines: 20
   max_files: 3

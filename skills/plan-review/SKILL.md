@@ -57,3 +57,10 @@ back to `/pd:plan`. Approval stays a human action, and only after it:
 spelled `exec` rather than `implement` — the state it produces is `implemented`,
 and that is the one place in the chain where the state and the command are not
 the same word.
+
+**In a new session.** Exec is the longest phase in the chain — several turns per
+task, for every task — and whatever this one leaves in context is re-read on
+each of them. It starts from `plan.md` and the task files; the critic's case is
+in `plan-review.md`, and the approval is in the state record. The SessionStart
+summary names the command once the tree is on the issue's branch, and
+`pdkit next <issue>` does anywhere.

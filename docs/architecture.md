@@ -121,6 +121,20 @@ was actually observed:
   and after three failed captures it is blocked until somebody says in writing
   what changed.
 
+One hook enforces nothing and is still not a convenience. **SessionStart** opens
+a session with a dozen lines: the issue, its state and route, the task running
+and the files it owns, failed captures, the one command to run next, the phase's
+turn budget, and recent journal entries. In a tree with no task running it reads
+the issue off the `DESKTOP-<n>/…` branch, which is where every phase but exec
+starts. That summary is what makes a session per phase cheap. Context is re-read
+whole on every call, so a session costs roughly the square of its length — the
+dearest one measured ran 676 calls to 878 k tokens of context, and linear growth
+alone accounts for 90 % of its input. Splitting such a session into k sessions
+divides its cost by about k, for the same work and the same prompts. A
+restart is affordable only if it costs a summary rather than a re-explanation.
+That is the same reason the state lives on disk in the first place, and why
+`pdkit next <n>` exists for a session that opens anywhere else.
+
 The gate reads the command rather than matching a substring on it. A hook's
 `matcher` can only see the tool name, so the parsing happens in code: leading
 assignments, `&&`, `||`, `;`, substitutions, subshells, a program named by path, a

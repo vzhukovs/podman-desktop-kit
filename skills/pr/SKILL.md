@@ -173,7 +173,23 @@ without reading. It is mitigated by showing something worth reading — the
 actual body, the actual branch — and by a TTL short enough that consent cannot
 be banked. Printing "ready to push?" instead would hand that mitigation back.
 
+## When the phase runs long
+
+`budget.turns.pr` is the ceiling — approximate, because nothing counts turns
+and you cannot either. Steps 1 to 5 leave their results on disk: the branch,
+the squashed commit, the body file, `preflight.json`. Past the ceiling before
+step 6, stop there and ask for a restart; the new session picks up at the step
+that has no result yet. Step 6 is better shown at the start of a session than
+at the end of a long one.
+
 ## Next
 
 `/pd:pr-status` — CI, review and idleness across every open pull request. When a
 reviewer answers, `/pd:pr-sync <pr>`.
+
+**Each in a new session**, and this is the boundary that matters most. On the
+issues measured, `pr` and `pr-sync` were a third to over half of what a whole
+cycle cost, because they ran at the end of the session that had done everything
+else and re-read all of it on every turn. A review answer arrives days later.
+Nothing from this session needs to be in context then: `prs.json` and
+`prs/<k>.md` are. `pdkit next <issue>` prints the line.

@@ -100,7 +100,23 @@ the only record of why anyone expected a fourth attempt to differ.
 
 `pdkit state <n> --to implemented`.
 
+## When the phase runs long
+
+`budget.turns.exec_per_task` is per task, because the length of this phase is
+the length of the plan. Treat it as a rough mark — the count you would keep of
+your own turns is not a precise one. The place to stop is between tasks: after
+`task stop`, the next task needs only its task file, and the last one left its
+receipt and its commit. Past the mark, take the task in hand to its receipt,
+stop it, and ask for a restart; `/pd:exec <issue> T<k>` in the new session
+continues from the next task.
+
 ## Next
 
 `/pd:validate <issue>` — evidence for what was built, before anything judges it
 against the plan.
+
+**In a new session.** Validation looks at the running application and reports
+what it saw; the reasoning that produced the code is the one thing it should
+not inherit, and running here it would — re-read in full on each turn. The
+receipts and the commits are what it needs. `pdkit next <issue>` prints the
+line, and so does the summary the session opens with.

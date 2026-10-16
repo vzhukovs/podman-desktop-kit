@@ -59,3 +59,9 @@ it does, the transition refuses and the gate cannot open.
 
 `/pd:pr <issue> [slice]` — green preflight is what the push gate is issued from,
 and nothing else is.
+
+**In a new session.** What this run proved is in `preflight.json`, which is what
+`pdkit state --to preflight-green` reads; the test and lint output that scrolled
+past here is not, and does not need to be. Kept in context, it is re-read on
+every turn of `/pd:pr` — including step 6, where a person reads the push
+command. `pdkit next <issue>` prints the line.

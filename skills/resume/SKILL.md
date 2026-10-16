@@ -103,3 +103,12 @@ stop. The routes for that are `redo` (the work existed and was reverted) and
 `invalid` (it is already fixed), and both start at `/pd:triage`, not here.
 Rebasing a plan onto a world that no longer needs it produces a pull request
 nobody can review.
+
+## Next
+
+`/pd:pr-sync <k>` for what accumulated in review — **in a new session**. What
+this one worked out is already recorded: conflicts in the journal through
+`pdkit journal conflict`, changes of intent as amendments, the verdicts in
+`slices.json` and `preflight.json`. The rebase itself is not something the
+review round needs, and in context it would be re-read on every one of its
+turns. `pdkit next <issue>` prints the line.

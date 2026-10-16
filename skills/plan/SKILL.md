@@ -82,8 +82,23 @@ Approval is a human action. On approval — and only then — `pdkit ids freeze
 a trace rather than a numbering: after it, they cannot be renumbered under a
 PR that already cites them.
 
+## When the phase runs long
+
+`budget.turns.plan` is the ceiling here — a rough one, since no part of this
+can count turns, you included. Well past it, stop at a point the files can
+hold: `research.md` once phase 1 is done, open choices as `[NEEDS DECISION]` in
+a draft plan. Then ask for a restart. A plan finished in a second session from
+`research.md` costs less than one finished at the end of a long first, and
+nothing in it depends on having watched the scouts work.
+
 ## Next
 
 `/pd:plan-review <issue>` — before approval, not after. On approval, and only
 then, freeze and move to `plan-approved`; what runs from there is
 `/pd:exec <issue>`.
+
+**In a new session**, and the reason is sharper here than anywhere: the review
+is meant to be read cold. A session that wrote the plan and then reviews it
+carries every justification its author gave itself, and pays to re-read them on
+every turn. `plan.md`, `tasks/` and `research.md` are what the review works
+from. `pdkit next <issue>` prints the line to run.

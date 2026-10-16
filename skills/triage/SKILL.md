@@ -244,8 +244,23 @@ The route is recorded there, not implied: `standard`, `quickfix`,
 worked on goes to `pdkit state <n> --to abandoned` with the reason, and the
 draft comment stays for a human to post.
 
+## When the phase runs long
+
+`budget.turns.triage` is the ceiling for this phase, in turns. It is rough, and
+it has to be: you cannot count your own turns precisely, and nothing in the
+plugin counts them for you. Well past it, stop rather than finish — say what is
+settled and what is not, and ask for a restart. Whatever you would have carried
+over goes into the first message of the new triage, below the issue number,
+where section 0a puts it into `## Prior context` verbatim.
+
 ## Next
 
 `/pd:plan <issue>` — or `/pd:quickfix <issue>` when the route is `quickfix`.
 The route decides which, and taking a quickfix into planning is what `escalate`
 exists to undo.
+
+**In a new session.** Close this one first. Context is re-read whole on every
+call, so the duplicates weighed here, the files located and the issue thread
+would be paid for again on every turn of a phase that reads `issue.md` instead.
+What the conversation held and the file did not is what `## Prior context` was
+for, and it has been written. `pdkit next <issue>` prints the line to run.

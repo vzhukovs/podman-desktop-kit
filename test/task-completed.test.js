@@ -491,12 +491,63 @@ describe('re-anchoring', () => {
 
   // An empty session should not open with plugin noise: the first thing a user
   // reads sets what they learn to skip.
-  test('no active task means no output at all', async () => {
+  test('no active task on a branch that is not ours means no output at all', async () => {
     await stop({ worktree: WORKTREE, home });
 
     const decision = await startSession();
     assert.equal(decision.block, false);
     assert.equal(decision.message, undefined);
+  });
+
+  // A task pointer only exists inside exec. Every other phase boundary is a
+  // tree with no task running, and a session per phase is only cheap if the
+  // session that opens there is told where it is.
+  describe('between phases, the branch names the issue', () => {
+    // HEAD is moved rather than checked out: the fixture has no commits, and an
+    // unborn branch is still the answer `git branch --show-current` gives.
+    const onBranch = async (name, body) => {
+      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd: WORKTREE });
+      try {
+        await body();
+      } finally {
+        await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+      }
+    };
+
+    test('and the summary says what to run, with no task in it', async () => {
+      await stop({ worktree: WORKTREE, home });
+
+      await onBranch(`DESKTOP-${ISSUE}/join-container-command`, async () => {
+        const decision = await startSession();
+        assert.equal(decision.block, false);
+        assert.match(decision.message, /issue 18248 — triaged/);
+        assert.match(decision.message, /task {4}: none running/);
+        assert.match(decision.message, /run {5}: \/pd:plan 18248/);
+        // The ceiling for the phase the step opens, from budget.turns. Read
+        // from the defaults rather than pinned, for the same reason as `next`.
+        const { get, load } = await import('../lib/config.js');
+        const turns = get(await load({}), 'budget.turns.plan');
+        assert.match(decision.message, new RegExp(`budget {2}: about ${turns} turns, then a fresh session`));
+      });
+    });
+
+    test('but a terminal issue is not a reason to talk', async () => {
+      await stop({ worktree: WORKTREE, home });
+      await transition(18249, 'triaged', { home });
+      await transition(18249, 'abandoned', { home });
+
+      await onBranch('DESKTOP-18249/gone', async () => {
+        assert.equal((await startSession()).message, undefined);
+      });
+    });
+
+    test('nor is an issue nothing has been recorded about', async () => {
+      await stop({ worktree: WORKTREE, home });
+
+      await onBranch('DESKTOP-11111/unknown', async () => {
+        assert.equal((await startSession()).message, undefined);
+      });
+    });
   });
 });
 

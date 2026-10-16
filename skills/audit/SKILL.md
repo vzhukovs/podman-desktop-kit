@@ -60,7 +60,21 @@ with the model that wrote the code.
 Unaddressed findings are not a reason to skip the transition quietly — they go
 in `audit.md` and the state stays where it is.
 
+## When the phase runs long
+
+`budget.turns.audit` is low on purpose. The facts come from `pdkit audit`, the
+reading from `pd-auditor`, and an audit that runs long is usually this session
+reading the diff itself — the auditor's job, in its own context. The number is
+a guide rather than a count anyone keeps. Past it, write what has been found to
+`audit.md` and ask for a restart.
+
 ## Next
 
 `/pd:slice <issue>` — the change set becomes a verified graph of atomic pull
 requests, even when the graph turns out to have one node.
+
+**In a new session.** Slicing works from the finished diff and from
+`slice suggest`, and what it needs of the audit is in `audit.md`. The
+conversation that produced the findings has no further vote, and carrying it
+forward means paying for it on every turn of the slicing. `pdkit next <issue>`
+prints the line.

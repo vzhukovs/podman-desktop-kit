@@ -127,6 +127,13 @@ split by phase and normalised per task, slice, requirement and changed line. It
 can snapshot a baseline and compare later issues to it. See
 [docs/workflows.md](docs/workflows.md#measuring-what-a-cycle-costs).
 
+The cycle is walked one session per phase, not in one sitting. Context is re-read
+whole on every call, so one session carried from triage to merge pays for the
+triage again on every turn of the review; each phase's artefacts are on disk, and
+a new session opens on a summary of where the issue stands. `pdkit next <n>`
+prints the one command to run. See
+[docs/workflows.md](docs/workflows.md#one-session-per-phase).
+
 ## Status and limitations
 
 Stated in full, because "the plugin is tested" should not be read more widely

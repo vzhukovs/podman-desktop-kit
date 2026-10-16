@@ -40,6 +40,35 @@ fixes — see [RELEASING.md](RELEASING.md).
     the `agent-done` journal entry. The journal count is printed beside it.
   - Missing transcripts are a `skip` with the reason, not a row of zeros.
 
+### Changed
+
+- **The cycle is now walked in several sessions, not one.** Each orchestrating
+  skill — `triage`, `plan`, `plan-review`, `exec`, `validate`, `audit`, `slice`,
+  `preflight`, `pr`, `pr-sync`, `close`, `quickfix`, `resume` — ends its
+  `## Next` by saying the next phase starts in a new session, and why: context is
+  re-read whole on every call, so a session costs the square of its length, and
+  the dearest one measured (676 calls, 878 k tokens of context, never compacted)
+  spent 90 % of its input re-reading what it had accumulated. For you this means
+  closing the session when a phase ends and opening another, one per slice
+  through `preflight` and `pr`, one per review round. Nothing the next phase reads
+  is lost: it is on disk, as it always was. No state, transition or gate changed.
+- **`pdkit next <n>`** prints one line: what to run next for the issue. For the
+  start of a fresh session, where it is cheaper to type than to remember. A
+  terminal state is said in words rather than printed as an empty line.
+- **The `SessionStart` summary appears between phases, not only inside exec.**
+  It used to need a running task, which exists only between `task start` and
+  `task stop` — so at every phase boundary but those, the session that was meant
+  to be cheap to open opened on nothing. With no task running, the issue is now
+  read off the tree's `DESKTOP-<n>/…` branch. A tree on any other branch, an
+  issue with no record and a terminal one still get no output.
+- **`budget.turns` in `defaults/config.yaml`**: a soft ceiling per phase, in turns
+  (`triage` 40, `plan` 60, `exec_per_task` 80, `validate` 80, `audit` 40,
+  `slice` 60, `pr` 50, `pr_sync` 60). The `SessionStart` summary prints the one
+  for the phase it opens, and the eight skills those phases belong to say what to
+  write to disk and to ask for a restart when a phase runs well past it. Nothing
+  enforces it, and nothing could: no command can see how many turns a session has
+  taken, and the model cannot count its own precisely. The skills say so.
+
 ### Fixed
 
 - **The receipt gate and the `agent-done` count never ran: the hook was

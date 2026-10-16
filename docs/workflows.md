@@ -30,6 +30,7 @@ names the commands and the decision points that stay yours.
   · [ownership](#the-ownership-hook)
   · [receipts](#receipts)
   · [thresholds](#calibrating-the-thresholds)
+  · [one session per phase](#one-session-per-phase)
   · [decision points](#decision-points-that-stay-yours)
   · [knowledge](#revising-what-the-plugin-thinks-it-knows)
   · [where state lives](#where-the-state-lives)
@@ -100,6 +101,11 @@ that decides. Read the top few, then triage one.
 /pd:preflight 12345   → deterministic gates
 /pd:pr 12345          → branch, PR body, PR                      [you confirm push]
 ```
+
+**Each line is its own session.** Close the session when a phase ends and open a
+new one for the next; `pdkit next 12345` prints what to run. This is not a
+preference about tidiness — see [one session per phase](#one-session-per-phase)
+for what carrying one session through the whole list costs.
 
 **Starting with what you already know.** The first line is the command;
 everything after it in the same message is kept verbatim as prior context:
@@ -838,6 +844,62 @@ Read the sampling window it prints. `gh pr list` orders by creation date, so a
 hundred merged pull requests are the last few weeks of work rather than a hundred
 merges — which under-represents slow ones precisely because they are slow, and that
 is the tail the stale threshold is about.
+
+## One session per phase
+
+The cycle is walked in several sessions, not one: a new session for each phase,
+one per slice through preflight and pr, and one per review round. Every
+orchestrating skill ends its `## Next` by saying so.
+
+The reason is arithmetic. Context is re-read whole on every call, so a session
+that grows steadily to C tokens over N calls reads about N·C/2 in total — its
+cost grows as the square of its length. The dearest session measured (issue
+18967, 26 August to 16 October) made 676 calls and grew to 878 k tokens of
+context without one compaction. N·C/2 predicts 297 M input tokens against 331 M
+observed, and 82 % of the issue's cost was cache reads — re-reading what had
+already accumulated. The same work in eight sessions of about 85 calls is about
+41 M. `pr` and `pr-sync`, at the end of such sessions, were a third to over half
+of each cycle. `pdkit cost --issue <n>` repeats the measurement for any issue.
+
+Nothing is lost at the boundary that the next phase reads. `issue.md`,
+`research.md`, `plan.md`, `tasks/`, `receipts/`, `validation.md`, `audit.md` and
+`slices.json` are on disk, under `$PDKIT_HOME`, which is why state lives there.
+What does not survive is the informal part of a conversation — and for that,
+triage takes whatever follows the first line of the command into
+`## Prior context`, verbatim.
+
+What makes a restart cheap rather than merely possible:
+
+```
+pdkit next 12345              # one line: the command to run now
+```
+
+and the summary `SessionStart` prints when a session opens in the issue's
+worktree — the issue, state, route, the running task and its files if there is
+one, failed captures, the command to run, the phase's turn budget and the last
+few journal entries:
+
+```
+pdkit: issue 12345 — plan-approved, standard
+  task    : none running
+  next    : implemented
+  run     : /pd:exec 12345
+  budget  : about 80 turns per task, then a fresh session — a guide, nothing counts them
+  recent  :
+    …
+```
+
+**The budget is a guide and cannot be a limit.** `budget.turns.*` in the config
+holds a soft ceiling per phase, in turns. No command can see how many turns a
+session has taken, and the model cannot count its own precisely, so nothing
+refuses anything at the ceiling. It is the number a skill names when it suggests
+stopping — and stopping means writing what is settled to disk and asking for a
+restart, not finishing the phase in a context that is already the expensive part.
+
+Compaction is not the same thing. A compacted session keeps a summary of
+everything before it and costs a call to produce; a new one keeps only what the
+files and the summary above hold, which is what the next phase was designed to
+work from.
 
 ## Measuring what a cycle costs
 

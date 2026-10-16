@@ -96,3 +96,11 @@ Do not close the upstream issue and do not comment on it. Both are refused by
 the hook, and the refusal is the workflow being honest with itself: writing to
 someone else's tracker is a human action, and upstream closes its own issues
 when the pull request merges.
+
+## Next
+
+Nothing, for this issue: `merged` is terminal, and so is `resolved`. The next
+issue starts with `/pd:triage` **in a new session**. Nothing of this one needs to
+be in it — what it taught that is worth keeping went into `knowledge/`, which
+every later issue reads, and the rest would only be re-read on every turn of
+work it has no bearing on.

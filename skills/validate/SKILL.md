@@ -150,6 +150,21 @@ If the application could not be driven at all, produce the human checklist,
 attach nothing, and let the outcome be `unverified`. An honest gap is useful; a
 fabricated pass is worse than no validation at all.
 
+## When the phase runs long
+
+`budget.turns.validate` is the ceiling, and a rough one: nothing counts turns,
+you included. Every step is on disk the moment `validate attach` returns, and
+`validate steps` lists what is still waiting, so a restart loses only the
+running application. Past the ceiling, `pdkit validate stop --issue <n>` and ask
+for one; `validate launch` brings the application back in the next session.
+
 ## Next
 
 `/pd:audit <issue>` — the diff against the plan, in fresh context.
+
+Fresh context means **a new session**, not only a fresh auditor. The auditor is
+a subagent and starts clean whatever happens here; the session that hands it the
+diff and reads its verdict does not, and pays for this whole validation — the
+launch, the runs, every step attached — on each of its turns. `validation.md`
+is what carries over.
+`pdkit next <issue>` prints the line.

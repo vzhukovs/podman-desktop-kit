@@ -149,6 +149,7 @@ the shipped default through.
 | `validation.app.startup_timeout` | How long to wait for `/json/version`. A process that dies before then is reported at once, not after the timeout |
 | `preflight.scripts.*` | Overrides for script-name resolution. **Empty by default**, and it should stay that way: names are resolved from the repository's own `package.json`, which is the right source. Filling one in is worth doing exactly when the resolver got it wrong — which is a reason to fix the resolver |
 | `exec.max_attempts` | How many failed captures of `Done when` block a task. Three by default; zero switches blocking off entirely. It can only weaken the rule, never tighten it — the count itself comes from the captures, not from anyone's account of them |
+| `budget.turns.*` | A soft ceiling per phase, in turns: `triage`, `plan`, `exec_per_task`, `validate`, `audit`, `slice`, `pr`, `pr_sync`. Nothing refuses at it, and nothing could — no command sees how many turns a session has taken. The `SessionStart` summary prints the one for the phase it opens, and the skill names it when it suggests stopping and restarting. Context is re-read whole on every call, so a phase twice as long costs about four times as much |
 | `review.stale_after_days` | When an open pull request is reported as idle |
 | `review.bots_collapsed` | Accounts collapsed to one line in `pr threads`. Collapsed, never dropped |
 | `review.bot_escalate` | Words that expand a collapsed bot back to full text. One direction only: a match raises a thread and never lowers one |
