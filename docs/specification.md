@@ -1374,6 +1374,7 @@ The rules the handlers apply:
 | `subagent-stop` | any agent other than `pd:pd-implementer` finishing | allow, after counting it. Only the implementer's finish claims the active task; a payload with no `agent_type` is treated as the implementer |
 | `subagent-stop` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |
 | `subagent-stop` | a real receipt with `exitCode ≠ 0` | exit 2: the `Done when` command did not pass |
+| `subagent-stop` | the same run has stopped `STALL_LIMIT` (3) times with no capture of the task between, e.g. `pdkit receipt write` cannot run because `Done when` is prose | the third refusal adds that the next stop is let go; the fourth stop is allowed with rule `stalled`. Nothing writes `task-receipt … accepted`, so the task stays unproven and the audit reports it. Without this, a failure that records no attempt would hold the agent forever |
 | `subagent-stop` | this is the `exec.max_attempts`-th failure in a row | exit 2, with a **different** message: the task is blocked, and the question is not "fix it and capture again" but "what changed between the second attempt and the third". Exit 2 on `SubagentStop` keeps the subagent running, so when the host asks again (`stop_hook_active`) it is let go with the same message rather than held for a fourth try |
 | `session-start` | — | inject the summary: active issue, state, next step. This is re-anchoring |
 | `pre-compact` | — | flush the active state to the journal so compaction does not eat the task context |

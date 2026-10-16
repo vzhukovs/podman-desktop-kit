@@ -37,6 +37,15 @@ fixes — see [RELEASING.md](RELEASING.md).
     `/pd:exec` would have been held until it wrote a receipt for work that was
     never its job. Other agents are still counted. A payload with no
     `agent_type` is gated rather than let through.
+  - **A run that cannot capture is let go instead of held forever.** `pdkit
+    receipt write` can fail before it captures anything: no task file, or a
+    `Done when` that is prose. That records no attempt, so the attempts ceiling
+    never arrives, and every stop was refused with the same instruction. The
+    hook now counts the run's stops since the task's last capture, from the
+    `agent-done` and attempt entries already in the journal. On the third, the
+    refusal says the next stop is let go. The fourth is allowed as `stalled`.
+    That is not acceptance: no `task-receipt … accepted` is written, and the
+    audit still reports the receipt as missing.
   - **`pdkit doctor` warns when the journal has no `agent-done` for 30 days.**
     `hooks` only proved that the manifest names a handler that exists. It could
     not prove that the host ever sends the event, and it stayed green throughout.

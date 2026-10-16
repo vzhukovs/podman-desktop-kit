@@ -38,7 +38,7 @@ import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
 import { HOOK_HANDLERS } from '../lib/hooks/events.js';
-import { IMPLEMENTER, handle as taskCompleted } from '../lib/hooks/task-completed.js';
+import { IMPLEMENTER, STALL_LIMIT, handle as taskCompleted } from '../lib/hooks/task-completed.js';
 import { read as readJournal } from '../lib/journal.js';
 import { TRANSITIONS, setOwns, transition } from '../lib/state.js';
 
@@ -95,7 +95,12 @@ after(async () => {
   for (const dir of [home, WORKTREE]) await rm(dir, { recursive: true, force: true });
 });
 
-const complete = () => taskCompleted({ task_id: 'agent-7', cwd: WORKTREE }, { event: 'task-completed', pluginRoot: '' });
+// A fresh run id per call: each call stands for a separate run, and the stall
+// limit counts stops per run, so one shared id would make every test depend on
+// how many came before it.
+let runs = 0;
+const complete = () =>
+  taskCompleted({ task_id: `agent-7-${(runs += 1)}`, cwd: WORKTREE }, { event: 'task-completed', pluginRoot: '' });
 
 // How much machinery an issue took. Dollars alone cannot tell a big issue from
 // a wasteful one — an issue with seven tasks and two slices is supposed to cost
@@ -371,6 +376,62 @@ describe('completing a task', () => {
     assert.equal(decision.block, true);
     assert.equal(decision.rule, 'receipt');
     assert.match(decision.reason, /valid receipt for a command that failed/);
+  });
+
+  // `pdkit receipt write` can fail before it captures anything: a missing task
+  // file, or a `Done when` that is prose. No attempt is recorded, so the
+  // ceiling never comes. Without a limit of its own, the hook would hold the
+  // agent forever, telling it to run a command that cannot run.
+  describe('a run that cannot capture', () => {
+    const stopAs = (id) =>
+      taskCompleted({ agent_id: id, agent_type: IMPLEMENTER, cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+
+    test(`is warned on stop ${STALL_LIMIT} and let go after, without being accepted`, async () => {
+      const accepted = async () => (await readJournal({ issue: ISSUE, event: 'task-receipt' }, { home })).length;
+      const acceptedBefore = await accepted();
+
+      for (let stop = 1; stop < STALL_LIMIT; stop += 1) {
+        const decision = await stopAs('stuck-1');
+        assert.equal(decision.block, true, `stop ${stop} is held`);
+        assert.ok(!/next stop is let go/.test(decision.reason), `stop ${stop} carries no warning yet`);
+      }
+
+      const warned = await stopAs('stuck-1');
+      assert.equal(warned.block, true);
+      assert.match(warned.reason, /there is no receipt/);
+      assert.match(warned.reason, /next stop is let go/);
+
+      const released = await stopAs('stuck-1');
+      assert.equal(released.block, false);
+      assert.equal(released.rule, 'stalled');
+      assert.match(released.message, /NOT accepted/);
+      assert.equal(await accepted(), acceptedBefore, 'letting go is not acceptance');
+    });
+
+    // The loop the limit guards against is stops with nothing between them. A
+    // run that keeps capturing is making progress, and the attempts ceiling
+    // governs it instead.
+    test('a capture starts the count again', async () => {
+      await unblockTask({ issue: ISSUE, taskId: 'T1', reason: 'reset for the test', home });
+      await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run({ exitCode: 1 }), home });
+
+      for (let stop = 0; stop < STALL_LIMIT; stop += 1) await stopAs('capturing-1');
+      await recordAttempt({ issue: ISSUE, taskId: 'T1', exitCode: 1, home });
+
+      const decision = await stopAs('capturing-1');
+      assert.equal(decision.block, true);
+      assert.match(decision.reason, /valid receipt for a command that failed/);
+      assert.ok(!/next stop is let go/.test(decision.reason));
+    });
+
+    // Per run: one agent's stuck stops do not use up the next one's.
+    test('another run starts from nothing', async () => {
+      for (let stop = 0; stop <= STALL_LIMIT; stop += 1) await stopAs('stuck-2');
+
+      const decision = await stopAs('fresh-1');
+      assert.equal(decision.block, true);
+      assert.equal(decision.rule, 'receipt');
+    });
   });
 
   test('acceptance is journalled with the agent’s own task id', async () => {
