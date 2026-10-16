@@ -40,7 +40,13 @@ uses them as enum members next to `auto` (`mcp.playwright: auto | on | off`).
 ## `$PDKIT_HOME`
 
 Defaults to `~/.pdkit/podman-desktop`. Holds config, the package map, gate
-tokens, per-issue state and artefacts, the journal, and review reports.
+tokens, per-issue state and artefacts, the journal, review reports, and the
+snapshots `pdkit cost --snapshot` writes to `cost/`.
+
+`pdkit cost` also reads outside it: Claude Code's transcripts, under
+`$CLAUDE_CONFIG_DIR/projects/` (or `~/.claude/projects/`) in the directory named
+after the repository's path. `--transcripts <dir>` overrides that. Without
+transcripts the command reports a skip, not zeros.
 
 Resolution order:
 

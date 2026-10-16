@@ -120,6 +120,13 @@ Everything they do rests on `pdkit`, a zero-dependency CLI the plugin puts on
 `PATH`. `pdkit --help` lists it; you can drive the whole workflow from a terminal
 without a Claude Code session, which is how most of it was tested.
 
+Two `pdkit` commands measure rather than act, and no skill runs them. `pdkit
+stats` checks the guessed config thresholds against what upstream merges.
+`pdkit cost` measures the tokens each issue cost, from Claude Code's transcripts,
+split by phase and normalised per task, slice, requirement and changed line. It
+can snapshot a baseline and compare later issues to it. See
+[docs/workflows.md](docs/workflows.md#measuring-what-a-cycle-costs).
+
 ## Status and limitations
 
 Stated in full, because "the plugin is tested" should not be read more widely

@@ -30,9 +30,9 @@ fixes — see [RELEASING.md](RELEASING.md).
   - **One call is counted once.** Claude Code writes one response as one line
     per content block, each carrying the same `message.usage`; summing lines
     counted most calls two or three times. Calls are keyed by `message.id`, and
-    the number of repeated lines dropped is printed. On the corpus behind
-    specs/2026-10-16-token-cost-analysis.md this halves the parent-session
-    figures in its section 1.
+    the number of repeated lines dropped is printed. On four months of real
+    transcripts this halved the parent-session figures of the first, line-summing
+    analysis.
   - **Subagents are counted.** Their calls are in
     `<session>/subagents/agent-<id>.jsonl`, not in the session file, and were
     missing from the first analysis. They are read, kept apart by file rather

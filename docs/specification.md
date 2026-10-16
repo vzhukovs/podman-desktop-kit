@@ -367,6 +367,7 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 │   └── amendments/A1.md         # plan amendments arising from review
 ├── archive/12345/2026-08-20-1114/   # what `pdkit reset` moved out of the way
 ├── journal/YYYY-MM.md           # global, append-only, sliced by month
+├── cost/YYYY-MM-DD.json         # `pdkit cost --snapshot`: the baseline a later run compares to
 └── reviews/2903.md              # reviews of other people's PRs, tied to no issue
 ```
 
@@ -475,7 +476,10 @@ completions would make the record cheapest exactly where the work went worst.
 It answers "how much machinery did this issue take", which is the question that
 survives comparison between issues when a bare cost does not: an issue with seven
 tasks and two slices is supposed to be dearer than a one-task fix, and the two
-are told apart by `pdkit journal --issue <n> --event agent-done`.
+are told apart by `pdkit journal --issue <n> --event agent-done`. `pdkit cost`
+uses it as a denominator, but counts agent runs from the subagent transcripts
+rather than from this entry, and prints the journal's count beside it: a count
+that depends on a hook firing reads as zero for every issue before the hook did.
 
 Which agent ran is recorded when the host says so: `SubagentStop` carries
 `agent_id` and `agent_type` (`pd:pd-scout`, `general-purpose`), and the entry
@@ -2030,3 +2034,30 @@ looks generous against that population (20 of 78 open pull requests are past it)
 so it under-counts precisely the slow tail the threshold is about. What to do
 with the numbers stays with the owner: the command recommends nothing and writes
 nothing.
+
+### Cost of a cycle
+
+`pdkit cost` (`lib/cost.js`) measures tokens spent per issue against the size of
+the work, so that a cycle that got cheaper can be told from a cycle that was
+smaller. Sources: Claude Code's transcripts (`~/.claude/projects/<slug>/`,
+subagents under `<session>/subagents/`), the journal, and each issue's records
+read through the modules that own them. A call belongs to the issue of the
+nearest earlier journal entry within six hours; the phase is set by that issue's
+last state transition. The scale is cost units, `input + 0.1·cache-read +
+1.25·cache-write + 5·output`, ×5 on Opus: list-price ratios rather than dollars,
+so a price change does not read as progress. Issues are grouped by route and
+never compared across routes. `--snapshot` writes `$PDKIT_HOME/cost/<date>.json`,
+and `--compare <date>` sets that snapshot against the issues journalled after it.
+
+Two properties of the transcripts decide whether the numbers are right, and the
+first analysis missed both. **One API response is written as one line per
+content block**, each with the same `message.usage`, so summing lines counted
+most calls twice; calls are keyed by `message.id`. **Subagent calls are in their
+own files**, not in the session's, and `isSidechain` is absent from a third of
+the parent's lines; the split is by file.
+
+The baseline (2026-10-16, six `standard` issues, 4332 calls) is 13.3 M units per
+task and 160 k per changed line, with 12% of calls attributed to no issue. The
+dearest phases are `pr` and `pr-sync`, at 33–60% of a cycle, and 82% of the
+dearest cycle is cache reads. Like `stats`, the command recommends
+nothing; it prints the unattributed share and its caveats every time.
