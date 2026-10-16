@@ -71,6 +71,18 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **`pdkit receipt write`, `pdkit validate run` and `pdkit e2e stability` no
+  longer print the run.** They wrote the whole capture to stdout, which put it in
+  the session's context until the session ended: receipts on disk reach 454 KB,
+  73 of them came to 2.55 MB, and `e2e stability` printed three Playwright runs
+  in a row (180 + 172 + 168 KB on DESKTOP-18967). Each now prints what
+  `pdkit slice verify` already did — the path to the file — with the exit code,
+  duration and digest, and on a non-zero exit the last 40 lines
+  (`FAILURE_TAIL_LINES`), because a failing assertion is printed at the end of a
+  run. The capture and the receipt are unchanged and still whole; only what is
+  printed about them is shorter. `e2e stability --json` reports each run's path
+  and digest instead of the last run's output.
+
 - **The receipt gate and the `agent-done` count never ran: the hook was
   registered on the wrong event.** It sat on `TaskCompleted`, which Claude Code
   raises when a TaskUpdate marks a task-list item complete or an agent-team

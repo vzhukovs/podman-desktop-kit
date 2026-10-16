@@ -825,6 +825,12 @@ Completing a task without one is refused. So is completing one whose receipt rec
 a non-zero exit: that receipt is valid, and what it proves is that the work is not
 done.
 
+What it prints is not the run. The receipt holds every byte; the terminal gets its
+path, the exit code, the duration and the digest, plus the last 40 lines when the
+exit is non-zero — the failing assertion is at the end. `pdkit validate run` and
+`pdkit e2e stability` answer the same way. The capture is never shortened, only
+what is printed about it.
+
 ## Calibrating the thresholds
 
 Four numbers in `config.yaml` were common sense: two quickfix bounds, the stale
