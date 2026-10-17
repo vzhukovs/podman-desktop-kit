@@ -70,6 +70,17 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Changed
 
+- **The diff is read by the auditor and the slicer, not by the session that
+  dispatches them.** `/pd:audit` and `/pd:slice` read `git diff main...HEAD`
+  and the `slice suggest` file map in the parent context, where on a large
+  issue they stayed for the rest of the session. Both skills now hand the agent
+  the issue number and nothing else, and `pd-auditor` and `pd-slicer` answer in
+  a fixed form of at most 40 lines — the shape `pd-scout` already used, with a
+  `file:line` on every finding and no fixes. The auditor's answer is what goes
+  into `audit.md`. `/pd:exec` also says why a task goes to `pd-implementer`
+  rather than being done in the session: 82 tasks were started against 29
+  implementer runs, and a subagent returned about 250 tokens to its parent where
+  the same work done in place stays in context until the cycle ends.
 - **The cycle is now walked in several sessions, not one.** Each orchestrating
   skill — `triage`, `plan`, `plan-review`, `exec`, `validate`, `audit`, `slice`,
   `preflight`, `pr`, `pr-sync`, `close`, `quickfix`, `resume` — ends its

@@ -33,11 +33,22 @@ that need no judgement at all:
 
 This command reports and never decides. It exits zero whatever it finds.
 
+`pd-auditor` runs it, not this session. On a large issue the report lists
+every task and every changed file, and that belongs in the context that reads
+the diff.
+
 ## 2. The three questions
 
-`pd-auditor` gets the report, the plan and `git diff main...HEAD`. It does not
-get the implementer's account of the work — a summary of why the code is right
-is the most persuasive thing in the room and the least evidential.
+Dispatch `pd-auditor` with the issue number and the base, and nothing else.
+It runs `pdkit audit` and reads `git diff main...HEAD` and the plan in its own
+context. Do not read the diff here, not even to hand it over: the auditor's
+context ends when it returns, and this session's is paid for again on every
+turn until it ends. What comes back is the short form at the end of
+`agents/pd-auditor.md`, and that is all this session needs.
+
+It does not get the implementer's account of the work — a summary of why the
+code is right is the most persuasive thing in the room and the least
+evidential.
 
 1. Which requirements have no code? (The map says which have no *task*. Whether
    the code under a task actually implements the requirement is the question.)
@@ -46,8 +57,10 @@ is the most persuasive thing in the room and the least evidential.
 
 ## 3. The verdict
 
-`audit.md` under the issue: findings first, each with a file and a line, then
-what the auditor could not judge by reading.
+`audit.md` under the issue is the auditor's answer as it came back: findings
+first, each with a file and a line, then what it could not judge by reading.
+Write it as returned. Opening the files to check a finding is reading the diff
+here after all; a finding you doubt goes back to `pd-auditor` as a question.
 
 Two disciplines, both from the same failure mode. An auditor told to find
 problems will find them in correct code, so: an empty findings section is a

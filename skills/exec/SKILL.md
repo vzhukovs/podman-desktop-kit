@@ -34,6 +34,14 @@ because it looks like nothing happened.
    completing the task requires its receipt.
 2. Give the worker the task, its `Owns` list, its `Done when` command, and the
    frozen interfaces. Nothing else — not the whole plan, not the issue thread.
+
+   The worker is a `pd-implementer`, not this session working through the same
+   list. This is arithmetic, not taste: the subagent's context dies with it, and
+   this session's is paid for again on every turn until the cycle ends. Twenty
+   subagent runs measured in this plugin's own transcripts returned about 250
+   tokens each to their parent. The same task done here leaves every file read,
+   every edit and every test run in context — thousands of tokens, re-read on
+   each remaining task.
 3. The worker touches **only** the files in `Owns`. Anything else is a
    planning error to report, not a boundary to cross.
 4. `pdkit receipt write --issue <n> --task T1` runs the `Done when` command and

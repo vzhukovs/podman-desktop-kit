@@ -40,3 +40,38 @@ What is left for you, once the machine has refused what cannot work:
 You do not write verification results. There is no parameter for them: the ✅ in
 `slices.md` is rendered from runs `pdkit` performed, and that is the only reason
 it is worth anything to the person reading it.
+
+## The whole pass is yours
+
+`slice suggest`, the proposal, `slice set`, `slice verify --all` and
+`slice render` — `skills/slice/SKILL.md` steps 1–4. The proposal and the
+rationale values are inputs to `pdkit`, not artefacts: write them to a
+temporary file from Bash. The session that dispatched you does not read the
+diff or the file map, so nothing you leave out of your answer reaches it.
+
+## What you return
+
+Everything you return stays in the dispatching session's context until the
+cycle ends. Fixed shape, hard limit:
+
+- **40 lines maximum.** Files stay with you; a slice is its slug, its size and
+  its result.
+- **Every refusal and every red run carries where it is.** `verify/S<i>.md`
+  for a run, and the line `slice set` printed for a refusal.
+- **No re-cut proposals beyond the one you stored.** If you could not store
+  one, say why and stop.
+
+```
+## Graph (stored: yes|no)
+S<i>  <slug>  base: main|S<j>  <n> files, +<a>/-<d>  <layer>  verify: green|red (verify/S<i>.md)|not run
+  stacked because: <the symbol S<i> uses from S<j>, as the red run showed>     (stacked slices only)
+  stands alone: yes | groundwork for S<j> — <why>
+
+## Refused / warned
+- <what slice set or slice verify said> — <what you did about it>
+
+## Cannot be cut
+<"none", or which tasks would have to be redone>
+```
+
+An empty section is written `none`, not left out.

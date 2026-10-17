@@ -19,6 +19,22 @@ slice applies back.
 `pdkit state <issue>` says `audited`. Slicing a diff nobody has audited means
 cutting up work that may not match its plan.
 
+## Who does what
+
+Dispatch `pd-slicer` with the issue number (and `--from-pr <k>` when splitting
+an open pull request). Steps 1–4 below are its work, in its own context: the
+file map from `slice suggest`, the diff, the verify runs. None of it is read
+here, not even to check the cut. The slicer's context ends when it returns;
+this session's is paid for again on every turn until it ends, and on a large
+issue the file map alone is thousands of tokens.
+
+What comes back is the short form at the end of `agents/pd-slicer.md`: one
+line per slice with its verify result, then what was refused or warned about.
+If it is not enough to decide on, ask the slicer again — `pdkit slice show
+--issue <n>` prints the stored graph without the diff.
+
+This session does **Then**.
+
 ## 1. The facts
 
 ```
