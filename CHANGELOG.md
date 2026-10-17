@@ -9,6 +9,80 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-17
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then **`pdkit doctor --gate-selftest`**, once. This release changes the hooks
+(the receipt gate moves from `TaskCompleted` to `SubagentStop`) and the gate
+itself (it now stands aside outside podman-desktop, and sees a subcommand behind
+`git -C` / `gh -R`). The gate is registered by the manifest and executed by the
+host, so an upgrade that broke that wiring leaves every test green and the
+plugin gating nothing. After that, run any subagent and check that
+`pdkit journal --event agent-done` prints a line.
+
+**The cycle is now walked in several sessions, not one, and that is the point
+of this release, not a regression in convenience.** Every phase ends by asking
+you to close the session and open a new one for the next phase: one per slice
+through `preflight` and `pr`, one per review round. `pdkit next <n>` prints what
+to type in the new session, and the `SessionStart` summary tells it where the
+issue stands. The reason is in the measurement behind this release
+(`specs/2026-10-16-token-cost-analysis.md`): Claude Code re-reads the whole
+context on every call, so a session costs the square of its length. On the
+dearest cycle measured, **82 % of the cost was cache reads: re-reading context
+the session had already accumulated**, not prompts, tools or model output. The
+most expensive phases were `pr` and `pr-sync` (33–60 % of a cycle), only because
+they came last in a long session. Nothing a phase needs is lost at the boundary:
+`issue.md`, `plan.md`, `tasks/`, `receipts/` and the journal were always on disk,
+and the next session reads them from there. No state, transition or gate
+condition changed to make this work.
+
+Also changed in what you do:
+
+- **`/pd:pr` step 8 is `pdkit publish`**, one command in place of four. The four
+  still work alone, for finishing a publication that stopped partway.
+- **`pdkit issue fetch` prints the newest 15 comments**, plus a count of the
+  rest. `--full` prints all of them. The body is still printed whole.
+- **`pdkit cost`** and **`pdkit next`** are new.
+- **The gate no longer refuses `git push` in other repositories.** This widens
+  what it allows, as described under Changed. Deny rules still hold everywhere.
+
+Nothing in `$PDKIT_HOME` has to be moved or edited, and an issue in flight is
+unaffected. The state machine, the journal, the configuration loader and the
+attempts record are byte-for-byte those of 0.4.0. The two new configuration keys
+(`budget.turns`, `triage.fetch_comments`) come from the shipped defaults when
+your `config.yaml` lacks them. `pdkit cost --snapshot` writes into a new
+`cost/` directory and touches nothing else.
+
+### Measured cost: before and after
+
+`pdkit cost --compare 2026-10-16`, run on the release day:
+
+```
+route standard            before        after      delta
+  per task                 13.3 M            —
+  per changed line          160 k            —
+  per merged PR             150 M            —
+  avg context               274 k            —
+  sessions per issue         1.50            —
+  opus share                 62 %            —
+  agent runs per task        1.40            —
+
+  unattributed share         12 %         12 %
+```
+
+**There is no "after" yet.** No issue has started since the baseline snapshot,
+so the analysis's projection (a cycle 6–9 times cheaper, `avg context` below
+150 k) is neither confirmed nor refuted by this release. It is an expectation,
+not a result. The first issue that goes through 0.5.0 will provide the after
+figures, and they will be added here whatever they show.
+
 ### Added
 
 - **`pdkit publish`: `/pd:pr` step 8 as one command.** The journal held 152
@@ -1260,7 +1334,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.1.0...v0.2.0
