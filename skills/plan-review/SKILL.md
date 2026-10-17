@@ -4,6 +4,7 @@ description: "Adversarial review of a plan, before any code is written."
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: opus
+effort: high
 ---
 
 Fresh context, via `pd-plan-critic`. The author of a plan is the worst reviewer

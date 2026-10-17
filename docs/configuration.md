@@ -175,8 +175,28 @@ Not in this file. Models are set by `model:` in `skills/*/SKILL.md` and
 
 This is deliberate: a skill's own model can only be set in its frontmatter, so a
 config key would control the subagents and not the skill — a lever that half
-works is worse than no lever. To cut cost, edit the frontmatter of `plan`,
-`slice` and `audit`, and leave the rest on Sonnet.
+works is worse than no lever. Opus is kept where no machine re-checks the
+verdict: `triage`, `plan`, `plan-review`, `audit` and the agents `pd-auditor`,
+`pd-plan-critic`, `pd-review-synth`. The rest is Sonnet.
+
+A skill's `model:` and `effort:` hold only until the end of the turn it was
+invoked in (see CONTRIBUTING.md). After the first reply from you or from a
+background agent, the session's own model and effort level take over. Two
+settings outside this repository therefore decide most of what a phase costs,
+and they are yours to change, not the plugin's:
+
+- **The model.** Start each phase in its own session (`pdkit next <n>` prints
+  the command) and pick the model there: `/model opus` before `triage`, `plan`,
+  `plan-review` and `audit`; `/model sonnet` before the rest.
+- **The effort level.** A global `"effortLevel": "xhigh"` in
+  `~/.claude/settings.json` applies to every turn the skill's own `effort:` no
+  longer covers — including `pdkit state <n>` and the other mechanical turns of
+  `exec`, `preflight`, `slice`, `pr` and `pr-sync`. Reasoning tokens are paid as
+  output, and output is the dearest token there is. Recommended: leave
+  `effortLevel` unset or at `medium`, and raise it with `/effort high` in the
+  sessions for `triage`, `plan`, `plan-review` and `audit`.
+  `CLAUDE_CODE_EFFORT_LEVEL` overrides even the skill's `effort:`, so do not set
+  it globally either.
 
 ## MCP servers
 

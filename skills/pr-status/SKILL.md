@@ -3,6 +3,7 @@ name: pr-status
 description: "Dashboard across all open pull requests: CI, review threads, staleness."
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 Read-only. Nothing here moves state, opens a token, or writes to GitHub.

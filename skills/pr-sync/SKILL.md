@@ -3,7 +3,8 @@ name: pr-sync
 description: "Process review feedback: triage threads, fix, reply, resolve."
 argument-hint: "<pr-number>"
 disable-model-invocation: true
-model: opus
+model: sonnet
+effort: medium
 ---
 
 The reviewer spent their time. This command exists so it does not have to be

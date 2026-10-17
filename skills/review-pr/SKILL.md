@@ -4,6 +4,7 @@ description: "Review someone else's pull request along four parallel axes."
 argument-hint: "<pr-number>"
 disable-model-invocation: true
 model: opus
+effort: medium
 ---
 
 Outside the issue lifecycle entirely. Nothing here moves a state machine, and

@@ -4,6 +4,7 @@ description: "Triage an upstream podman-desktop issue: dedup, classify, draft re
 argument-hint: "[<issue-number|url>] [--label <a,b>] — further lines become prior context"
 disable-model-invocation: true
 model: opus
+effort: high
 ---
 
 Decide whether planning is needed at all. Half the value of this plugin is

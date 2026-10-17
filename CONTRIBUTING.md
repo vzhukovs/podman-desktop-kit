@@ -96,6 +96,22 @@ The model is set by `model:` in frontmatter and nowhere else. There is no config
 key for it, because a skill's own model can only be set in frontmatter, and a
 lever that controls the subagents but not the skill is worse than no lever.
 
+Moving a skill or an agent down to Sonnet comes with one sentence in the
+CHANGELOG saying what in that phase a machine decides rather than the model.
+Without it the move is a bet, and nobody will remember why it was made.
+
+**Known limitation: a skill's `model:` holds for one turn.** Claude Code applies
+it until the end of the turn the skill was invoked in, and a turn ends at any
+incoming user-role message — a person's reply, and also the hand-back of a
+background subagent. After that the session's own model resumes (observed on
+Claude Code 2.1.273 through 2.1.301). So a skill that
+waits for a person or for a background agent (`exec`, `validate`, `preflight`,
+`slice`, `pr`, `pr-sync`) runs most of its phase on whatever the session is set
+to. An agent's `model:` has no such limit: every call runs on it. Skill `effort:`
+is documented with the same "while the skill is active" wording and should be
+assumed to end at the same place. Do not work around this with a config key; the
+remedy is `/model` at the start of the phase's session.
+
 ## Testing
 
 ```bash

@@ -3,7 +3,8 @@ name: resume
 description: "Come back to an issue after a break: drift analysis, rebase, plan amendment."
 argument-hint: "<issue-number>"
 disable-model-invocation: true
-model: opus
+model: sonnet
+effort: medium
 ---
 
 Everything here assumes the world moved while you were away, and asks whether it

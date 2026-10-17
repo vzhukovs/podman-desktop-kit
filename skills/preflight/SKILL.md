@@ -4,6 +4,7 @@ description: "Run the deterministic gates and report pass or fail."
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 Runs `pdkit preflight` and presents the report. The checks decide; this skill

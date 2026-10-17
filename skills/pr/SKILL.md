@@ -3,7 +3,8 @@ name: pr
 description: "Create branches and pull requests. The only command that writes to GitHub."
 argument-hint: "<issue-number> [slice]"
 disable-model-invocation: true
-model: opus
+model: sonnet
+effort: medium
 ---
 
 The only command in this plugin that writes to someone else's repository.

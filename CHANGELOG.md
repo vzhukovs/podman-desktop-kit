@@ -96,6 +96,34 @@ fixes — see [RELEASING.md](RELEASING.md).
   write to disk and to ask for a restart when a phase runs well past it. Nothing
   enforces it, and nothing could: no command can see how many turns a session has
   taken, and the model cannot count its own precisely. The skills say so.
+- **Five phases moved from Opus to Sonnet**, each because what decides there is a
+  machine, not the model:
+  - `slice` and `pd-slicer`: file independence is refused by `pdkit slice set`
+    and symbol dependence settled by the exit code of `pdkit slice verify`; the
+    cut that is left is approved by a person at `slices-approved`.
+  - `pr`: steps 1–5 are branch, squash and two preflight passes whose green the
+    gate is issued from, and step 6 hands the body to a person to read.
+  - `pr-sync`: the threads arrive already mapped to slice, task and requirement
+    by `pdkit pr threads`, a fix counts only once preflight is green again, and
+    an amendment waits for a person.
+  - `resume`: `pdkit drift` marks the commits that touched lines the plan
+    cites, and `slice verify --standalone` plus preflight re-verify every slice
+    from scratch after the rebase. Each conflict is still classified by
+    `pd-conflict-analyst`, on Opus.
+
+  `triage`, `plan`, `plan-review`, `audit`, `pd-auditor`, `pd-plan-critic`,
+  `pd-review-synth` and `pd-conflict-analyst` stay on Opus: nothing re-checks
+  their verdict mechanically. For the conflict analyst that is the semantic
+  conflict which merges cleanly: the build is green, and the code no longer does
+  what the plan intended.
+  A skill's `model:` holds only until the end of the turn it was invoked in, so
+  for a skill this moves the first turn, and the rest of the phase runs on the
+  session's model — see CONTRIBUTING.md. For an agent it moves every call.
+- **`effort:` in every orchestrating skill**: `high` for `triage`, `plan`,
+  `plan-review` and `audit`, `medium` for the rest. It overrides the session
+  level, including a global `"effortLevel": "xhigh"`, while the skill is active.
+  `CLAUDE_CODE_EFFORT_LEVEL` still wins over it. Phrase-triggered skills carry
+  none, so they never change the level of the phase they fire inside.
 
 ### Fixed
 

@@ -4,6 +4,7 @@ description: "Small fix without the planning ceremony."
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 Planning is skipped deliberately: if the diff fits in one sentence, a plan is

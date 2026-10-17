@@ -4,6 +4,7 @@ description: "Plan an issue: scout the code, resolve the open choices, and produ
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: opus
+effort: high
 ---
 
 The plan is the only artefact that carries intent to the implementer. Three

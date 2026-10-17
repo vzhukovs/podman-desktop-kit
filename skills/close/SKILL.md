@@ -4,6 +4,7 @@ description: "Close out a merged issue: harvest what was learned, clean up workt
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 ## Steps

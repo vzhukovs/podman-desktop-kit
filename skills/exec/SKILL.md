@@ -4,6 +4,7 @@ description: "Implement the plan, one task per worker, each producing a receipt.
 argument-hint: "<issue-number> [task-id]"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 One `pd-implementer` per task, fresh context each time. Fresh context is not

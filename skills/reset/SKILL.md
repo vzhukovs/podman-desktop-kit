@@ -4,6 +4,7 @@ description: "Start one issue over: forget its plan, research and artefacts so t
 argument-hint: "<issue-number> [--purge] [--worktrees]"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 For a run that went wrong early. The triage read the issue as something it is

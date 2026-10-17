@@ -4,6 +4,7 @@ description: "Audit the diff against the plan in fresh context."
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: opus
+effort: high
 ---
 
 Via `pd-auditor`, which sees the diff and the plan and nothing else — not the

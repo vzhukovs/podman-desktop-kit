@@ -4,6 +4,7 @@ description: "Drive the built application, collect evidence, and propose an e2e 
 argument-hint: "<issue-number>"
 disable-model-invocation: true
 model: sonnet
+effort: medium
 ---
 
 Via `pd-validator`, against a running application.

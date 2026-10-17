@@ -3,6 +3,7 @@ name: knowledge
 description: "Revise the shipped knowledge base against what recent work actually showed."
 disable-model-invocation: true
 model: opus
+effort: medium
 ---
 
 `knowledge/` ships with the plugin and is read by every later issue. Nobody
