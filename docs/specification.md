@@ -1363,7 +1363,7 @@ The rules the handlers apply:
 
 | Handler | Rule | Behaviour |
 |---|---|---|
-| `pre-bash` | `git push`, `gh pr create` | deny without a valid **`push`** token for that branch; otherwise allow and spend the token |
+| `pre-bash` | `git push`, `gh pr create` | deny without a valid **`push`** token for that branch; otherwise allow and spend the token. Allowed without a token where the command is proven to act outside podman-desktop (below) |
 | `pre-bash` | `gh pr edit/review/merge/comment`, `gh api` with a mutation | deny without a valid **`reply`** token for that PR. Such writes belong to no branch, and the token is not spent: the unit of consent is the batch |
 | `pre-bash` | `gh issue comment`, `gh issue create/edit/close` | **deny always.** No state authorises a write to the tracker, and the one route that produces issue text says a human posts it. A gate that cannot open is worse than a refusal that says what to do |
 | `pre-bash` | `git push --force` without `--force-with-lease` | deny always |
@@ -1391,6 +1391,46 @@ argv[0], and strips **wrapper programs**. That last one is not about any
 particular tool: hooks on the Bash tool are global, so a wrapper can appear in
 this project without this project being told, and the question is never "did
 somebody mean to wrap it" but "what is going to run".
+
+It also moves **options written before the subcommand** — git's `-C`, `-c`,
+`--git-dir`, `--work-tree`, gh's `-R` — out of the arguments and into a list of
+their own. Every rule matches on an argument prefix, and until that was done
+`git -C <dir> push` had `-C` where the prefix expects `push` and matched no rule
+at all. The list is kept, not dropped, because it says where the command acts.
+
+A **deny anywhere in the line refuses the line**, before any token is asked
+about. A token for the push in `git push && gh issue comment …` is not consent
+for the comment.
+
+### The gate guards podman-desktop, and stands aside only where that is proven
+
+Hooks on the Bash tool are global, so the token rules above used to apply in
+every repository on the machine — this plugin's own checkout included, where
+the only way to push was a `/pd:pr` flow built for somebody else's project.
+`lib/hooks/scope.js` now lets a gated command (`push` or `reply` kind) run
+without a token **only when it is proven to act outside podman-desktop**:
+
+- the working tree has no remote whose slug is `repo.upstream` or `repo.fork`,
+  or whose repository name is `podman-desktop` — the last one is what keeps a
+  fork clone gated before `pdkit init` has filled `repo.fork`;
+- the line names neither slug nor the name as a whole word (`podman-desktop.git`
+  matches, `podman-desktop-kit` does not), so a URL or `gh -R` pointing there is
+  gated;
+- nothing in it moves where the command runs: no `cd`, `pushd` or `popd`, no
+  `git -C`, `--git-dir` or `--work-tree`, no `GIT_DIR`, `GIT_WORK_TREE` or
+  `GH_REPO` in the line or in the hook's environment;
+- the configuration loaded and the working tree is a repository.
+
+The burden of proof is on "outside" on purpose. A wrong "inside" is one refusal
+in a repository that did not need guarding; a wrong "outside" is an ungated push
+to upstream. So every failure — a config that does not load, a directory that
+is not a repository, a `git` that cannot be run — is "inside", and the gate
+decides as before. Deny rules are untouched: force push, `--no-verify`,
+`add -A`, `rebase -i` and tracker writes are refused everywhere. Each command
+the gate stands aside for is written to the journal as `allowed-outside`, so
+standing aside does not leave the same trace as never running.
+`pdkit doctor --gate-selftest` probes both sides, in throwaway repositories, so
+it does not depend on where it is run from.
 
 Two consequences of the rules living in code rather than in JSON: they are
 versioned with the plugin, and they are unit-tested. For a circuit where a

@@ -70,6 +70,20 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Changed
 
+- **The consent gate guards podman-desktop, not every repository on the
+  machine.** Bash hooks are global, so `git push` was refused in any repository
+  with the plugin loaded — its own checkout included — and the only way past
+  was a `/pd:pr` flow built for podman-desktop. A gated command now runs without
+  a token where `lib/hooks/scope.js` can prove it acts elsewhere: no remote of
+  the working tree is `repo.upstream`, `repo.fork` or named `podman-desktop`,
+  the line names neither, and nothing in it moves where it runs (`cd`, `git -C`,
+  `--git-dir`, `--work-tree`, `GIT_DIR`, `GIT_WORK_TREE`, `GH_REPO`). Anything
+  that cannot be proven — a config that does not load, a directory that is not
+  a repository — keeps the gate on. Deny rules (force push, `--no-verify`,
+  `add -A`, `rebase -i`, tracker writes) still hold everywhere, and every
+  command the gate stands aside for is journalled as `allowed-outside`.
+  `pdkit doctor --gate-selftest` now probes in throwaway repositories, one of
+  each kind, so it reports the same wherever it is run from.
 - **`pdkit audit` says who did each task.** Per task, `worker pd-implementer ×n`,
   `no pd-implementer (ran: …)`, `no subagent`, or `not recorded`, read from the
   `agent-done` entries the SubagentStop hook ties to the active task — never
@@ -147,6 +161,11 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **A denied command no longer rides along behind a gated one.** The gate
+  looked at the first rule a line tripped and no further, so in
+  `git push && gh issue comment 1 -b x` a valid token for the push let the
+  comment run too, though tracker writes are denied always. A deny anywhere in
+  the line now refuses the line, before any token is asked about.
 - **An option before the subcommand no longer hides a push from the gate.**
   Every rule matches on an argument prefix, and `git -C <dir> push` has `-C`
   where the prefix expects `push`: the line matched no rule and ran with no

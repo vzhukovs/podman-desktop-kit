@@ -86,6 +86,9 @@ before(async () => {
   process.env.PDKIT_HOME = home;
 
   await run('git', ['init', '-q', '-b', BRANCH], { cwd: repo });
+  // The gate guards podman-desktop and only podman-desktop (scope.js), so the
+  // fixture has to be one.
+  await run('git', ['remote', 'add', 'upstream', 'https://github.com/podman-desktop/podman-desktop.git'], { cwd: repo });
 
   await readyIssue(2001);
 });
@@ -355,5 +358,86 @@ describe('a refusal is written down', () => {
     assert.equal((await handle(bash('pnpm test:unit'))).block, false);
 
     assert.equal((await journal.read({ event: 'denied' }, { home })).length, before);
+  });
+});
+
+// Bash hooks are global, so the gate used to refuse `git push` in every
+// repository on the machine. It now stands aside where it can PROVE the command
+// acts outside podman-desktop, and only there: each refusal below is a way the
+// working directory would have lied about where the command lands.
+describe('outside podman-desktop', () => {
+  let other;
+  let fork;
+
+  before(async () => {
+    other = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-other-'));
+    await run('git', ['init', '-q', '-b', 'main'], { cwd: other });
+    await run('git', ['remote', 'add', 'origin', 'git@github.com:someone/podman-desktop-kit.git'], { cwd: other });
+
+    // A clone of the fork before `pdkit init`: no upstream remote, and
+    // repo.fork still empty. Its name is the only thing that says what it is.
+    fork = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-fork-'));
+    await run('git', ['init', '-q', '-b', 'main'], { cwd: fork });
+    await run('git', ['remote', 'add', 'origin', 'git@github.com:someone/podman-desktop.git'], { cwd: fork });
+  });
+
+  after(async () => {
+    await rm(other, { recursive: true, force: true });
+    await rm(fork, { recursive: true, force: true });
+  });
+
+  const elsewhere = (command, cwd = other) => handle({ tool_name: 'Bash', tool_input: { command }, cwd });
+
+  test('a push in another repository runs, and says why', async () => {
+    const decision = await elsewhere('git push origin main');
+    assert.equal(decision.block, false);
+    assert.match(decision.message, /guards podman-desktop.*someone\/podman-desktop-kit/);
+  });
+
+  test('it is written down, so standing aside is not the same trace as never running', async () => {
+    await elsewhere('git push origin main');
+    const entries = await journal.read({ event: 'allowed-outside' }, { home });
+    assert.ok(entries.some((entry) => entry.detail.startsWith('push: ')));
+  });
+
+  test('a write to a pull request of another repository runs', async () => {
+    assert.equal((await elsewhere('gh pr comment 3 --body x')).block, false);
+  });
+
+  test('deny rules hold everywhere', async () => {
+    assert.equal((await elsewhere('git push --force origin main')).block, true);
+    assert.equal((await elsewhere('git commit --no-verify -m x')).block, true);
+  });
+
+  test('a denied command later in the line is not carried by the push in front of it', async () => {
+    const decision = await elsewhere('git push origin main && gh issue comment 1 -b x');
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'gh-issue-comment');
+  });
+
+  for (const [why, line] of [
+    ['moving into it first', () => `cd ${repo} && git push`],
+    ['git -C', () => `git -C ${repo} push`],
+    ['--git-dir', () => `git --git-dir=${repo}/.git push`],
+    ['pushing to its URL', () => 'git push git@github.com:podman-desktop/podman-desktop.git main'],
+    ['gh -R', () => 'gh -R podman-desktop/podman-desktop pr create --head x'],
+    ['GH_REPO in the line', () => 'GH_REPO=someone/x gh pr create --head x'],
+  ]) {
+    test(`the gate still applies when the command reaches podman-desktop by ${why}`, async () => {
+      assert.equal((await elsewhere(line())).block, true);
+    });
+  }
+
+  test('a fork clone is recognised by its name before repo.fork is set', async () => {
+    assert.equal((await elsewhere('git push origin main', fork)).block, true);
+  });
+
+  test('outside a repository the gate still refuses', async () => {
+    const nowhere = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-nowhere-'));
+    try {
+      assert.equal((await elsewhere('git push', nowhere)).block, true);
+    } finally {
+      await rm(nowhere, { recursive: true, force: true });
+    }
   });
 });
