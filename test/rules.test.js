@@ -122,6 +122,27 @@ describe('coverage of section 6', () => {
 // it must not. A one-sided test is what let the rules ship matching everything
 // — the shape and order assertions above all passed while force-push-without-
 // lease was refusing every `git push` and no-verify every `git commit`.
+// Each of these matched no rule before the parser learned the options a
+// program takes ahead of its subcommand.
+describe('options before the subcommand do not hide the command', () => {
+  const cases = [
+    ['git -C /x push', 'push'],
+    ['git --git-dir=/x/.git push', 'push'],
+    ['git -c core.hooksPath=/dev/null push', 'push'],
+    ['git -C /x push --force', 'force-push-without-lease'],
+    ['git -C /x commit --no-verify -m x', 'no-verify'],
+    ['git -C /x add -A', 'add-all'],
+    ['gh -R podman-desktop/podman-desktop pr create', 'gh-pr-create'],
+    ['gh -R podman-desktop/podman-desktop issue comment 1 -b x', 'gh-issue-comment'],
+  ];
+
+  for (const [line, id] of cases) {
+    test(`${line} → ${id}`, () => {
+      assert.equal(select(line)?.rule.id, id);
+    });
+  }
+});
+
 describe('selectivity', () => {
   test('force push is refused, an ordinary and a leased push are not', () => {
     assert.equal(fired('git push --force origin main'), 'force-push-without-lease');

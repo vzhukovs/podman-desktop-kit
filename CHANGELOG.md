@@ -147,6 +147,14 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- **An option before the subcommand no longer hides a push from the gate.**
+  Every rule matches on an argument prefix, and `git -C <dir> push` has `-C`
+  where the prefix expects `push`: the line matched no rule and ran with no
+  token. `git -c key=value push`, `git --git-dir=… push` and
+  `gh -R owner/repo pr create` were the same hole, and so was every deny rule
+  behind one of them — `git -C x push --force`, `git -C x commit --no-verify`.
+  The parser now moves git's and gh's leading options into a separate
+  `globals` list, values included, so the rules see the subcommand.
 - **`pdkit issue fetch` prints the newest comments, not all of them.** Forty
   comments on a podman-desktop issue is ordinary, and every one went into the
   session that opens the dearest phase of the cycle. It now prints the newest

@@ -109,6 +109,39 @@ describe('parse', () => {
   });
 });
 
+// `git -C /elsewhere push` put `-C` where every rule's argument prefix expects
+// `push`, and matched nothing: an ungated push with one option in front.
+describe('options before the subcommand', () => {
+  test('git global options are moved out of args, with their values', () => {
+    const [command] = parse('git -C /x -c a=b --no-pager push origin main');
+    assert.deepEqual(command.args, ['push', 'origin', 'main']);
+    assert.deepEqual(command.globals, ['-C', '/x', '-c', 'a=b', '--no-pager']);
+  });
+
+  test('the = spelling takes no extra word', () => {
+    const [command] = parse('git --git-dir=/x/.git --work-tree /x push');
+    assert.deepEqual(command.args, ['push']);
+    assert.deepEqual(command.globals, ['--git-dir=/x/.git', '--work-tree', '/x']);
+  });
+
+  test('gh -R before the subcommand', () => {
+    const [command] = parse('gh -R owner/repo pr create');
+    assert.deepEqual(command.args, ['pr', 'create']);
+    assert.deepEqual(command.globals, ['-R', 'owner/repo']);
+  });
+
+  test('other programs keep their options as arguments', () => {
+    const [command] = parse('npm -w x test');
+    assert.deepEqual(command.args, ['-w', 'x', 'test']);
+    assert.deepEqual(command.globals, []);
+  });
+
+  test('a push behind global options still matches', () => {
+    assert.ok(matches('git -C /x push', 'git', ['push']));
+    assert.ok(matches('sudo git -c a=b push', 'git', ['push']));
+  });
+});
+
 describe('matches', () => {
   test('matches on program and argument prefix', () => {
     assert.equal(matches('git push origin main', 'git', ['push']), true);
