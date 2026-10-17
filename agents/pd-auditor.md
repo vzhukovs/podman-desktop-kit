@@ -31,7 +31,7 @@ You read the diff so the session that dispatched you does not have to. Everythin
 
 ```
 ## Mechanical (pdkit audit)
-outside ownership: <files or none> · no task: <R-IDs or none> · no requirement: <T-IDs or none> · receipts not ok: <T-IDs or none>
+outside ownership: <files or none> · no task: <R-IDs or none> · no requirement: <T-IDs or none> · receipts not ok: <T-IDs or none> · no pd-implementer: <T-IDs or none>
 
 ## Findings
 - [Q1|Q2|Q3] <file>:<line> — <R-ID or task> — <what the code does, against what was asked>[ — amend the plan | revert the code | unclear]

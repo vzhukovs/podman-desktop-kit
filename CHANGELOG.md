@@ -70,6 +70,15 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Changed
 
+- **`pdkit audit` says who did each task.** Per task, `worker pd-implementer ×n`,
+  `no pd-implementer (ran: …)`, `no subagent`, or `not recorded`, read from the
+  `agent-done` entries the SubagentStop hook ties to the active task — never
+  from what an agent said. The summary lists the tasks no implementer ran for,
+  as a count of the whole. A task whose every start came before the journal's
+  first `agent-done` is `not recorded`, because the hook was registered on an
+  event subagents never raise until 0.4.0, and "no implementer" over that
+  silence would be a claim nobody measured. A fact, not a gate: nothing is
+  refused on it.
 - **The diff is read by the auditor and the slicer, not by the session that
   dispatches them.** `/pd:audit` and `/pd:slice` read `git diff main...HEAD`
   and the `slice suggest` file map in the parent context, where on a large

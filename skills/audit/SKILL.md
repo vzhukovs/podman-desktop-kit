@@ -29,7 +29,10 @@ that need no judgement at all:
   silent when no task was ever started, so this is the only place such a change
   is certain to be seen;
 - requirements with no task;
-- tasks with no requirement.
+- tasks with no requirement;
+- tasks no `pd-implementer` ran for, from the `agent-done` entries the journal
+  tied to each task. A task started before the journal recorded any subagent
+  is `not recorded`, which is not the same as none.
 
 This command reports and never decides. It exits zero whatever it finds.
 

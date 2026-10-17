@@ -34,6 +34,7 @@ import { promisify } from 'node:util';
 import { collect, format } from '../lib/audit.js';
 import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
+import { append } from '../lib/journal.js';
 import { transition } from '../lib/state.js';
 
 const execFileAsync = promisify(execFile);
@@ -213,6 +214,78 @@ describe('collect', () => {
 
     assert.deepEqual(report.diff.files, []);
     assert.equal(report.tasks.length, 1);
+  });
+});
+
+// Whether a task went to a worker or was done in the session is read from the
+// journal, never from the agent: `agent-done` names the task that was active
+// in the agent's tree. And a task from before the hook recorded anything is
+// "not recorded", not "no implementer" — the hook sat on an event subagents
+// never raise for four months, and a count over that silence would be a claim
+// nobody measured.
+describe('who did each task', () => {
+  const OTHER = 18300;
+  let own;
+
+  before(async () => {
+    own = await mkdtemp(join(tmpdir(), 'pdkit-audit-workers-'));
+    const dir = join(issueDir(own, OTHER), 'tasks');
+    await mkdir(dir, { recursive: true });
+    for (const id of ['T1', 'T2', 'T3', 'T4', 'T5', 'T10']) {
+      await writeFile(join(dir, `${id}.md`), [`# ${id}: work`, '', `- Issue: ${OTHER}`, '- Satisfies: R1', '', '## Owns', `packages/main/src/${id}.ts`, ''].join('\n'));
+    }
+
+    const at = (minute) => `2026-10-01T10:${String(minute).padStart(2, '0')}:00Z`;
+    const entries = [
+      // T1 ran before the journal recorded any subagent at all.
+      { at: at(0), event: 'task-start', detail: 'T1 in /w' },
+      { at: at(1), event: 'agent-done', issue: 99999, detail: 'agent task a0; pd:pd-scout' },
+      // T2: an implementer, restarted in a second session, and a scout.
+      { at: at(2), event: 'task-start', detail: 'T2 in /w' },
+      { at: at(3), event: 'agent-done', detail: 'agent task a1; pd:pd-scout; while T2 was active' },
+      { at: at(4), event: 'agent-done', detail: 'agent task a2; pd:pd-implementer; while T2 was active' },
+      { at: at(5), event: 'task-start', detail: 'T2 in /w' },
+      { at: at(6), event: 'agent-done', detail: 'agent task a3; pd:pd-implementer; while T2 was active' },
+      // T3: only a scout — the work was done in the session.
+      { at: at(7), event: 'task-start', detail: 'T3 in /w' },
+      { at: at(8), event: 'agent-done', detail: 'agent task a4; pd:pd-scout; while T3 was active' },
+      // T4: started, nothing ran. T10's run must not be credited to T1.
+      { at: at(9), event: 'task-start', detail: 'T4 in /w' },
+      { at: at(10), event: 'task-start', detail: 'T10 in /w' },
+      { at: at(11), event: 'agent-done', detail: 'agent task a5; while T10 was active' },
+    ];
+    for (const entry of entries) await append({ issue: OTHER, ...entry }, { home: own });
+  });
+
+  after(() => rm(own, { recursive: true, force: true }));
+
+  const workers = async () => Object.fromEntries((await collect({ issue: OTHER, home: own })).tasks.map((task) => [task.id, task.worker]));
+
+  test('implementer runs are counted across every start of the task', async () => {
+    assert.deepEqual((await workers()).T2, { seen: 'implementer', implementerRuns: 2, others: ['pd:pd-scout'] });
+  });
+
+  test('a task only other agents ran for is reported with what did run', async () => {
+    assert.deepEqual((await workers()).T3, { seen: 'other', implementerRuns: 0, others: ['pd:pd-scout'] });
+  });
+
+  test('a run the host sent no type for is not taken for an implementer', async () => {
+    assert.deepEqual((await workers()).T10, { seen: 'other', implementerRuns: 0, others: ['type not recorded'] });
+  });
+
+  test('a task started before the journal recorded any subagent is not recorded, not none', async () => {
+    const all = await workers();
+    assert.equal(all.T1.seen, 'unrecorded');
+    assert.equal(all.T4.seen, 'none');
+    assert.equal(all.T5.seen, 'not-started');
+  });
+
+  test('the summary lists the tasks no implementer ran for, and the text says how many', async () => {
+    const report = await collect({ issue: OTHER, home: own });
+
+    assert.deepEqual(report.workers, { withoutImplementer: ['T3', 'T4', 'T10'], unrecorded: ['T1'], notStarted: ['T5'] });
+    assert.match(format(report), /tasks no pd-implementer ran for: T3, T4, T10 \(3 of 6\)/);
+    assert.match(format(report), /T2 .*worker pd-implementer ×2/);
   });
 });
 
