@@ -34,6 +34,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,7 +98,9 @@ describe('a hook whose stdin is never closed', () => {
   test('the gate still refuses through a pipe that stays open', async () => {
     const run = await hookWithOpenStdin({
       event: 'pre-bash',
-      payload: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git push origin HEAD' } }),
+      // A cwd outside any repository. Without one the hook runs where the test
+      // does — this plugin's checkout, which the gate rightly stands aside for.
+      payload: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git push origin HEAD' }, cwd: tmpdir() }),
     });
 
     assert.equal(run.killed, false);

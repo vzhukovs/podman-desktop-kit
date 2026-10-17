@@ -41,6 +41,16 @@ describe('names', () => {
     assert.equal(names('podman-desktop_old', ids), false);
   });
 
+  // The case a live push found: a fork that keeps upstream's name, and a
+  // project of the same owner whose name starts with it.
+  test('a slug is a whole word, not a substring', () => {
+    const named = identities({ repo: { upstream: 'podman-desktop/podman-desktop', fork: 'someone/podman-desktop' } });
+    assert.equal(names('someone/podman-desktop-kit', named), false);
+    assert.equal(names('git@github.com:someone/podman-desktop-kit.git', named), false);
+    assert.ok(names('git@github.com:someone/podman-desktop.git', named));
+    assert.equal(names('someone/pd-forked', ids), false);
+  });
+
   test('an empty fork adds nothing, and the name is still known', () => {
     assert.deepEqual(identities({ repo: { upstream: 'podman-desktop/podman-desktop', fork: '' } }), {
       slugs: ['podman-desktop/podman-desktop'],
