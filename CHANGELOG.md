@@ -9,6 +9,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- `pdkit next` prints `/model <model>` above the skill command, and the
+  SessionStart summary adds a `model` line before `run`. A skill's `model:`
+  frontmatter holds only until its turn ends — any user message ends it, a
+  background subagent's hand-back included — so exec, validate, slice, pr and
+  pr-sync drifted back to the session's model mid-phase. The model is read from
+  that same frontmatter, not set anywhere new; the line is advice, and nothing
+  checks that the session follows it.
+
 ## [0.5.0] - 2026-10-17
 
 ### Upgrading
