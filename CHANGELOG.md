@@ -9,6 +9,22 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- `pdkit init` writes `"model"` into the fork's `.claude/settings.local.json`,
+  so a fresh `claude` in the fork starts on the model most orchestrating skills
+  declare — `sonnet` today, counted from their `model:` frontmatter rather than
+  set anywhere new. The session model survives `/clear`, so this is the default
+  every phase falls back to once a skill's one-turn `model:` lapses, and a
+  review round started the next morning no longer goes to opus unasked. Only
+  the local file is touched — `.claude/settings.json` is podman-desktop's own
+  and tracked; other keys are merged, not overwritten; a `model` already there
+  is kept unless `--force`; invalid JSON is refused, not replaced.
+  `effortLevel` is not written: nothing confirms it is read at project level.
+- `pdkit doctor` checks `settings:model` (optional): the fork's written model
+  against the frontmatter count. A mismatch or a missing key warns, with the
+  command that fixes it.
+
 ### Changed
 
 - The audit skill runs on sonnet instead of opus. Since 815fa8a the phase's

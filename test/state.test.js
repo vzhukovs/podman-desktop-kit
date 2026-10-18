@@ -45,7 +45,7 @@ import {
   setOwns,
   transition,
 } from '../lib/state.js';
-import { skillModel } from '../lib/cli.js';
+import { skillModel } from '../lib/session-model.js';
 import { read as readJournal } from '../lib/journal.js';
 import { BODY_DEPENDENT, CHECK_IDS } from '../lib/preflight/index.js';
 import { write } from '../lib/preflight/record.js';
