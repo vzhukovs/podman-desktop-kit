@@ -9,6 +9,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- The audit skill runs on sonnet instead of opus. Since 815fa8a the phase's
+  main thread judges nothing: it runs `pdkit audit`, dispatches pd-auditor,
+  reads the short form, writes audit.md and moves the state. The verdict is
+  pd-auditor's, made in its own context on its own `model: opus`. The session
+  model survives `/clear`, so audit was the one opus island in the sonnet tail,
+  and a forgotten switch after it carried opus into slice, pr and every
+  pr-sync round. The cycle now has a single model switch, after plan-review.
+
 ## [0.5.1] - 2026-10-18
 
 ### Changed
