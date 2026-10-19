@@ -9,6 +9,35 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-19
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then **`pdkit doctor --gate-selftest`**, once: this release registers a new
+hook (`UserPromptSubmit`) in the manifest.
+
+What changes in what you do:
+
+- **Commands given an issue number refuse to run in another issue's tree.**
+  `preflight`, `slice suggest|set|materialize|cascade`, `audit`,
+  `validate launch|run|codify|attach --run` and `e2e stability` used to run on
+  whatever tree the shell was in; now they stop before anything runs and print
+  `cd <tree> && pdkit …`. A main checkout left on another issue's branch is the
+  usual cause. `main`, or any branch that names no issue, still goes through.
+- **`pdkit amendment approve` exits non-zero** when the amendment did not reach
+  the record or plan.md, and names what is missing; `pdkit amendment sync`
+  finishes it. An amendment whose `Requirements affected` table cannot be
+  applied is refused and stays `proposed`.
+- **Approving an amendment edits plan.md and `tasks/`.** Do not write an
+  amendment's tasks by hand; approve renders them and withdraws the ones they
+  replace.
+
 ### Fixed
 
 - `agent-done` is no longer filed under the issue of whatever branch the tree
@@ -51,7 +80,6 @@ fixes — see [RELEASING.md](RELEASING.md).
   nothing to compare with the issue number.
 - `pdkit drift` finds an issue's local branch through the same helper, so only
   branches matching `DESKTOP-<n>/[<i>-]<slug>` count, the unsliced one first.
-
 - An approved amendment now reaches the tasks, not only the requirements. The
   `### T<k>` blocks under `Slices affected` are read by the parser plan.md goes
   through, and approve renders `tasks/T<k>.md` from them, adds the blocks to
@@ -71,7 +99,6 @@ fixes — see [RELEASING.md](RELEASING.md).
 - `plan check` and `parsePlan` read `### T<k> (replaces …): title` headings,
   and leave a replaced task out of the checks. On 18915 the hand-copied T5 and
   T6 were invisible and plan check reported R7 as having no task.
-
 - `pdkit amendment approve` applies the amendment to the plan, not only to the
   word in its own header. The `Requirements affected` table is parsed (several
   R-IDs to a cell; `added | withdrawn | unchanged | superseded by R<k> |
@@ -1469,7 +1496,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.4.0...v0.5.0
