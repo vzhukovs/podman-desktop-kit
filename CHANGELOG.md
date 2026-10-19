@@ -11,6 +11,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- The SessionStart summary no longer presents the branch of the tree as what the
+  session is for. When another issue in progress was moved after the tree's one
+  (state.json `updatedAt`), it says so — the tree's path and branch, and each of
+  those issues with where its work is, by the same resolver commands are held to
+  — and names no `run` command, model, budget or journal. Every DESKTOP-18915
+  session after plan-approved opened in a main checkout left on 18967's branch,
+  was told `run: /pd:pr-status`, and took `/pd:preflight 18915` for a typo.
+  With a task running, a branch that names another issue than the task's is
+  printed too, and the command is withheld the same way. Issues moved before
+  the tree's one are not listed.
 - Commands given an issue number hold to that issue's tree instead of whichever
   tree the shell is in. One resolver, `forIssue` in lib/worktree.js, finds the
   issue's work in order of trust — a registered worktree, then a local

@@ -549,6 +549,104 @@ describe('re-anchoring', () => {
       });
     });
   });
+
+  // DESKTOP-18915: every session after plan-approved opened in the main
+  // checkout, which stood on 18967's branch, and was told 18967's state and
+  // `run: /pd:pr-status`. The model took `/pd:preflight 18915` for a typo.
+  describe('when the tree is on one issue and the work moved to another', () => {
+    const RIVAL = 18915;
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+    // The rival is moved after the tree's issue — the fact the summary reads —
+    // and abandoned afterwards, so the tests above and below see one live issue.
+    const withRival = async (body) => {
+      await tick();
+      await transition(RIVAL, 'triaged', { home });
+      try {
+        await body();
+      } finally {
+        await transition(RIVAL, 'abandoned', { home });
+        await rm(issueDir(home, RIVAL), { recursive: true, force: true });
+      }
+    };
+
+    const onBranch = async (name, body) => {
+      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd: WORKTREE });
+      try {
+        await body();
+      } finally {
+        await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+      }
+    };
+
+    test('between phases, both trees are named and no command is', async () => {
+      await stop({ worktree: WORKTREE, home });
+
+      // A real tree for the rival, so the line has a path to name: git needs a
+      // commit before it can add a worktree.
+      await execFileAsync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: WORKTREE });
+      const rivalTree = join(await realpath(tmpdir()), `pdkit-rival-${process.pid}`, `DESKTOP-${RIVAL}`);
+      await execFileAsync('git', ['worktree', 'add', '-q', '-b', `DESKTOP-${RIVAL}/quit-and-install`, rivalTree], { cwd: WORKTREE });
+
+      try {
+        await onBranch(`DESKTOP-${ISSUE}/join-container-command`, () =>
+          withRival(async () => {
+            const { message } = await startSession();
+
+            assert.match(message, /this tree is issue 18248's — triaged/);
+            assert.match(message, new RegExp(`tree {4}: ${WORKTREE} on DESKTOP-18248/join-container-command`));
+            assert.match(message, new RegExp(`${RIVAL} — triaged, moved .*, tree ${rivalTree} on DESKTOP-${RIVAL}/quit-and-install`));
+            assert.match(message, /run {5}: not named/);
+            assert.doesNotMatch(message, /\/pd:plan/);
+            assert.doesNotMatch(message, /recent/);
+          }),
+        );
+      } finally {
+        await execFileAsync('git', ['worktree', 'remove', '--force', rivalTree], { cwd: WORKTREE });
+        await execFileAsync('git', ['branch', '-q', '-D', `DESKTOP-${RIVAL}/quit-and-install`], { cwd: WORKTREE });
+      }
+    });
+
+    test('an issue moved before this one is not mentioned', async () => {
+      await stop({ worktree: WORKTREE, home });
+      await transition(RIVAL, 'triaged', { home });
+      await tick();
+      // Moving the tree's issue makes it the newer of the two.
+      await setOwns(ISSUE, 'T9', [], { home });
+
+      try {
+        await onBranch(`DESKTOP-${ISSUE}/join-container-command`, async () => {
+          const { message } = await startSession();
+          assert.doesNotMatch(message, /moved/);
+          assert.match(message, /run {5}: \/pd:plan 18248/);
+        });
+      } finally {
+        await transition(RIVAL, 'abandoned', { home });
+        await rm(issueDir(home, RIVAL), { recursive: true, force: true });
+      }
+    });
+
+    test('with a task running, the task stays and the command goes', async () =>
+      withRival(async () => {
+        const { message } = await startSession();
+
+        assert.match(message, /T1 \(join the command arguments\)/);
+        assert.match(message, new RegExp(`${RIVAL} — triaged, moved .*, no tree or DESKTOP-${RIVAL}/… branch names it`));
+        assert.match(message, /run {5}: not named/);
+      }));
+
+    // The task pointer and the branch are written by different commands. When
+    // they name different issues, neither is the answer on its own.
+    test('a task of one issue on a branch of another is said out loud', async () => {
+      await onBranch(`DESKTOP-${RIVAL}/quit-and-install`, async () => {
+        const { message } = await startSession();
+
+        assert.match(message, /issue 18248 — triaged/);
+        assert.match(message, new RegExp(`branch {2}: DESKTOP-${RIVAL}/quit-and-install, which is issue ${RIVAL}'s — the task running here is 18248's`));
+        assert.match(message, /run {5}: not named/);
+      });
+    });
+  });
 });
 
 describe('before compaction', () => {
