@@ -11,6 +11,26 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- An approved amendment now reaches the tasks, not only the requirements. The
+  `### T<k>` blocks under `Slices affected` are read by the parser plan.md goes
+  through, and approve renders `tasks/T<k>.md` from them, adds the blocks to
+  plan.md's `## Tasks` and re-runs `task sync`. `### T5 (replaces T2 and T3):`
+  marks T2 and T3 withdrawn — in their files (`- Status: withdrawn by A1
+  (replaced by T5)`) and in the record — and drops their Owns, so a file is never
+  claimed twice. On DESKTOP-18915 T5 and T6 were written by hand in the execution
+  session and T2–T4 stayed live: the audit asked for their receipts and
+  `owns.T2` kept a file A1 says nobody touches. A task heading that does not
+  parse, a task reusing a live ID, or one claiming a file a live task owns keeps
+  the amendment `proposed`. An existing task file is never overwritten.
+- A withdrawn task is refused by the pre-write hook (for every file, including
+  the ones it used to own), by `pdkit task start` and by `pdkit receipt write`,
+  each naming the amendment and what replaced it. `pdkit audit` lists it as
+  withdrawn with its amendment and does not count its missing receipt; a file
+  only a withdrawn task owned counts as changed outside every task's ownership.
+- `plan check` and `parsePlan` read `### T<k> (replaces …): title` headings,
+  and leave a replaced task out of the checks. On 18915 the hand-copied T5 and
+  T6 were invisible and plan check reported R7 as having no task.
+
 - `pdkit amendment approve` applies the amendment to the plan, not only to the
   word in its own header. The `Requirements affected` table is parsed (several
   R-IDs to a cell; `added | withdrawn | unchanged | superseded by R<k> |

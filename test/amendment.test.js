@@ -27,12 +27,13 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
+import { parseTask } from '../lib/artefacts.js';
 import { allocateRequirement, freezeRequirements, read, transition } from '../lib/state.js';
 import { read as readJournal } from '../lib/journal.js';
 
@@ -285,5 +286,192 @@ describe('a half-applied amendment', () => {
     assert.notEqual(out.code, 0);
     assert.match(out.stderr, /proposed, not approved/);
     assert.deepEqual((await requirements()).ids, ['R1', 'R2']);
+  });
+});
+
+// The other half of an amendment: the tasks it writes and the ones it replaces.
+// On 18915 A1 replaced T2/T3 with T5 and T4 with T6, and after approval T5 and
+// T6 were only text in A1.md — `/pd:exec` wrote their files by hand with a
+// heredoc — while T2–T4 stayed live: the audit asked for their receipts and
+// `owns.T2` kept updater.ts, a file A1 says nobody touches.
+describe('the tasks an amendment writes', () => {
+  /** A task in plan.md's shape. */
+  const T1 = ['### T1: reproduce the stall', '- Satisfies: R1', '- Owns: packages/main/src/index.ts', '- Done when: `npx vitest run packages/main/src/index.spec.ts`', ''];
+  const T2 = ['### T2: close handler honours the update flag', '- Satisfies: R2', '- Owns: packages/main/src/mainWindow.ts', '- Done when: `npx vitest run packages/main/src/mainWindow.spec.ts`', ''];
+
+  /** A1's "Slices affected", as A1 wrote its own: free text, then a task block, then more text. */
+  const SLICES = [
+    'Still one slice. T2 (mainWindow.ts) is NOT shipped; it is replaced by:',
+    '',
+    '### T3 (replaces T2): a second before-quit is vetoed',
+    '- Satisfies: R3',
+    '- Owns: packages/main/src/index.spec.ts',
+    '- Done when: `npx vitest run packages/main/src/index.spec.ts` -> exit 0; test count = baseline + 4',
+    '- Steps:',
+    '  1. add the four tests',
+    '     with a deferred dispose',
+    '  2. run them',
+    '',
+    '### Validation (manual, by /pd:validate): rebuild and retry twenty times.',
+  ].join('\n');
+
+  const withTasks = (requirements) => plan(requirements).replace(/### T1:[\s\S]*?\n\n## Upstream/, `${[...T1, ...T2].join('\n')}\n## Upstream`);
+
+  /**
+   * @param {string} id
+   * @param {string} title
+   * @param {string} satisfies
+   * @param {string} owns
+   */
+  async function taskFile(id, title, satisfies, owns) {
+    await mkdir(issueFile('tasks'), { recursive: true });
+    await writeFile(
+      issueFile('tasks', `${id}.md`),
+      [`# ${id}: ${title}`, '', `- Issue: ${ISSUE}`, `- Satisfies: ${satisfies}`, '- Status: pending', '- Attempts: 0', '', '## Owns', `- ${owns}`, '', '## Done when', '```bash', 'npx vitest run', '```', 'Expected: exit 0', ''].join('\n'),
+    );
+  }
+
+  beforeEach(async () => {
+    await writeFile(join(home, 'values.json'), JSON.stringify({ ...VALUES, slices: SLICES }));
+    await writeFile(issueFile('plan.md'), withTasks('R1, R2'));
+    await taskFile('T1', 'reproduce the stall', 'R1', 'packages/main/src/index.ts');
+    await taskFile('T2', 'close handler honours the update flag', 'R2', 'packages/main/src/mainWindow.ts');
+    assert.equal((await pdkit('task', 'sync', '--issue', String(ISSUE))).code, 0);
+  });
+
+  const record = () => read(ISSUE, { home });
+
+  test('approve renders the new task file from the amendment, with the plan parser\'s reading of it', async () => {
+    const out = await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    assert.equal(out.code, 0, out.stderr);
+    assert.match(out.stdout, /wrote tasks\/T3\.md/);
+
+    const t3 = parseTask(await readFile(issueFile('tasks', 'T3.md'), 'utf8'));
+    assert.equal(t3.title, 'a second before-quit is vetoed');
+    assert.deepEqual(t3.satisfies, ['R3']);
+    assert.deepEqual(t3.owns, ['packages/main/src/index.spec.ts']);
+    assert.equal(t3.command, 'npx vitest run packages/main/src/index.spec.ts');
+    assert.equal(t3.expected, 'exit 0; test count = baseline + 4');
+    assert.equal(t3.withdrawn, null);
+
+    const text = await readFile(issueFile('tasks', 'T3.md'), 'utf8');
+    assert.match(text, /## Steps\n1\. add the four tests\n {3}with a deferred dispose\n2\. run them\n/);
+    assert.match(text, /From A1 \(amendments\/A1\.md; replaces T2\)/);
+  });
+
+  test('the replaced task is marked withdrawn in its file and in the record, and owns nothing', async () => {
+    assert.deepEqual((await record()).owns.T2, ['packages/main/src/mainWindow.ts']);
+
+    const out = await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    assert.equal(out.code, 0, out.stderr);
+    assert.match(out.stdout, /withdrawn {5}T2 \(replaced by T3\) — no longer owns packages\/main\/src\/mainWindow\.ts/);
+
+    const t2 = parseTask(await readFile(issueFile('tasks', 'T2.md'), 'utf8'));
+    assert.equal(t2.status, 'withdrawn by A1 (replaced by T3)');
+    assert.deepEqual(t2.withdrawn, { amendment: 'A1', replacedBy: ['T3'] });
+
+    const after = await record();
+    assert.equal('T2' in after.owns, false, 'one claim on mainWindow.ts, not two');
+    assert.deepEqual(after.owns.T3, ['packages/main/src/index.spec.ts']);
+    assert.deepEqual(after.owns.T1, ['packages/main/src/index.ts']);
+    assert.equal(after.withdrawn.T2.amendment, 'A1');
+    assert.deepEqual(after.withdrawn.T2.replacedBy, ['T3']);
+
+    // The ID is not reused or renumbered: the file is still there, still T2.
+    assert.equal(t2.id, 'T2');
+  });
+
+  test('plan.md gains the block, and plan check passes on the amended plan', async () => {
+    assert.doesNotMatch(await readFile(issueFile('plan.md'), 'utf8'), /### T3/);
+
+    await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    const text = await readFile(issueFile('plan.md'), 'utf8');
+    assert.match(text, /### T2: close handler[\s\S]*### T3 \(replaces T2\): a second before-quit is vetoed[\s\S]*\n\n## Upstream compliance/);
+    const check = await pdkit('plan', 'check', String(ISSUE));
+    assert.equal(check.code, 0, check.stdout);
+  });
+
+  test('task sync keeps a withdrawn task withdrawn rather than giving it its files back', async () => {
+    await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    const out = await pdkit('task', 'sync', '--issue', String(ISSUE));
+
+    assert.equal(out.code, 0, out.stderr);
+    assert.match(out.stdout, /^T2 {2}withdrawn by A1 — owns nothing$/m);
+    assert.equal('T2' in (await record()).owns, false);
+  });
+
+  test('task start on the withdrawn task is refused, and says what replaced it', async () => {
+    await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+    const repo = join(home, 'repo');
+    await mkdir(repo);
+    await exec('git', ['init', '-q', '-b', 'main'], { cwd: repo });
+
+    const out = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T2', '--repo', repo);
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /T2 of issue 18915 was withdrawn by A1 \(amendments\/A1\.md\) and is not part of the plan\. Its work is T3 now\./);
+
+    const live = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T3', '--repo', repo);
+    assert.equal(live.code, 0, live.stderr);
+  });
+
+  test('a task heading the plan parser cannot read leaves the amendment proposed and nothing written', async () => {
+    await writeFile(join(home, 'values.json'), JSON.stringify({ ...VALUES, slices: SLICES.replace('### T3 (replaces T2):', '### T3 - replaces T2 -') }));
+    const id = await propose();
+
+    const out = await pdkit('amendment', 'approve', id, '--issue', String(ISSUE));
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /tasks in "Slices affected" cannot be written, so it stays proposed/);
+    assert.match(out.stderr, /"### T3 - replaces T2 - a second before-quit is vetoed" .* is not a task heading the plan parser reads/);
+    assert.match(await readFile(issueFile('amendments', `${id}.md`), 'utf8'), /^- Status: proposed/m);
+    await assert.rejects(readFile(issueFile('tasks', 'T3.md'), 'utf8'));
+    assert.deepEqual((await requirements()).ids, ['R1', 'R2'], 'the requirement half did not apply either');
+  });
+
+  test('a new task that would take an existing ID is refused', async () => {
+    await writeFile(join(home, 'values.json'), JSON.stringify({ ...VALUES, slices: SLICES.replace('### T3 (replaces T2)', '### T1 (replaces T2)') }));
+
+    const out = await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /T1 is already a task in the plan \("reproduce the stall"\)/);
+  });
+
+  // 18915 as it stands: A1 approved before approval wrote tasks, T5.md typed in
+  // by hand. `sync` finishes the job without overwriting what was typed.
+  test('sync on an amendment approved before tasks were written keeps a hand-made task file and withdraws the rest', async () => {
+    const id = await propose();
+    const path = issueFile('amendments', `${id}.md`);
+    await writeFile(path, (await readFile(path, 'utf8')).replace(/^- Status: proposed/m, '- Status: approved'));
+    await taskFile('T3', 'A second before-quit is vetoed', 'R3', 'packages/main/src/index.spec.ts');
+    const handMade = await readFile(issueFile('tasks', 'T3.md'), 'utf8');
+
+    const out = await pdkit('amendment', 'sync', id, '--issue', String(ISSUE));
+
+    assert.equal(out.code, 0, out.stderr);
+    assert.match(out.stdout, /tasks\/T3\.md already there, kept as written/);
+    assert.equal(await readFile(issueFile('tasks', 'T3.md'), 'utf8'), handMade);
+    assert.equal('T2' in (await record()).owns, false);
+    assert.deepEqual((await record()).owns.T3, ['packages/main/src/index.spec.ts']);
+
+    const again = await pdkit('amendment', 'sync', id, '--issue', String(ISSUE));
+    assert.equal(again.code, 0, again.stderr);
+    assert.match(again.stdout, /nothing to bring into line/);
+    assert.equal((await readJournal({ issue: ISSUE, event: 'amendment-tasks' }, { home })).length, 1);
+  });
+
+  test('a task file already there as a different task is reported, not overwritten', async () => {
+    await taskFile('T3', 'something else entirely', 'R3', 'packages/main/src/other.ts');
+
+    const out = await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /tasks\/T3\.md: already there as "something else entirely"/);
+    assert.equal(parseTask(await readFile(issueFile('tasks', 'T3.md'), 'utf8')).title, 'something else entirely');
   });
 });

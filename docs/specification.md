@@ -1105,7 +1105,16 @@ digest rather than by keeping more.
    `requirements-amended` entry with the set before and after, and plan.md's
    `- Requirements:` line is rewritten to the live set. If either half does not
    follow, approve says which and exits non-zero; `pdkit amendment sync` finishes
-   it. Tasks the amendment describes are not written into the plan by this.
+   it. The `### T<k>` blocks under `Slices affected` are read with the plan's
+   own parser and materialised: `tasks/T<k>.md` rendered (an existing file is
+   kept, not overwritten), the block added to plan.md's `## Tasks`, and
+   `task sync` re-run. A heading `### T<k> (replaces T<j>, …):` withdraws the
+   tasks it names: their Status becomes `withdrawn by A<k> (replaced by T<k>)`,
+   the record moves them from `owns` to `withdrawn`, and they keep their IDs.
+   A withdrawn task writes nothing (the pre-write hook), cannot be started or
+   receipted, and `pdkit audit` lists it as withdrawn rather than as missing.
+   Tasks that do not parse, reuse a live ID or claim a live task's file keep
+   the amendment proposed.
 6. `pd-thread-resolver` per thread, in parallel, each within its own files.
 7. Cascade: if a fix touched a slice others are stacked on, `pdkit slice cascade`
    rebases the dependents and re-runs verification; whatever stopped being

@@ -24,6 +24,21 @@
 {{rows}}
 
 ## Slices affected
+<!-- A task this amendment adds is written here in exactly a plan's shape —
+     `pdkit amendment approve` reads it with the plan's parser, renders
+     tasks/T<k>.md from it, adds it to plan.md and re-runs `task sync`:
+
+       ### T5 (replaces T2 and T3): <title>
+       - Satisfies: R1, R7
+       - Owns: packages/main/src/index.ts
+       - Done when: `npx vitest run packages/main/src/index.spec.ts` -> exit 0
+       - Steps:
+         1. <step>
+
+     New tasks take the next free T-ID. `(replaces …)` withdraws the tasks it
+     names: their files are marked `withdrawn by A<k>`, they lose their Owns,
+     and they keep their IDs. A heading that starts `### T<k>` and is not in
+     this shape stops the approval rather than being skipped. -->
 {{slices}}
 
 ## Why the original plan no longer holds

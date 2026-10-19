@@ -28,6 +28,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  addPlanTasks,
+  amendmentTaskProblems,
   checkPlan,
   parseAmendment,
   parsePlan,
@@ -35,6 +37,9 @@ import {
   requirementRows,
   setAmendmentStatus,
   setPlanRequirements,
+  setTaskStatus,
+  withdrawalOf,
+  withdrawnStatus,
 } from '../lib/artefacts.js';
 
 /**
@@ -615,5 +620,164 @@ describe('setPlanRequirements', () => {
 
   test('a plan with no Requirements line returns null instead of gaining one', () => {
     assert.equal(setPlanRequirements('# PLAN: DESKTOP-1\n', ['R1'], ['A1']), null);
+  });
+});
+
+// The tasks section of DESKTOP-18915's A1, abridged only in the long lines. The
+// shape is the point: free text, two task blocks whose headings carry
+// `(replaces …)`, and a heading after them that is not a task.
+const A1_TASKS = [
+  '# AMENDMENT A1: DESKTOP-18915',
+  '',
+  '- Raised by: validation finding',
+  '- Date: 2026-10-18',
+  '- Status: approved        <!-- proposed | approved | rejected -->',
+  '',
+  '## Requirements affected',
+  '| R-ID | Change | Detail |',
+  '|------|--------|--------|',
+  '| R7 | added | a second before-quit is vetoed |',
+  '',
+  '## Slices affected',
+  'Still 1 slice. T2/T3 (mainWindow.ts, updater.ts) are NOT shipped; they are replaced by:',
+  '',
+  '### T5 (replaces T2 and T3): the before-quit handler outlives the first quit request',
+  '- Satisfies: R1, R7, R8',
+  '- Owns: packages/main/src/index.ts, packages/main/src/index.spec.ts',
+  '- Done when: `npx vitest run packages/main/src/index.spec.ts && npx eslint packages/main/src/index.ts` -> exit 0; test count = baseline + 4',
+  '- Steps:',
+  '  1. index.ts (:65-82): replace `app.once(\'before-quit\', ...)` with `app.on(...)`.',
+  '  2. index.spec.ts: add the four R8 tests.',
+  '',
+  "### T6 (replaces T4's gate): whole-change gate, close handler and updater untouched",
+  '- Satisfies: R5, R7',
+  '- Owns: (none, verification only)',
+  '- Done when: `pnpm typecheck:main && echo R5-OK` -> exit 0, last line `R5-OK`',
+  '',
+  '### Validation (manual, by /pd:validate): rebuild vN-1 with T5 and run 20 attempts.',
+  '',
+  '## Why the original plan no longer holds',
+  '### T9: not a task — outside the section',
+  '',
+].join('\n');
+
+describe('the tasks of an amendment', () => {
+  test('are read from "Slices affected" by the plan parser, with what they replace', () => {
+    const amendment = parseAmendment(A1_TASKS);
+
+    assert.deepEqual(
+      amendment.tasks.map((task) => [task.id, task.replaces, task.satisfies, task.owns, task.command]),
+      [
+        ['T5', ['T2', 'T3'], ['R1', 'R7', 'R8'], ['packages/main/src/index.ts', 'packages/main/src/index.spec.ts'], 'npx vitest run packages/main/src/index.spec.ts && npx eslint packages/main/src/index.ts'],
+        ['T6', ['T4'], ['R5', 'R7'], [], 'pnpm typecheck:main && echo R5-OK'],
+      ],
+    );
+    assert.equal(amendment.tasks[0].title, 'the before-quit handler outlives the first quit request');
+    assert.equal(amendment.tasks[0].steps, "1. index.ts (:65-82): replace `app.once('before-quit', ...)` with `app.on(...)`.\n2. index.spec.ts: add the four R8 tests.");
+    assert.deepEqual(amendment.unreadTasks, []);
+  });
+
+  test('a heading that starts like a task and is not in the shape is returned, not skipped', () => {
+    const amendment = parseAmendment(A1_TASKS.replace('### T6 (replaces T4\'s gate):', '### T6 — replaces T4 —'));
+
+    assert.deepEqual(amendment.tasks.map((task) => task.id), ['T5']);
+    assert.equal(amendment.unreadTasks.length, 1);
+    assert.match(amendmentTaskProblems({ amendment })[0], /"### T6 — replaces T4 — whole-change gate.*" in "Slices affected" is not a task heading/);
+  });
+
+  test('an amendment without the section has no tasks and no problems', () => {
+    const amendment = parseAmendment('# AMENDMENT A2: DESKTOP-1\n\n- Status: proposed\n');
+    assert.deepEqual([amendment.tasks, amendment.unreadTasks], [[], []]);
+  });
+
+  test('problems: no command, a requirement outside the set, a withdrawn task the plan lacks, and a file still owned', () => {
+    const plan = parsePlan(
+      ['# PLAN: DESKTOP-18915', '', '- Requirements: R1', '', '## Tasks', '### T1: x', '- Satisfies: R1', '- Owns: packages/main/src/index.ts', '- Done when: `true`', '', '### T2: y', '- Satisfies: R1', '- Owns: a.ts', '- Done when: `true`', ''].join('\n'),
+    );
+    const amendment = parseAmendment(A1_TASKS.replace('- Done when: `pnpm typecheck:main && echo R5-OK` -> exit 0, last line `R5-OK`', '- Done when: the gate passes'));
+
+    const problems = amendmentTaskProblems({ amendment, plan, requirements: ['R1', 'R7', 'R8'] });
+
+    assert.ok(problems.includes('T6 has no executable "Done when": "the gate passes"'), problems.join('\n'));
+    assert.ok(problems.includes('T6 satisfies R5, which is not in the requirement set once A1 applies'));
+    assert.ok(problems.includes('T3 is withdrawn by A1, and the plan has no T3'));
+    assert.ok(problems.some((problem) => /T1 and T5 both claim packages\/main\/src\/index\.ts/.test(problem)), problems.join('\n'));
+  });
+});
+
+describe('a plan with replaced tasks', () => {
+  const PLAN = [
+    '# PLAN: DESKTOP-18915',
+    '',
+    '- Requirements: R1, R7 (frozen on approval) (amended by A1)',
+    '- e2e coverage: no — manual',
+    '',
+    '## Tasks',
+    '### T2: updater marks an update-quit',
+    '- Satisfies: R2',
+    '- Owns: packages/main/src/plugin/updater.ts',
+    '- Done when: `npx vitest run updater.spec.ts`',
+    '',
+    '### T5 (replaces T2): the before-quit handler outlives the first quit request',
+    '- Satisfies: R1, R7',
+    '- Owns: packages/main/src/plugin/updater.ts',
+    '- Done when: `npx vitest run index.spec.ts`',
+    '',
+    '## Slice hypothesis',
+    'One slice.',
+    '',
+  ].join('\n');
+
+  test('the replaced task knows what replaced it', () => {
+    const tasks = parsePlan(PLAN).tasks;
+    assert.deepEqual(tasks.map((task) => [task.id, task.replaces, task.replacedBy]), [['T2', [], 'T5'], ['T5', ['T2'], null]]);
+  });
+
+  // On 18915 the hand-copied T5/T6 were not read at all, and plan check said
+  // R7 had no task while T2 cited a withdrawn R2.
+  test('plan check leaves the replaced task out: no withdrawn requirement cited, no shared file', async () => {
+    const result = await checkPlan({ plan: parsePlan(PLAN), record: { requirements: { ids: ['R1', 'R7'], frozen: true } } });
+    assert.deepEqual(result.problems, []);
+  });
+
+  test('a task the record holds as withdrawn is left out the same way', async () => {
+    const plan = parsePlan(PLAN.replace('### T5 (replaces T2):', '### T5:'));
+    const without = await checkPlan({ plan, record: { requirements: { ids: ['R1', 'R7'], frozen: true } } });
+    assert.ok(without.problems.some((problem) => problem.check === 'exclusive-owns'));
+
+    const withdrawn = await checkPlan({ plan, record: { requirements: { ids: ['R1', 'R7'], frozen: true }, withdrawn: { T2: {} } } });
+    assert.deepEqual(withdrawn.problems, []);
+  });
+
+  test('addPlanTasks puts the blocks the plan lacks at the end of "## Tasks", and only those', () => {
+    const tasks = parseAmendment(A1_TASKS).tasks;
+    const result = addPlanTasks(PLAN.replace('### T5 (replaces T2): the before-quit', '### T5 (replaces T2 and T3): the before-quit'), tasks);
+
+    assert.deepEqual(result.added, ['T6']);
+    assert.match(result.text, /R5-OK`\n\n## Slice hypothesis/);
+    assert.deepEqual(parsePlan(result.text).tasks.map((task) => task.id), ['T2', 'T5', 'T6']);
+    assert.deepEqual(addPlanTasks(result.text, tasks).added, []);
+    assert.equal(addPlanTasks('# PLAN: DESKTOP-1\n', tasks), null);
+  });
+});
+
+describe('a withdrawn task file', () => {
+  const TASK = ['# T2: updater marks an update-quit', '', '- Issue: 18915', '- Satisfies: R2, R6', '- Status: pending', '- Attempts: 0', '', '## Owns', '- packages/main/src/plugin/updater.ts', ''].join('\n');
+
+  test('the status round-trips through the file, and everything else stays byte for byte', () => {
+    const status = withdrawnStatus({ amendment: 'A1', replacedBy: ['T5'] });
+    const text = setTaskStatus(TASK, status);
+
+    assert.equal(status, 'withdrawn by A1 (replaced by T5)');
+    assert.equal(text, TASK.replace('- Status: pending', '- Status: withdrawn by A1 (replaced by T5)'));
+    assert.deepEqual(parseTask(text).withdrawn, { amendment: 'A1', replacedBy: ['T5'] });
+    // Still parses as T2 with what it owned: the ID and the record are kept.
+    assert.deepEqual([parseTask(text).id, parseTask(text).owns], ['T2', ['packages/main/src/plugin/updater.ts']]);
+  });
+
+  test('a live status is not a withdrawal, and a bare "withdrawn" written by hand is one', () => {
+    assert.equal(parseTask(TASK).withdrawn, null);
+    assert.deepEqual(withdrawalOf('withdrawn'), { amendment: null, replacedBy: [] });
+    assert.equal(setTaskStatus('# T2: x\n', 'withdrawn'), null);
   });
 });

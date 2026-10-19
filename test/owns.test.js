@@ -37,12 +37,13 @@ import { promisify } from 'node:util';
 
 import { start, stop } from '../lib/active.js';
 import { handle } from '../lib/hooks/owns.js';
-import { setOwns } from '../lib/state.js';
+import { setOwns, withdrawTask } from '../lib/state.js';
 
 const execFileAsync = promisify(execFile);
 
 const ISSUE = 18248;
 const GATE = 18835;
+const AMENDED = 18915;
 const OWNS = ['packages/main/src/plugin/container-registry.ts', 'packages/main/src/**/*.spec.ts'];
 
 let home;
@@ -226,5 +227,40 @@ describe('a task with no recorded ownership', () => {
     assert.equal(decision.block, false);
     assert.match(decision.message, /no recorded Owns set/);
     assert.match(decision.message, /pdkit task sync --issue 4242/);
+  });
+});
+
+// A1 on 18915 replaced T2 with T5. Withdrawing T2 removes its entry from `owns`,
+// and an absent entry is what the hook reads as "never synced, allow" — so the
+// withdrawal has to be read first, or withdrawing a task would widen it from its
+// own files to every file.
+describe('a task an amendment withdrew', () => {
+  before(async () => {
+    await setOwns(AMENDED, 'T2', ['packages/main/src/plugin/container-registry.ts'], { home });
+    await withdrawTask(AMENDED, { task: 'T2', amendment: 'A1', replacedBy: ['T5'], home });
+    await start({ issue: AMENDED, taskId: 'T2', worktree: repo, home });
+  });
+
+  after(async () => {
+    await stop({ worktree: repo, home });
+  });
+
+  test('the file it used to own is refused, and the refusal names the amendment and the replacement', async () => {
+    const decision = await write(join(repo, 'packages/main/src/plugin/container-registry.ts'));
+
+    assert.equal(decision.block, true);
+    assert.equal(decision.rule, 'owns');
+    assert.match(decision.reason, /T2 of issue 18915 was withdrawn by A1/);
+    assert.match(decision.reason, /--task T5/);
+  });
+
+  test('any other file in the repository is refused as well', async () => {
+    const decision = await write(join(repo, 'packages/renderer/src/App.svelte'));
+    assert.equal(decision.block, true);
+  });
+
+  test('a file outside the tree is still not the hook\'s business', async () => {
+    const decision = await write(join(outside, 'notes.md'));
+    assert.equal(decision.block, false);
   });
 });

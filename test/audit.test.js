@@ -35,7 +35,7 @@ import { collect, format } from '../lib/audit.js';
 import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { append } from '../lib/journal.js';
-import { transition } from '../lib/state.js';
+import { transition, withdrawTask } from '../lib/state.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -297,5 +297,66 @@ describe('format', () => {
     assert.match(text, /changed outside every task’s ownership/);
     assert.match(text, /App\.svelte/);
     assert.match(text, /facts, not a verdict/);
+  });
+});
+
+// On 18915 A1 replaced T2–T4 and the audit reported "receipts not ok: T2, T3,
+// T4" — the same words it uses for a task somebody forgot to finish. The two
+// are different findings: one is owed, the other was taken out of the plan.
+describe('a withdrawn task and a forgotten one', () => {
+  const AMENDED = 18915;
+
+  /**
+   * @param {string} id
+   * @param {string} owns
+   * @param {string} status
+   */
+  async function amendedTask(id, owns, status) {
+    await mkdir(join(issueDir(home, AMENDED), 'tasks'), { recursive: true });
+    await writeFile(
+      join(issueDir(home, AMENDED), 'tasks', `${id}.md`),
+      [`# ${id}: work`, '', `- Issue: ${AMENDED}`, '- Satisfies: R1', `- Status: ${status}`, '', '## Owns', owns, '', '## Done when', '```bash', 'pnpm test:main', '```', ''].join('\n'),
+    );
+  }
+
+  before(async () => {
+    await transition(AMENDED, 'triaged', { home });
+    // Forgotten: live, and nobody wrote its receipt.
+    await amendedTask('T1', 'packages/main/src/registry.ts', 'pending');
+    // Withdrawn in its own file, the way `amendment approve` marks it.
+    await amendedTask('T2', 'packages/main/src/other.ts', 'withdrawn by A1 (replaced by T5)');
+    // Withdrawn in the record only, owning the file the diff changed outside the plan.
+    await amendedTask('T3', 'packages/renderer/src/App.svelte', 'pending');
+    await withdrawTask(AMENDED, { task: 'T3', amendment: 'A1', replacedBy: ['T5'], home });
+    await amendedTask('T5', 'packages/main/src/registry.ts', 'pending');
+    await writeReceipt({ issue: AMENDED, taskId: 'T5', run: run(), home });
+  });
+
+  const audit = () => collect({ issue: AMENDED, repoRoot: repo, base: 'main', home });
+
+  test('only the live task without a receipt is counted as missing', async () => {
+    const report = await audit();
+
+    assert.deepEqual(report.receipts.missing, ['T1']);
+    assert.deepEqual(
+      report.withdrawn,
+      [
+        { id: 'T2', amendment: 'A1', replacedBy: ['T5'] },
+        { id: 'T3', amendment: 'A1', replacedBy: ['T5'] },
+      ],
+    );
+  });
+
+  test('a file only a withdrawn task owned is changed outside every task\'s ownership', async () => {
+    const report = await audit();
+    assert.deepEqual(report.unowned, ['packages/renderer/src/App.svelte']);
+  });
+
+  test('the text names the withdrawal and its amendment, and marks the forgotten task red', async () => {
+    const text = format(await audit());
+
+    assert.match(text, /– T2 {2}withdrawn by A1 \(amendments\/A1\.md\), replaced by T5 {2}receipt not owed/);
+    assert.match(text, /– T3 {2}withdrawn by A1/);
+    assert.match(text, /✘ T1 .*receipt missing/);
   });
 });
