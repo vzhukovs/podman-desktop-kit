@@ -130,6 +130,22 @@ If an R-ID was only on the step you set aside, the command says so. It is no
 longer covered, and either the new step should carry it or something still has
 to demonstrate it.
 
+## When a step shows the plan was wrong
+
+A red step usually says the change is wrong: the outcome is `fail` and the work
+goes back to the code. Sometimes it says more — the requirement, or the
+hypothesis the plan stood on, does not hold. That is an amendment, not a retry,
+and not a step reworded until it passes.
+
+The attached step is the artefact. `pdkit validate stop --issue <n>`, end the
+session, and follow the amendment sequence in `/pd:exec` from step 2: written
+on opus from the artefact, reviewed as a plan if it adds tasks, approved with
+`pdkit amendment approve A<k> --issue <n> --by <who>`.
+
+The state does not move back: `implemented` has one exit, and it is
+`validated`. The tasks the amendment adds run with `/pd:exec <n> T<k>` in a new
+session, and then `/pd:validate <n>` again.
+
 ## When you could not demonstrate something
 
 Say so, and say it where a reviewer will read it. `unverified` does not block

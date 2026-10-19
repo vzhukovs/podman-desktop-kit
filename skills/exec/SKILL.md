@@ -16,6 +16,10 @@ third attempt, and that is where drift starts.
 `pdkit state <issue>` says `plan-approved`. Implementing an unapproved plan
 means the requirements can still move under the code.
 
+The one exception is `implemented`, for the tasks of an amendment approved
+after validation found the plan wrong: the state has no way back, and
+`pdkit task start` does not read it. Run those tasks only, by ID.
+
 ## Once, before the first task
 
 ```
@@ -71,12 +75,25 @@ tasks were typed into `tasks/` with a heredoc, and the three tasks it replaced
 stayed live in the ownership map and in the audit. Every one of those was
 mended by hand afterwards.
 
+Two sizes, and they need different things:
+
+- **Small** — `Requirements affected` rows only: a requirement reworded,
+  withdrawn, or superseded. Nothing under `Slices affected`. It can be written
+  where it was found; it still needs steps 2 and 4, in this session.
+- **Large** — the hypothesis the plan stood on is dead, and tasks are added or
+  replaced. That is a rewrite of the plan, and it gets every step below.
+
+The rule between them: **if an amendment creates a task, it goes through what
+a plan goes through.** A task written into an amendment has otherwise seen
+neither the plan checks nor `pd-plan-critic`.
+
 1. **Here: stop and report, do not write.** The finding should be an artefact
    on disk, such as a reproduction, a receipt or a captured run, not a
-   paragraph in chat. Then `pdkit task stop` and end the session. Do not draft
-   the amendment from the context that produced the finding: the finding fits
-   on a screen, and that context is tens of thousands of tokens nobody needs to
-   state a requirement.
+   paragraph in chat. Then `pdkit task stop` and end the session. Capture
+   nothing for that task after the stop: `pdkit receipt write` does not check
+   that the task is still running. Do not draft the amendment from the context
+   that produced the finding: the finding fits on a screen, and that context is
+   tens of thousands of tokens nobody needs to state a requirement.
 2. **New session, on opus: write it.** `pdkit amendment new --issue <n>
    --values <f>`, written from the artefact and `plan.md`. Requirement changes
    go in `rows`. A task the amendment adds goes under `Slices affected` in
@@ -93,15 +110,19 @@ mended by hand afterwards.
 
    New tasks take the next free T-ID. Existing IDs are never reused or
    renumbered.
-3. **If it adds or replaces tasks, review it as a plan.** `pdkit plan check
-   <n>`, and `/pd:plan-review <n>` when it replaces more than a task or two. A
-   task written into an amendment has seen neither otherwise.
+3. **If it adds or replaces tasks, review it as a plan.** `/pd:plan-review
+   <n>` in a new session, and hand the critic `amendments/A<k>.md` beside
+   `plan.md`: the review reads `plan.md`, and until approval the new tasks are
+   only in the amendment. `pdkit plan check <n>` cannot see them yet either.
 4. **A human approves it, by command.** `pdkit amendment approve A<k> --issue
-   <n> --by <who>`. "Approved" in chat changes nothing. Approval applies the
-   requirement table and materialises the tasks: it renders `tasks/T<k>.md`,
-   adds the blocks to `plan.md`, marks the replaced tasks `withdrawn by A<k>`
-   and re-runs `task sync`. If it refuses, the amendment stays `proposed` and
-   the refusal says which line to fix. If an amendment was approved but did
+   <n> --by <who>`. "Approved" in chat changes nothing. Approval runs the
+   mechanical checks on the new tasks — an executable `Done when`, a live
+   R-ID, no `Owns` shared with a task that stays, no reused ID — and refuses
+   on any of them, leaving the amendment `proposed` with the line to fix.
+   Then it applies the requirement table and materialises the tasks: it
+   renders `tasks/T<k>.md`, adds the blocks to `plan.md`, marks the replaced
+   tasks `withdrawn by A<k>` and re-runs `task sync`. `pdkit plan check <n>`
+   now reads the plan with them in it. If an amendment was approved but did
    not fully apply, `pdkit amendment sync A<k> --issue <n>` finishes it.
 5. **New session, on sonnet: back to `/pd:exec <n>`.** The issue's state never
    moved; the plan did.
