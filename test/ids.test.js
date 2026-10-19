@@ -32,6 +32,8 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import {
   BRANCH_PATTERN,
@@ -202,5 +204,29 @@ describe('parseBranch', () => {
 
   test('a slug that normalizes to nothing is refused', () => {
     assert.throws(() => branchName({ issue: 7, slug: '???' }), /slug/);
+  });
+});
+
+// DESKTOP-18915: `ids task` was run to see the tasks, and spent one; `ids req`
+// was refused without saying what the kinds are.
+describe('pdkit ids, from the command line', () => {
+  const pdkit = fileURLToPath(new URL('../bin/pdkit', import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [pdkit, ...args], { encoding: 'utf8', env: { ...process.env, PDKIT_HOME: home } });
+
+  test('an unknown kind names the ones there are', () => {
+    const result = run('ids', 'req', '18915');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /unknown kind "req" \(requirement, task, slice, freeze, branch\)/);
+  });
+
+  test('an unknown kind is named before a missing issue number', () => {
+    assert.match(run('ids', 'req').stderr, /unknown kind "req"/);
+  });
+
+  test('the help says it allocates, and where to look instead', () => {
+    const help = run('help').stdout + run('help').stderr;
+    assert.match(help, /ALLOCATE the next ID/);
+    assert.match(help, /`state <issue>`/);
+    assert.match(help, /`audit <issue>`/);
   });
 });

@@ -389,9 +389,53 @@ describe('allocation', () => {
     assert.deepEqual(await allocateCounter(303, 'slice', { home }), { ok: true, value: 1 });
   });
 
-  test('an unknown counter is refused', async () => {
+  test('an unknown counter is refused, naming the ones there are', async () => {
     const refused = await allocateCounter(303, 'sprint', { home });
     assert.equal(refused.ok, false);
+    assert.match(refused.error, /task, slice, amendment, validation, deferral/);
+  });
+
+  // DESKTOP-18915: /pd:plan wrote T1..T6 straight into tasks/, the counter
+  // stayed at 2, and `ids task` handed out T2 — a live task.
+  test('a task counter behind tasks/ hands out the number after the highest file', async () => {
+    const dir = join(home, 'issues', '304');
+    await mkdir(join(dir, 'tasks'), { recursive: true });
+    for (const k of [1, 2, 3, 4, 5, 6]) await writeFile(join(dir, 'tasks', `T${k}.md`), `# T${k}\n`);
+    await allocateCounter(304, 'task', { home });
+
+    const record = await read(304, { home });
+    await writeFile(join(dir, 'state.json'), JSON.stringify({ ...record, counters: { ...record.counters, task: 2 } }));
+
+    assert.deepEqual(await allocateCounter(304, 'task', { home }), { ok: true, value: 7 });
+    assert.equal((await read(304, { home })).counters.task, 8);
+  });
+
+  test('a counter ahead of the disk is kept: a spent number is not handed out again', async () => {
+    const dir = join(home, 'issues', '305');
+    await mkdir(join(dir, 'amendments'), { recursive: true });
+    await writeFile(join(dir, 'amendments', 'A1.md'), '# A1\n');
+    const record = await read(305, { home });
+    await writeFile(join(dir, 'state.json'), JSON.stringify({ ...record, counters: { ...record.counters, amendment: 4 } }));
+
+    assert.deepEqual(await allocateCounter(305, 'amendment', { home }), { ok: true, value: 4 });
+  });
+
+  test('every kind reads its own place on disk', async () => {
+    const dir = join(home, 'issues', '306');
+    await mkdir(join(dir, 'amendments'), { recursive: true });
+    await mkdir(join(dir, 'deferrals'), { recursive: true });
+    await mkdir(join(dir, 'validation'), { recursive: true });
+    await writeFile(join(dir, 'amendments', 'A2.md'), '');
+    await writeFile(join(dir, 'deferrals', 'D3.md'), '');
+    await writeFile(join(dir, 'validation', 'V5.md'), '');
+    await writeFile(join(dir, 'validation.json'), JSON.stringify({ steps: [{ id: 'V1' }, { id: 'V4' }] }));
+    await writeFile(join(dir, 'slices.json'), JSON.stringify({ slices: [{ index: 1 }, { index: 2 }] }));
+
+    assert.equal((await allocateCounter(306, 'amendment', { home })).value, 3);
+    assert.equal((await allocateCounter(306, 'deferral', { home })).value, 4);
+    assert.equal((await allocateCounter(306, 'validation', { home })).value, 6);
+    assert.equal((await allocateCounter(306, 'slice', { home })).value, 3);
+    assert.equal((await allocateCounter(306, 'task', { home })).value, 1);
   });
 
   test('owns is recorded per task', async () => {
