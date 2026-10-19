@@ -37,6 +37,8 @@ import {
   adopt,
   allocateCounter,
   allocateRequirement,
+  amendRequirements,
+  amendedRequirements,
   canTransition,
   exists,
   freezeRequirements,
@@ -689,5 +691,143 @@ describe('the model a phase is announced with', () => {
 
   test('a skill that does not exist gives none either', async () => {
     assert.equal(await skillModel('no-such-skill'), null);
+  });
+});
+
+// The one write the freeze lets through. 18915: A1 approved, the record still R1–R6
+// frozen at next 7, and the only way to make it say R1, R3, R5, R7, R8 was
+// `node -e` on state.json. These are that issue's numbers.
+describe('amending a frozen requirement set', () => {
+  const row = (ids, change, by = null, line = 1) => ({ ids, change, by, detail: '', wrote: by ? `${change} by ${by}` : change, line, problem: null });
+  const A1 = [
+    row(['R7'], 'added'),
+    row(['R8'], 'added'),
+    row(['R2', 'R6'], 'withdrawn'),
+    row(['R4'], 'superseded', 'R8'),
+    row(['R1', 'R3', 'R5'], 'unchanged'),
+  ];
+  const SIX = { ids: ['R1', 'R2', 'R3', 'R4', 'R5', 'R6'], next: 7, frozen: true };
+
+  test('adds, removes and moves the counter on', () => {
+    const result = amendedRequirements(SIX, A1);
+
+    assert.equal(result.ok, true, result.problems.join('; '));
+    assert.deepEqual(result.after, ['R1', 'R3', 'R5', 'R7', 'R8']);
+    assert.equal(result.next, 9);
+    assert.deepEqual(result.added, ['R7', 'R8']);
+    assert.deepEqual(result.removed, ['R2', 'R4', 'R6']);
+  });
+
+  test('an unrecognised row refuses the whole table and names its line', () => {
+    const result = amendedRequirements(SIX, [...A1, { ...row(['R3'], null, null, 24), wrote: 'dropped', problem: '"dropped" is not a change' }]);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.after, SIX.ids, 'nothing is half-applied');
+    assert.match(result.problems.join(), /line 24: "dropped"/);
+  });
+
+  test('new R-IDs continue the numbering: no gap, no reuse', () => {
+    assert.match(amendedRequirements(SIX, [row(['R9'], 'added')]).problems.join(), /R9 is added where R7 comes next/);
+    // R2 was allocated once and means that requirement forever.
+    const reused = amendedRequirements({ ids: ['R1'], next: 3 }, [row(['R2'], 'added')]);
+    assert.match(reused.problems.join(), /means one requirement forever/);
+  });
+
+  test('a requirement given way to has to exist afterwards', () => {
+    assert.match(amendedRequirements(SIX, [row(['R4'], 'replaced', 'R9')]).problems.join(), /gives way to R9/);
+    assert.match(amendedRequirements(SIX, [row(['R7'], 'added'), row(['R7'], 'withdrawn')]).problems.join(), /one row per requirement/);
+  });
+
+  test('withdrawing or keeping what the set does not have is refused', () => {
+    assert.match(amendedRequirements(SIX, [row(['R12'], 'withdrawn')]).problems.join(), /has no R12/);
+    assert.match(amendedRequirements(SIX, [row(['R12'], 'unchanged')]).problems.join(), /has no R12/);
+  });
+
+  // What 18915 looks like now: the record already mended by hand. Applying the
+  // table again would refuse on its own added IDs, so it is recognised instead.
+  test('a set that already says what the table says is reflected, not reapplied', () => {
+    const result = amendedRequirements({ ids: ['R1', 'R3', 'R5', 'R7', 'R8'], next: 9 }, A1);
+
+    assert.equal(result.ok, true);
+    assert.equal(result.reflected, true);
+    assert.deepEqual(result.after, ['R1', 'R3', 'R5', 'R7', 'R8']);
+    assert.equal(result.next, 9);
+  });
+
+  describe('amendRequirements', () => {
+    const ISSUE = 18915;
+    const amendment = (status) => `# AMENDMENT A1: DESKTOP-${ISSUE}
+
+- Status: ${status}        <!-- proposed | approved | rejected -->
+
+## Requirements affected
+| R-ID | Change | Detail |
+|------|--------|--------|
+| R7 | added | x |
+| R8 | added | x |
+| R2, R6 | withdrawn | x |
+| R4 | superseded by R8 | x |
+| R1, R3, R5 | unchanged | x |
+`;
+    const write = async (status) => {
+      await mkdir(join(home, 'issues', String(ISSUE), 'amendments'), { recursive: true });
+      await writeFile(join(home, 'issues', String(ISSUE), 'amendments', 'A1.md'), amendment(status));
+    };
+
+    before(async () => {
+      await transition(ISSUE, 'triaged', { home, route: 'standard' });
+      for (let k = 0; k < 6; k++) await allocateRequirement(ISSUE, { home });
+      await freezeRequirements(ISSUE, { home });
+    });
+
+    // There is no argument through which a caller hands it a set: the only way
+    // in is the name of an amendment that says `approved` on disk.
+    test('without an amendment named, nothing moves', async () => {
+      const refused = await amendRequirements(ISSUE, { home });
+
+      assert.equal(refused.ok, false);
+      assert.match(refused.error, /only through an approved amendment/);
+      assert.equal((await read(ISSUE, { home })).requirements.next, 7);
+    });
+
+    test('a proposed amendment is not applied', async () => {
+      await write('proposed');
+      const refused = await amendRequirements(ISSUE, { home, amendment: 'A1' });
+
+      assert.equal(refused.ok, false);
+      assert.match(refused.error, /proposed, not approved/);
+      assert.deepEqual((await read(ISSUE, { home })).requirements.ids, ['R1', 'R2', 'R3', 'R4', 'R5', 'R6']);
+    });
+
+    test('an approved one is applied to the frozen set, and journalled as such', async () => {
+      await write('approved');
+      const applied = await amendRequirements(ISSUE, { home, amendment: 'A1' });
+
+      assert.equal(applied.ok, true, applied.error);
+      assert.deepEqual((await read(ISSUE, { home })).requirements, {
+        ids: ['R1', 'R3', 'R5', 'R7', 'R8'],
+        next: 9,
+        frozen: true,
+        amendments: ['A1'],
+      });
+
+      const entries = (await readJournal({ issue: ISSUE, event: 'requirements-amended' }, { home }));
+      assert.equal(entries.length, 1);
+      assert.equal(entries[0].detail, 'A1 — R1,R2,R3,R4,R5,R6 → R1,R3,R5,R7,R8 (added R7,R8; removed R2,R4,R6)');
+    });
+
+    test('and only once', async () => {
+      const again = await amendRequirements(ISSUE, { home, amendment: 'A1' });
+
+      assert.equal(again.ok, true);
+      assert.equal(again.already, true);
+      assert.equal((await read(ISSUE, { home })).requirements.next, 9);
+      const entries = (await readJournal({ issue: ISSUE, event: 'requirements-amended' }, { home }));
+      assert.equal(entries.length, 1, 'a second application writes nothing');
+    });
+
+    test('the freeze still holds against everything else', async () => {
+      assert.equal((await allocateRequirement(ISSUE, { home })).ok, false);
+    });
   });
 });

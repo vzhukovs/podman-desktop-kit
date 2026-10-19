@@ -62,7 +62,11 @@ spent twice.
 
 4. **Amendments.** If an `accept` changes what the plan promised — a new
    requirement, a changed one, a slice that has to move — then
-   `pdkit amendment new --issue <n> --values <f>`. **It goes to the user for
+   `pdkit amendment new --issue <n> --values <f>`, with every requirement it
+   touches as a row of `rows` — `{"rid": "R7" | ["R2", "R6"], "change": …,
+   "detail": …}`, change being `added`, `withdrawn`, `unchanged`, `superseded
+   by R<k>` or `replaced by R<k>`. Never finish the table by hand: approval
+   applies it to the issue's R-IDs and to plan.md. **It goes to the user for
    approval, and nothing moves until it is approved.** An amendment applied
    quietly turns the plan into a record of what happened rather than a statement
    of what was intended.

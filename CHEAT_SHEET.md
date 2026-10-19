@@ -361,7 +361,8 @@ These are upstream's, not the plugin's. Preflight checks all five.
 | the reviewer rejected the **approach**, not the diff | `pdkit issue rework <n> --reason "<what was refused>"` |
 | a quickfix outgrew its thresholds | `pdkit issue escalate <n>` |
 | something must be set aside | `pdkit defer new --issue <n> --what "<it>"` — drafts the follow-up issue |
-| an approved plan has to change | `pdkit amendment new --issue <n> --values <f>`, then `approve` |
+| an approved plan has to change | `pdkit amendment new --issue <n> --values <f>` (requirement changes as `rows`), then `approve` — applies them to the R-IDs and plan.md |
+| an approved amendment did not reach the record or plan.md | `pdkit amendment sync <A> --issue <n>` |
 | a token was issued and should not have been | `pdkit gate revoke` |
 | upstream moved under an open branch | `/pd:resume <n>` — drift, rebase, amendment |
 | a worktree is in the way | `pdkit worktree remove --issue <n>` |

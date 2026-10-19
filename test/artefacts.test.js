@@ -27,7 +27,15 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkPlan, parseAmendment, parsePlan, parseTask, setAmendmentStatus } from '../lib/artefacts.js';
+import {
+  checkPlan,
+  parseAmendment,
+  parsePlan,
+  parseTask,
+  requirementRows,
+  setAmendmentStatus,
+  setPlanRequirements,
+} from '../lib/artefacts.js';
 
 /**
  * A plan in template shape, with the pieces a case needs replaced.
@@ -467,5 +475,145 @@ The maintainer runs AdGuard, so the telemetry lines prove nothing.
   // no status line would report a decision the file does not carry.
   test('a file with no status line returns null instead of gaining one', () => {
     assert.equal(setAmendmentStatus('# AMENDMENT A1: DESKTOP-1\n\nno status here\n', 'approved'), null);
+  });
+});
+
+// The table `amendment approve` applies to a frozen requirement set. On 18915 A1
+// said R7 and R8 were added and R2, R4, R6 left the set, and nothing read that:
+// the record kept R1–R6 for twenty hours. The rows are copied from that file.
+describe('parseAmendment: Requirements affected', () => {
+  const amendment = (rows) => `# AMENDMENT A1: DESKTOP-18915
+
+- Raised by: validation finding
+- Date: 2026-10-18
+- Status: proposed        <!-- proposed | approved | rejected -->
+
+## Requirements affected
+<!-- New R-IDs continue the existing numbering.
+     | R9 | added | in a comment, and not a row | -->
+
+| R-ID | Change | Detail |
+|------|--------|--------|
+${rows}
+
+## Slices affected
+| R99 | added | under the next heading, and not this table's |
+`;
+
+  const A1 = [
+    '| R7 | added | Once the quit chain has started, no `before-quit` may let the app proceed. |',
+    '| R8 | added | Unit tests in index.spec.ts. |',
+    '| R2, R6 | withdrawn | Close-handler ordering guarded against H1. IDs are kept, not renumbered. |',
+    '| R4 | superseded by R8 | R8 covers the path that failed. |',
+    // The trailing empty cell is in the real file.
+    '| R1, R3, R5 | unchanged | R5 stands as written except for R7. | |',
+  ].join('\n');
+
+  test('reads every row, several IDs to a cell, and nothing outside the section', () => {
+    const rows = parseAmendment(amendment(A1)).requirements;
+
+    assert.deepEqual(
+      rows.map(({ ids, change, by, problem }) => ({ ids, change, by, problem })),
+      [
+        { ids: ['R7'], change: 'added', by: null, problem: null },
+        { ids: ['R8'], change: 'added', by: null, problem: null },
+        { ids: ['R2', 'R6'], change: 'withdrawn', by: null, problem: null },
+        { ids: ['R4'], change: 'superseded', by: 'R8', problem: null },
+        { ids: ['R1', 'R3', 'R5'], change: 'unchanged', by: null, problem: null },
+      ],
+    );
+    assert.equal(rows[4].detail, 'R5 stands as written except for R7.');
+  });
+
+  test('says which line each row is on, comments counted', () => {
+    const text = amendment(A1);
+    const rows = parseAmendment(text).requirements;
+
+    assert.equal(text.split('\n')[rows[3].line - 1], '| R4 | superseded by R8 | R8 covers the path that failed. |');
+  });
+
+  test('every word of the vocabulary, in any case, with code spans', () => {
+    const rows = parseAmendment(
+      amendment(['| `R1` | Added | x |', '| R2 | WITHDRAWN. | x |', '| R3 | unchanged | x |', '| R4 | replaced by `R1` | x |', '| R5 | Superseded by r1 | x |'].join('\n')),
+    ).requirements;
+
+    assert.deepEqual(
+      rows.map((row) => [row.ids.join(), row.change, row.by]),
+      [
+        ['R1', 'added', null],
+        ['R2', 'withdrawn', null],
+        ['R3', 'unchanged', null],
+        ['R4', 'replaced', 'R1'],
+        ['R5', 'superseded', 'R1'],
+      ],
+    );
+    assert.ok(rows.every((row) => row.problem === null));
+  });
+
+  // Not guessed at. "dropped" probably means withdrawn, and "probably" is not a
+  // standard for removing a requirement from a frozen set.
+  test('a word outside the vocabulary is returned unrecognised, with what it said', () => {
+    const [row] = parseAmendment(amendment('| R2 | dropped | not needed after all |')).requirements;
+
+    assert.equal(row.change, null);
+    assert.deepEqual(row.ids, ['R2']);
+    assert.equal(row.wrote, 'dropped');
+    assert.match(row.problem, /"dropped" is not a change/);
+  });
+
+  test('so is "superseded" with nothing to supersede it', () => {
+    const [row] = parseAmendment(amendment('| R4 | superseded | by the new tests |')).requirements;
+
+    assert.equal(row.change, null);
+    assert.ok(row.problem);
+  });
+
+  test('an R-ID cell that is not R-IDs is a problem, not an empty row', () => {
+    const rows = parseAmendment(amendment(['| {{rid}} | added | the template, unfilled |', '|  | added | nothing |'].join('\n'))).requirements;
+
+    assert.match(rows[0].problem, /"\{\{rid\}\}" is not an R-ID/);
+    assert.match(rows[1].problem, /empty/);
+  });
+
+  test('an amendment with no such section has no rows', () => {
+    assert.deepEqual(parseAmendment('# AMENDMENT A2: DESKTOP-18548\n\n- Status: proposed\n').requirements, []);
+  });
+
+  // The template renders from these, and the parser has to read back exactly
+  // what was rendered — or the table gets finished by hand again.
+  test('requirementRows round-trips through the parser, pipes and newlines included', () => {
+    const rendered = requirementRows([
+      { rid: ['R2', 'R6'], change: 'withdrawn', detail: 'a | b\nc' },
+      { rid: 'R7', change: 'added', detail: 'new' },
+    ]);
+    const rows = parseAmendment(amendment(rendered)).requirements;
+
+    assert.deepEqual(rows.map((row) => row.ids), [['R2', 'R6'], ['R7']]);
+    assert.equal(rows[0].detail, 'a | b c');
+    assert.ok(rows.every((row) => row.problem === null));
+  });
+});
+
+describe('setPlanRequirements', () => {
+  test('rewrites the line to the live set and names the amendments, nothing else', () => {
+    const before = plan({ requirements: 'R1, R2' });
+    const after = setPlanRequirements(before, ['R1', 'R3'], ['A1']);
+
+    assert.equal(parsePlan(after).requirements.join(), 'R1,R3');
+    assert.match(after, /^- Requirements: R1, R3 \(frozen on approval\) \(amended by A1\)$/m);
+    assert.equal(after.split('\n').length, before.split('\n').length);
+  });
+
+  // `(frozen on approval)` is fixed text of the template, and validateSections
+  // reports a plan without it as missing a section.
+  test('the plan still has every section its template asks for', async () => {
+    const after = setPlanRequirements(plan(), ['R1', 'R2'], ['A1', 'A2']);
+    const result = await checkPlan({ plan: parsePlan(after), content: after });
+
+    assert.ok(!result.problems.some((problem) => problem.check === 'sections'), JSON.stringify(result.problems));
+  });
+
+  test('a plan with no Requirements line returns null instead of gaining one', () => {
+    assert.equal(setPlanRequirements('# PLAN: DESKTOP-1\n', ['R1'], ['A1']), null);
   });
 });

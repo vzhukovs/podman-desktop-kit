@@ -50,9 +50,9 @@ const ISSUE = 18835;
 const VALUES = {
   source: 'review thread on #19001',
   trigger: 'upstream replaced the callback the plan built on',
-  rid: 'R4',
-  change: 'added',
-  detail: 'the registry now reports its own readiness',
+  // No requirement rows: approval applies the table to the issue's R-IDs and to
+  // plan.md, and an issue with neither would turn this file into a test of that.
+  rows: [],
   slices: 'slice 2',
   rationale: 'the plan stood on a callback that no longer exists',
   approval: 'pending',

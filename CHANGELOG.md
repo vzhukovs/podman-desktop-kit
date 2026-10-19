@@ -9,6 +9,29 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- `pdkit amendment approve` applies the amendment to the plan, not only to the
+  word in its own header. The `Requirements affected` table is parsed (several
+  R-IDs to a cell; `added | withdrawn | unchanged | superseded by R<k> |
+  replaced by R<k>`, anything else refused with its line) and applied to the
+  frozen requirement set — the one exception to the freeze, reachable only
+  through an approved amendment on disk and journalled as
+  `requirements-amended` with the set before and after. plan.md's
+  `- Requirements:` line is rewritten to the live set. On DESKTOP-18915 A1 was
+  approved and both had to be mended by hand. The table is checked before the
+  status is written, so an unapplicable amendment stays `proposed`.
+
+### Added
+
+- `pdkit amendment sync <A> --issue <n>` finishes an approved amendment that did
+  not reach the record or plan.md (approve now says which, and exits non-zero).
+  Nothing is applied twice; a record already mended by hand is recognised and
+  marked as applied.
+- `templates/plan-amendment.md` renders any number of requirement rows from a
+  `rows` array in the values file. The one-row `rid`/`change`/`detail` keys
+  still work.
+
 ## [0.5.2] - 2026-10-18
 
 ### Added

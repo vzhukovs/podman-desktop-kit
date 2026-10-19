@@ -1095,6 +1095,17 @@ digest rather than by keeping more.
    it, and what finds the work done against the previous version is `pdkit audit`.
    Until somebody decides, the amendment is a proposal and the plan has not
    moved, which is what `pdkit amendment list` says out loud.
+   Approval also applies the amendment's `Requirements affected` table — the
+   one write a frozen requirement set accepts. Added R-IDs continue the
+   numbering from the counter; withdrawn, superseded and replaced ones leave the
+   live set and keep their numbers; the Change cell is one of `added`,
+   `withdrawn`, `unchanged`, `superseded by R<k>`, `replaced by R<k>`, and any
+   other word refuses the approval, naming the line. The record keeps which
+   amendments it has taken (so none is applied twice), the journal gets a
+   `requirements-amended` entry with the set before and after, and plan.md's
+   `- Requirements:` line is rewritten to the live set. If either half does not
+   follow, approve says which and exits non-zero; `pdkit amendment sync` finishes
+   it. Tasks the amendment describes are not written into the plan by this.
 6. `pd-thread-resolver` per thread, in parallel, each within its own files.
 7. Cascade: if a fix touched a slice others are stacked on, `pdkit slice cascade`
    rebases the dependents and re-runs verification; whatever stopped being
