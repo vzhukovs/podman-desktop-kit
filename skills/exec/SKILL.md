@@ -63,6 +63,56 @@ The distinction that matters: discovering the plan is wrong is valuable and
 expected. Silently doing something better is what makes the audit meaningless,
 because the diff no longer corresponds to anything that was agreed.
 
+## When the plan is wrong: the amendment
+
+"Amend the plan" is a sequence of commands, and most of it does not happen in
+this session. On DESKTOP-18915 the amendment was written here, its two new
+tasks were typed into `tasks/` with a heredoc, and the three tasks it replaced
+stayed live in the ownership map and in the audit. Every one of those was
+mended by hand afterwards.
+
+1. **Here: stop and report, do not write.** The finding should be an artefact
+   on disk, such as a reproduction, a receipt or a captured run, not a
+   paragraph in chat. Then `pdkit task stop` and end the session. Do not draft
+   the amendment from the context that produced the finding: the finding fits
+   on a screen, and that context is tens of thousands of tokens nobody needs to
+   state a requirement.
+2. **New session, on opus: write it.** `pdkit amendment new --issue <n>
+   --values <f>`, written from the artefact and `plan.md`. Requirement changes
+   go in `rows`. A task the amendment adds goes under `Slices affected` in
+   exactly a plan's shape, and its heading names what it replaces:
+
+   ```
+   ### T5 (replaces T2 and T3): <title>
+   - Satisfies: R1, R7
+   - Owns: packages/main/src/index.ts
+   - Done when: `npx vitest run packages/main/src/index.spec.ts` -> exit 0
+   - Steps:
+     1. <step>
+   ```
+
+   New tasks take the next free T-ID. Existing IDs are never reused or
+   renumbered.
+3. **If it adds or replaces tasks, review it as a plan.** `pdkit plan check
+   <n>`, and `/pd:plan-review <n>` when it replaces more than a task or two. A
+   task written into an amendment has seen neither otherwise.
+4. **A human approves it, by command.** `pdkit amendment approve A<k> --issue
+   <n> --by <who>`. "Approved" in chat changes nothing. Approval applies the
+   requirement table and materialises the tasks: it renders `tasks/T<k>.md`,
+   adds the blocks to `plan.md`, marks the replaced tasks `withdrawn by A<k>`
+   and re-runs `task sync`. If it refuses, the amendment stays `proposed` and
+   the refusal says which line to fix. If an amendment was approved but did
+   not fully apply, `pdkit amendment sync A<k> --issue <n>` finishes it.
+5. **New session, on sonnet: back to `/pd:exec <n>`.** The issue's state never
+   moved; the plan did.
+
+Never write a task file by hand to get past a missing one. A task the plan
+names with no file in `tasks/`, or one `pdkit task start` reports with no
+recorded Owns set, means the amendment is not approved or not applied: go to
+step 4. A withdrawn task is refused by `task start`, by
+`receipt write` and by the pre-write hook, and each refusal names the task
+that replaced it. Start that task instead.
+
 ## Receipts
 
 A task is done when the output of its `Done when` command is captured
