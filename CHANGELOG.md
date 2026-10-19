@@ -82,6 +82,17 @@ fixes — see [RELEASING.md](RELEASING.md).
 - `templates/plan-amendment.md` renders any number of requirement rows from a
   `rows` array in the values file. The one-row `rid`/`change`/`detail` keys
   still work.
+- A `UserPromptSubmit` hook, `pdkit hook prompt-submit`. On `/pd:<skill> <n>`
+  typed in a tree that is another issue's, it adds to the context where issue
+  `<n>`'s work is — its worktree, or its branch checked out nowhere — beside
+  this tree's path and branch, and that the number is not a typo. The number
+  is read as an issue or a pull request by the skill's `argument-hint`; a pull
+  request is followed to its issue through prs.json, and one not registered
+  (`/pd:review-pr`) is left alone. It never blocks and writes nothing; any
+  other prompt returns before git or `$PDKIT_HOME` is touched. SessionStart
+  fires on `/clear`, before the prompt, so this is the first point at which the
+  issue a session is for is known. The lookup of a pull request's issue moved
+  from lib/cli.js to `pr.issueOf`, shared by `pdkit pr` and the hook.
 
 ## [0.5.2] - 2026-10-18
 

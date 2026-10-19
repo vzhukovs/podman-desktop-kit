@@ -66,6 +66,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pdkit",
+            "args": ["hook", "prompt-submit"]
+          }
+        ]
+      }
     ]
   }
 }
