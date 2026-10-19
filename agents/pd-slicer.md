@@ -13,6 +13,13 @@ the R-IDs that task satisfies. Deriving that mapping yourself by reading the
 diff is the set arithmetic the command exists to do, and doing it again is how
 a file quietly ends up in two slices or in none.
 
+**Check `branch` before reading anything else.** It is the branch the diff was
+read from, beside `refName`; it must be `DESKTOP-<n>/…` for the issue you were
+given. If it names another issue — or is null when `refName` is `HEAD` — stop
+and say so: every file in the list belongs to somebody else's change. pdkit
+refuses a tree that belongs to another issue, and the refusal prints the command
+to run instead; run that one, do not work around it.
+
 Two graphs, and treating them as one is the classic error:
 
 - **File independence** — slices do not share files. Mechanical, cheap, and not

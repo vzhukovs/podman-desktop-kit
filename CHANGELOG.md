@@ -11,6 +11,27 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- Commands given an issue number hold to that issue's tree instead of whichever
+  tree the shell is in. One resolver, `forIssue` in lib/worktree.js, finds the
+  issue's work in order of trust — a registered worktree, then a local
+  `DESKTOP-<n>/…` branch checked out nowhere, then the cwd — and a tree that
+  belongs to another issue is refused before anything runs, with the command to
+  run instead (`cd <tree> && pdkit …`). On DESKTOP-18915 the main checkout stood
+  on 18967's branch: `slice suggest` handed the slicer 18967's diff as 18915's,
+  and `preflight 18915` ran tests, lint and typecheck on 18967's tree before
+  branch-name noticed. Held: `preflight`, `slice suggest|set|materialize|cascade`,
+  `audit`, `validate launch|run|codify|attach --run`, `e2e stability`. A tree
+  where nothing names the issue and the branch names no issue either — `main`,
+  the start of the work — still goes through.
+- `pdkit slice suggest|set` take `--ref <branch>` to read a diff without
+  checking it out, and `--worktree <path|name>` to read another tree. A `--ref`
+  that is another issue's branch is refused, here and in `pdkit audit`.
+- `slice suggest --json` reports `branch` and `tree` beside `refName`, and the
+  stored graph keeps `source.branch`. `refName: "HEAD"` alone gave the slicer
+  nothing to compare with the issue number.
+- `pdkit drift` finds an issue's local branch through the same helper, so only
+  branches matching `DESKTOP-<n>/[<i>-]<slug>` count, the unsliced one first.
+
 - An approved amendment now reaches the tasks, not only the requirements. The
   `### T<k>` blocks under `Slices affected` are read by the parser plan.md goes
   through, and approve renders `tasks/T<k>.md` from them, adds the blocks to

@@ -49,6 +49,12 @@ justifies itself alone is not.
 Do not re-derive that mapping by reading the diff. That is the set arithmetic
 this command exists to do.
 
+The diff is HEAD of the tree you are in, and a tree that is not the issue's is
+refused with the command to run instead. `--ref <branch>` reads a branch without
+checking it out; `--worktree DESKTOP-<n>` reads the issue's worktree from
+anywhere. Whichever you use, `branch` in the JSON names what was read — and
+`slice set` needs the same `--ref`/`--worktree`/`--from-pr` as `suggest`.
+
 ## 2. The cut
 
 Write a proposal — one JSON file, one entry per slice:
