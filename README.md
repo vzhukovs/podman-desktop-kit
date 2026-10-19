@@ -8,13 +8,15 @@ carry those pull requests through review.
 It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
-> **Status: 0.1.0, a proof of concept.** Two routes have gone end to end to a
-> published upstream pull request — once as a two-slice graph into two of them —
-> and one issue has been all the way to `merged` after review and a rebase. Much
-> of the workflow was driven through `pdkit` in a terminal rather than through
-> `/pd:*` in a session, so twelve of the twenty-two skills have never run.
-> [Status and limitations](#status-and-limitations) has the full accounting, with
-> evidence per line.
+> **Status: 0.6.0, pre-1.0.** Used on eleven podman-desktop issues: ten pull
+> requests published upstream, five of them merged — four on the
+> `standard` route, one on `quickfix` — and one issue carried as a two-slice
+> graph into two pull requests. Thirteen of the twenty-two skills have run as
+> `/pd:*` in a session; `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`
+> and `review-pr` have not, nor have the three that trigger by meaning. Pre-1.0,
+> a minor release may still change a command or the state machine — see
+> [RELEASING.md](RELEASING.md). [Status and limitations](#status-and-limitations)
+> has the full accounting, with evidence per line.
 
 ## Why it exists
 
@@ -157,7 +159,7 @@ puts one there — a journal entry, or an artefact you can point at.
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
 | `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
-| Ten skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
+| Thirteen skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889; `/pd:validate` and `/pd:pr` on 18833, 18835 and 18915; `/pd:close` on 18835 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
 | Review sending a plan back | `plan check` green, `pd-plan-critic` returning three must-change findings anyway, and the issue going `planned` → `triaged` → replanned |
 | The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journalled as `denied` |
 
@@ -165,7 +167,7 @@ puts one there — a journal entry, or an artefact you can point at.
 
 | What | Why it matters |
 |---|---|
-| **Twelve of the twenty-two skills**, and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, the `quickfix` route, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Nine of the twenty-two skills** — `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, the `quickfix` route, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
 | **Windows.** ubuntu and macOS are green; the Windows job runs, reports, and does not block | It tested nothing at all until 2026-08-31 — the test glob reached node with its quotes still attached under cmd.exe, matched no files and exited 0. Fixing that showed `pdkit` had never started on Windows either: the entry point imported by filesystem path, which ESM refuses there. So the gate had never guarded a Windows session. Both fixed; 96 assertions remain, all path separators and CRLF in captured output |
 | **Three of the seven hook events** | `pre-bash` has two genuine firings, `subagent-stop` has host firings as `agent-done` in the journal (watched by `pdkit doctor`), and `pre-write` is exercised through the manifest. `post-write`, `session-start`, `pre-compact` and `prompt-submit` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
 | **`cascade`, and rebasing dependents** | Cutting, verifying, materialising and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
