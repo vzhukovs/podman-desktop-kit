@@ -11,6 +11,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Fixed
 
+- `agent-done` is no longer filed under the issue of whatever branch the tree
+  happens to stand on. Without an active task, when another issue in progress
+  was moved after the branch's one, the run is recorded with no issue and the
+  reason in its detail (`not filed under 18967: the tree is on …, and 18915
+  moved since`). On DESKTOP-18915 every subagent of an afternoon in a main
+  checkout left on 18967's branch was counted for 18967, and `pdkit cost`,
+  which attributes calls to the nearest journal entry, moved that work's cost
+  there too. Entries already written stay as they are: the journal is
+  append-only. The test is `state.movedSince`, shared with the SessionStart
+  summary.
 - The SessionStart summary no longer presents the branch of the tree as what the
   session is for. When another issue in progress was moved after the tree's one
   (state.json `updatedAt`), it says so — the tree's path and branch, and each of

@@ -491,7 +491,14 @@ receipt gate below ever ran; `pdkit doctor` now warns when `agent-done` has been
 silent for 30 days. The issue comes from the active task pointer when there is one
 and from the branch name when there is not — `DESKTOP-<issue>/<slug>` is a name
 this plugin wrote — and from nothing else: an entry with no issue is honest,
-while one attributed by guess is not.
+while one attributed by guess is not. The branch is held to the same test as the
+SessionStart summary: when another issue in progress was moved after the
+branch's issue (its state.json `updatedAt`), the branch is only where the last
+piece of work left the checkout, and the entry is written with no issue and
+`not filed under <n>: the tree is on <branch>, and <m> moved since`. On
+DESKTOP-18915 every subagent of an afternoon spent in a main checkout left on
+18967's branch was filed under 18967, and `pdkit cost`, which attributes calls
+by the nearest entry, followed them.
 
 **Almost every entry is written by whatever produced the fact. There is one
 exception, and it exists because a conflict cannot be observed.** A receipt is a

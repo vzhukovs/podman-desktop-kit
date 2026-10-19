@@ -277,6 +277,67 @@ describe('counting the agents that ran', () => {
     assert.ok(entry, 'recorded, and attributed to nobody');
     assert.match(entry.detail, /agent task agent-11/);
   });
+
+  // DESKTOP-18915's afternoon: the main checkout stood on 18967's branch while
+  // 18915 was sliced, verified and published from it, and every subagent was
+  // filed under 18967 — and `pdkit cost` followed the entries.
+  describe('when the branch names one issue and another was moved since', () => {
+    const RIVAL = 18915;
+    const unattributed = async () => (await readJournal({}, { home })).filter((line) => line.event === 'agent-done' && line.issue === null);
+
+    const withRival = async (body) => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await transition(RIVAL, 'triaged', { home });
+      try {
+        await body();
+      } finally {
+        await transition(RIVAL, 'abandoned', { home });
+        await rm(issueDir(home, RIVAL), { recursive: true, force: true });
+      }
+    };
+
+    test('the run is filed under no issue, and the entry says why', async () => {
+      await stop({ worktree: WORKTREE, home });
+      await execFileAsync('git', ['checkout', '-q', '-b', `DESKTOP-${ISSUE}/left-behind`], { cwd: WORKTREE });
+
+      await withRival(async () => {
+        const before = (await agentRuns(ISSUE)).length;
+        await taskCompleted({ agent_id: 'a5f0', agent_type: 'pd:pd-slicer', cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+
+        assert.equal((await agentRuns(ISSUE)).length, before, 'not filed under the branch\'s issue');
+        assert.equal((await agentRuns(RIVAL)).length, 0, 'nor under the one that moved: two sessions can run at once');
+
+        const entry = (await unattributed()).at(-1);
+        assert.equal(entry.detail, `agent task a5f0; pd:pd-slicer; not filed under ${ISSUE}: the tree is on DESKTOP-${ISSUE}/left-behind, and ${RIVAL} moved since`);
+      });
+    });
+
+    test('an issue moved before the branch\'s one does not count against it', async () => {
+      await stop({ worktree: WORKTREE, home });
+      await execFileAsync('git', ['checkout', '-q', '-b', `DESKTOP-${ISSUE}/still-current`], { cwd: WORKTREE });
+      await transition(RIVAL, 'triaged', { home });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await setOwns(ISSUE, 'T8', [], { home });
+
+      try {
+        const before = (await agentRuns(ISSUE)).length;
+        await taskCompleted({ agent_id: 'a5f1', agent_type: 'pd:pd-scout', cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+        assert.equal((await agentRuns(ISSUE)).length, before + 1);
+      } finally {
+        await transition(RIVAL, 'abandoned', { home });
+        await rm(issueDir(home, RIVAL), { recursive: true, force: true });
+      }
+    });
+
+    // The pointer is written in this tree by `task start`; it is not a guess,
+    // and nothing that happens to another issue makes it one.
+    test('a running task still owns the run', async () =>
+      withRival(async () => {
+        const before = (await agentRuns(ISSUE)).length;
+        await taskCompleted({ agent_id: 'a5f2', agent_type: 'pd:pd-scout', cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+        assert.equal((await agentRuns(ISSUE)).length, before + 1);
+      }));
+  });
 });
 
 describe('completing a task', () => {
