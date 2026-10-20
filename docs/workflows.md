@@ -43,7 +43,7 @@ per row. In short: the `quickfix` and `standard` routes have each gone end to en
 to a published upstream pull request, once as a two-slice graph into two of them,
 and one issue has been through the whole machine to `merged` with a reviewer and
 a rebase in the middle. Much of that was driven through `pdkit` in a terminal —
-so twelve of the twenty-two skills below have never been invoked as `/pd:*`.
+so eleven of the twenty-four skills below have never been invoked as `/pd:*`.
 
 ## Before anything
 

@@ -109,6 +109,8 @@ the reporter still has to confirm.
 |---|---|---|---|
 | `/pd:doctor` | before anything, or when something misbehaves | — | tools, config, `$PDKIT_HOME`, hooks, MCP |
 | `/pd:sync` | "where am I" | — | fork vs upstream, every worktree. Read-only |
+| `/pd:editor [<n>]` | to work in the issue's tree | its worktree; `editor.path` set | the worktree opened in your IDE. Without a number, the current branch's issue |
+| `/pd:open home\|issue\|tree [<n>]` | to look at the files | — | `$PDKIT_HOME`, `issues/<n>`, or the worktree in the file manager |
 | `/pd:triage <n>` | a new issue — or no number, to pick one. Anything typed after the first line is recorded as prior context | — | route, drafted requirements → `triaged` |
 | `/pd:plan <n>` | the route is standard | `triaged` | scouts, `research.md`, `plan.md`, task files → `planned` |
 | `/pd:plan-review <n>` | a plan exists | `planned` | must-change findings; repeat until clean → **you approve** → `plan-approved` |
@@ -129,7 +131,7 @@ the reporter still has to confirm.
 
 Three more skills trigger by meaning rather than by slash — ask in words and they
 load: **package-map** (which package owns this file), **upstream-rules** (the
-non-negotiables), **worktree-kit** (parallel checkouts). Twenty-two in total.
+non-negotiables), **worktree-kit** (parallel checkouts). Twenty-four in total.
 
 Nothing starts on its own. Every orchestrating skill is manual only.
 

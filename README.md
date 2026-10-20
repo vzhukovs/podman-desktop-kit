@@ -11,9 +11,9 @@ pull requests against** — and most of what follows is a consequence of that.
 > **Status: 0.6.0, pre-1.0.** Used on eleven podman-desktop issues: ten pull
 > requests published upstream, five of them merged — four on the
 > `standard` route, one on `quickfix` — and one issue carried as a two-slice
-> graph into two pull requests. Thirteen of the twenty-two skills have run as
-> `/pd:*` in a session; `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`
-> and `review-pr` have not, nor have the three that trigger by meaning. Pre-1.0,
+> graph into two pull requests. Thirteen of the twenty-four skills have run as
+> `/pd:*` in a session; `editor`, `knowledge`, `open`, `pr-status`, `quickfix`, `reset`,
+> `resume` and `review-pr` have not, nor have the three that trigger by meaning. Pre-1.0,
 > a minor release may still change a command or the state machine — see
 > [RELEASING.md](RELEASING.md). [Status and limitations](#status-and-limitations)
 > has the full accounting, with evidence per line.
@@ -97,6 +97,8 @@ All orchestrating skills are manual only — nothing starts on its own.
 |---|---|
 | `/pd:doctor` | environment report |
 | `/pd:sync` | fork and worktree status |
+| `/pd:editor [<issue>]` | open the issue's worktree in the IDE set as `editor.path`; without a number, the issue of the current branch |
+| `/pd:open home\|issue\|tree [<issue>]` | open `$PDKIT_HOME`, the issue's directory in it, or its worktree in the file manager |
 | `/pd:triage [<issue>]` | classify the issue, draft requirements, pick a route. Anything typed after the first line is kept as prior context — related work, an approach to repeat, a trap to avoid. Without a number: shortlist the backlog by what can actually be started |
 | `/pd:plan <issue>` | scout the code, then produce a plan with executable done-criteria |
 | `/pd:plan-review <issue>` | adversarial review of the plan, before any code |
@@ -167,7 +169,7 @@ puts one there — a journal entry, or an artefact you can point at.
 
 | What | Why it matters |
 |---|---|
-| **Nine of the twenty-two skills** — `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, the `quickfix` route, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Eleven of the twenty-four skills** — `editor`, `open`, `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, the `quickfix` route, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
 | **Windows.** ubuntu and macOS are green; the Windows job runs, reports, and does not block | It tested nothing at all until 2026-08-31 — the test glob reached node with its quotes still attached under cmd.exe, matched no files and exited 0. Fixing that showed `pdkit` had never started on Windows either: the entry point imported by filesystem path, which ESM refuses there. So the gate had never guarded a Windows session. Both fixed; 96 assertions remain, all path separators and CRLF in captured output |
 | **Three of the seven hook events** | `pre-bash` has two genuine firings, `subagent-stop` has host firings as `agent-done` in the journal (watched by `pdkit doctor`), and `pre-write` is exercised through the manifest. `post-write`, `session-start`, `pre-compact` and `prompt-submit` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
 | **`cascade`, and rebasing dependents** | Cutting, verifying, materialising and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
@@ -229,7 +231,7 @@ it found, not merely that a server exists.
 bin/pdkit          deterministic CLI, added to PATH by the plugin
 lib/               its implementation: state machine, slicing, gates, preflight,
                    validation, reviews of other people's pull requests
-skills/            22 skills — the workflow surface
+skills/            24 skills — the workflow surface
 agents/            14 agents — scouts, implementers, auditors, reviewers
 hooks/hooks.json   seven entries; the rules live in lib/hooks/
 knowledge/         upstream constitution, package map, known traps

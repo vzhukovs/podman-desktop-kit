@@ -177,6 +177,28 @@ validation:
     debug_port: 9222
     startup_timeout: 60s
 
+# The IDE `pdkit editor` opens an issue's worktree in. Empty on purpose, like
+# repo.fork: this file ships to everyone and cannot know what is installed where,
+# and guessing VS Code for somebody who works in WebStorm is worse than a
+# warning. Until it is set, `pdkit editor` prints the lines to add.
+#
+# Only $PDKIT_HOME/config.yaml is read for it. This is a program pdkit runs, so
+# a repository's .pdkit.yaml that sets it — or moves state.root to a config of
+# its own — is refused: a pull request under review decides what its tree holds.
+#
+#   macOS    /Applications/WebStorm.app        (a .app goes through `open -a`)
+#   Windows  'C:\Program Files\JetBrains\WebStorm 2026.2\bin\webstorm64.exe'
+#            VS Code: '...\Microsoft VS Code\Code.exe'
+#            (single quotes: a backslash inside double quotes is an escape)
+#   Linux    ~/.local/share/JetBrains/Toolbox/scripts/webstorm
+#
+# An absolute path, always — a bare `code` is searched for in the working
+# directory first on Windows. On Windows an .exe only: a .cmd or .bat runs
+# through cmd.exe, which re-parses its arguments in ways no quoting survives.
+# A program every user on the machine can write is refused.
+editor:
+  path: ""
+
 journal:
   path: journal/
   reanchor_scope: issue        # SessionStart injects the active issue only

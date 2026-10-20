@@ -9,6 +9,40 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`pdkit editor [<issue>]` and `/pd:editor`** open the issue's worktree in the
+  IDE set as `editor.path` — a `.app` on macOS, an `.exe` on Windows, a launcher
+  on Linux, always by absolute path. Without a number, the issue of the branch
+  the tree is on. `editor.path` ships empty; unset, the command exits 1 and
+  prints the config file and the lines to add for the platform it runs on.
+- **`pdkit open home|issue|tree [<issue>]` and `/pd:open`** open `$PDKIT_HOME`,
+  `issues/<n>` in it, or the issue's worktree in the file manager: `open` on
+  macOS, `explorer.exe` on Windows, `xdg-open` on Linux. Exits 1 when nothing
+  opened — headless Linux included — and prints the path either way.
+
+### Security
+
+Both commands start programs, and are built so that nothing a repository
+contains gets to choose which:
+
+- `editor.path` is read from `$PDKIT_HOME/config.yaml` only. A `.pdkit.yaml`
+  that sets it, or that moves `state.root`, is refused with an explanation.
+- On macOS, `open` on an application-bundle directory runs it — `open -a Finder`
+  too, both checked by hand. A directory is canonicalised and refused if it is
+  a bundle, by name or by `Contents/Info.plist`.
+- Absolute paths only, for the IDE and for every platform tool: Explorer by
+  `%SystemRoot%`, `/usr/bin/open`, `xdg-open` from absolute `PATH` entries
+  only. Started without a shell, from the home directory. No `.cmd` or `.bat`
+  (cmd.exe re-parses arguments, CVE-2024-27980), no network paths on Windows
+  (an NTLM hash sent to the host), no IDE writable by every user.
+- An issue number is digits only: `12abc` used to read as 12.
+- Output is stripped of control characters, ANSI escapes and bidi overrides,
+  and capped; git's own wording, which quotes branch names, is not passed on.
+- `/pd:editor` and `/pd:open` never splice their arguments into a shell: they
+  are matched against fixed shapes, then one fixed command runs, and the skill
+  reads its output as data.
+
 ## [0.6.0] - 2026-10-19
 
 ### Upgrading
