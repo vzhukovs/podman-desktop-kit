@@ -24,6 +24,16 @@ downloading — but `node_modules` is still per tree and still costs minutes on
 this workspace. That is why the verification tree (`verify-DESKTOP-<n>`) is
 reused between runs instead of recreated.
 
+## The main checkout is the template
+
+The fork's own checkout stays on the base branch. It is where trees are made
+from and where `fetch` runs, and it is never an issue's tree — not even on that
+issue's branch. Commands that take an issue number refuse there, and the
+prompt hook tells the session to move with `EnterWorktree` into the issue's
+tree; subagents started after the switch work there too. A branch found in the
+main checkout is moved out: `git -C <fork> switch main`, then
+`pdkit worktree create --issue <n> --branch <b>`.
+
 ## What is per tree and what is not
 
 - **Per tree**: the checkout, `node_modules`, and the *active task* — the

@@ -166,6 +166,22 @@ describe('forIssue', () => {
     }
   });
 
+  // DESKTOP-18915's second failure: the pull request's branch in the main
+  // checkout made that checkout the issue's, and the review fixes landed there.
+  test('the main checkout on the issue\'s own branch is not the issue\'s tree', async () => {
+    const found = await forIssue({ issue: OTHER, cwd: repo });
+    assert.equal(found.verdict, 'foreign');
+    assert.equal(found.here.main, true);
+    assert.deepEqual(found.home, { source: 'checkout', path: repo, branch: OTHER_BRANCH });
+  });
+
+  test('a branch the main checkout holds is not "checked out nowhere", from any tree', async () => {
+    const found = await forIssue({ issue: OTHER, cwd: tree });
+    assert.equal(found.verdict, 'foreign');
+    assert.equal(found.here.main, false);
+    assert.deepEqual(found.home, { source: 'checkout', path: repo, branch: OTHER_BRANCH });
+  });
+
   test('the unsliced branch comes before slice branches', async () => {
     await git(['branch', `DESKTOP-${OURS}/1-part`, 'main'], repo);
     try {
@@ -263,6 +279,18 @@ describe('preflight from a tree on another issue\'s branch', () => {
     assert.equal(said.ok, false);
     assert.deepEqual(said.results, []);
     assert.equal(said.commands[0], `cd ${tree} && pdkit preflight ${OURS} --json`);
+  });
+
+  test('in the main checkout on the issue\'s own branch it refuses, and moves the branch out', async () => {
+    const result = await pdkit(repo, 'preflight', String(OTHER), '--json');
+    assert.equal(result.code, 1);
+
+    const said = JSON.parse(result.stdout);
+    assert.equal(said.home.source, 'checkout');
+    assert.deepEqual(said.commands, [
+      `git -C ${repo} switch main && pdkit worktree create --issue ${OTHER} --branch ${OTHER_BRANCH} && cd ${join(trees, `DESKTOP-${OTHER}`)} && pdkit preflight ${OTHER} --json`,
+    ]);
+    assert.equal(await present(join(repo, 'typecheck-ran.txt')), false, 'typecheck ran in the main checkout');
   });
 
   test('from the issue\'s worktree the checks run there', async () => {

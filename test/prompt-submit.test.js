@@ -20,9 +20,13 @@
 //
 // The case it exists for is DESKTOP-18915's: a tree on issue A's branch, a
 // command typed for issue B, and B's work in a worktree beside it. What is
-// asserted is that the context then names both trees and says the number is
-// not a typo — and that every other prompt gets nothing at all, because the
-// hook runs on every message and a line on each would be read as noise.
+// asserted is that the context then names both trees and tells Claude to move
+// the session with EnterWorktree — and that every other prompt gets nothing at
+// all, because the hook runs on every message and a line on each would be read
+// as noise.
+//
+// The main checkout is never an issue's tree, even on that issue's branch: a
+// command typed there is told how to move the branch out and where to go.
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -109,21 +113,29 @@ describe('reading the command', () => {
 });
 
 describe('a command for one issue, typed in another issue\'s tree', () => {
-  test('names both trees and says the number is not a typo', async () => {
+  test('names both trees and tells the session to move into the issue\'s', async () => {
     const decision = await submit(`/pd:preflight ${AWAY}`);
 
     assert.equal(decision.block, false);
     assert.match(decision.message, /\/pd:preflight is about issue 18915 — triaged, and this tree is not its/);
-    assert.match(decision.message, new RegExp(`here {4}: ${MAIN} on DESKTOP-${HERE}/1-fix-main-event-stream-reconnect — issue ${HERE}'s`));
+    assert.match(
+      decision.message,
+      new RegExp(`here {4}: ${MAIN} on DESKTOP-${HERE}/1-fix-main-event-stream-reconnect — the main checkout — issue ${HERE}'s`),
+    );
     assert.match(decision.message, new RegExp(`${AWAY} {3}: ${AWAY_TREE} on DESKTOP-${AWAY}/1-quit-and-install-race`));
-    assert.match(decision.message, /not a typo/);
+    assert.match(decision.message, new RegExp(`Call the EnterWorktree tool with path: ${AWAY_TREE}$`, 'm'));
+    // The tree exists: nothing to run first.
+    assert.doesNotMatch(decision.message, /pdkit worktree create|git -C/);
   });
 
   test('a branch checked out nowhere is named, with how to get a tree for it', async () => {
     const decision = await submit(`/pd:slice ${PARKED}`);
 
     assert.match(decision.message, new RegExp(`DESKTOP-${PARKED}/1-store-image-info-ui, a local branch checked out nowhere`));
-    assert.match(decision.message, new RegExp(`pdkit worktree create --issue ${PARKED}`));
+    assert.match(decision.message, new RegExp(`^ +pdkit worktree create --issue ${PARKED} --branch DESKTOP-${PARKED}/1-store-image-info-ui$`, 'm'));
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${join(base, 'pd-worktrees', `DESKTOP-${PARKED}`)}$`, 'm'));
+    // Only the main checkout's own branch is switched away from, never this one.
+    assert.doesNotMatch(decision.message, /git -C/);
     // No record for it: the line says nothing it does not know.
     assert.doesNotMatch(decision.message, new RegExp(`${PARKED} — `));
   });
@@ -135,16 +147,34 @@ describe('a command for one issue, typed in another issue\'s tree', () => {
     try {
       const decision = await submit('/pd:pr-sync 19750');
       assert.match(decision.message, /\/pd:pr-sync is about issue 18915/);
+      assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${AWAY_TREE}$`, 'm'));
     } finally {
       await rm(join(issueDir(home, AWAY), 'prs.json'), { force: true });
     }
   });
 });
 
+// DESKTOP-18915 once more: the pull request's branch left in the main checkout
+// by `slice materialize`, and the review round committed beside the worktree.
+describe('the main checkout on the issue\'s own branch', () => {
+  test('is not the issue\'s tree: the branch moves out, then the session follows', async () => {
+    const decision = await submit(`/pd:audit ${HERE}`);
+
+    assert.match(decision.message, /\/pd:audit is about issue 18967, and this tree is not its/);
+    assert.match(decision.message, new RegExp(`DESKTOP-${HERE}/1-fix-main-event-stream-reconnect, held by the main checkout`));
+    const steps = decision.message.split('\n').filter((line) => /^ {7}\S/.test(line)).map((line) => line.trim());
+    assert.deepEqual(steps, [
+      `git -C ${MAIN} switch main`,
+      `pdkit worktree create --issue ${HERE} --branch DESKTOP-${HERE}/1-fix-main-event-stream-reconnect`,
+    ]);
+    assert.match(decision.message, /Show the person these commands and run them once they agree/);
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${join(base, 'pd-worktrees', `DESKTOP-${HERE}`)}$`, 'm'));
+  });
+});
+
 describe('everything else is quiet', () => {
   test('the issue\'s own tree', async () => {
     assert.equal((await submit(`/pd:preflight ${AWAY}`, AWAY_TREE)).message, undefined);
-    assert.equal((await submit(`/pd:audit ${HERE}`)).message, undefined);
   });
 
   test('an issue nothing names yet', async () => {
@@ -168,7 +198,7 @@ describe('everything else is quiet', () => {
   // `user_prompt` is the name plugin-dev material uses; reading it too costs nothing.
   test('the other name for the prompt is read the same way', async () => {
     const decision = await handle({ user_prompt: `/pd:preflight ${AWAY}`, cwd: MAIN }, { event: 'prompt-submit', pluginRoot: PLUGIN_ROOT });
-    assert.match(decision.message, /not a typo/);
+    assert.match(decision.message, /EnterWorktree/);
   });
 });
 

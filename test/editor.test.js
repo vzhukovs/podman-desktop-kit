@@ -227,18 +227,22 @@ describe('opening, and declining to', () => {
 });
 
 describe('pdkit editor and pdkit open, refusing', () => {
+  let main;
   let repo;
   let home;
 
+  // The issue's tree is a linked worktree: the main checkout is nobody's tree,
+  // whatever branch it is on.
   before(async () => {
-    repo = await initRepo('pdkit-editor-');
+    main = await initRepo('pdkit-editor-');
     home = await realpath(await mkdtemp(join(tmpdir(), 'pdkit-editor-home-')));
-    await writeFiles(repo, { 'README.md': 'fixture\n' });
-    await commitAll(repo, 'init');
-    await git(['checkout', '-b', 'DESKTOP-4242/open-things'], repo);
+    await writeFiles(main, { 'README.md': 'fixture\n' });
+    await commitAll(main, 'init');
+    repo = join(await realpath(await mkdtemp(join(tmpdir(), 'pdkit-editor-trees-'))), 'DESKTOP-4242');
+    await git(['worktree', 'add', '-q', '-b', 'DESKTOP-4242/open-things', repo], main);
   });
 
-  after(() => cleanup(repo, home));
+  after(() => cleanup(main, dirname(repo), home));
 
   async function pdkit(args, env = { ...process.env, PDKIT_HOME: home }) {
     try {

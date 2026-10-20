@@ -29,7 +29,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { start, stop } from '../lib/active.js';
@@ -517,6 +517,24 @@ describe('completing a task', () => {
 describe('re-anchoring', () => {
   const startSession = () => sessionStart({ cwd: WORKTREE }, { event: 'session-start', pluginRoot: '' });
 
+  // Between phases the session stands in the issue's worktree. The fixture
+  // repository is a main checkout, and that is nobody's tree whatever branch it
+  // is on — the summary for a branch is given from a linked tree.
+  let LINKED;
+  const startIn = (cwd) => sessionStart({ cwd }, { event: 'session-start', pluginRoot: '' });
+
+  before(async () => {
+    // git needs a commit before it can add a worktree.
+    await execFileAsync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: WORKTREE });
+    LINKED = join(await realpath(tmpdir()), `pdkit-linked-${process.pid}`, 'issue-tree');
+    await execFileAsync('git', ['worktree', 'add', '-q', '--detach', LINKED], { cwd: WORKTREE });
+  });
+
+  after(async () => {
+    await execFileAsync('git', ['worktree', 'remove', '--force', LINKED], { cwd: WORKTREE });
+    await rm(dirname(LINKED), { recursive: true, force: true });
+  });
+
   test('the summary names the issue, the task, its files and where it can go next', async () => {
     const decision = await startSession();
 
@@ -564,14 +582,14 @@ describe('re-anchoring', () => {
   // tree with no task running, and a session per phase is only cheap if the
   // session that opens there is told where it is.
   describe('between phases, the branch names the issue', () => {
-    // HEAD is moved rather than checked out: the fixture has no commits, and an
-    // unborn branch is still the answer `git branch --show-current` gives.
+    // HEAD is moved rather than checked out: an unborn branch is still the
+    // answer `git branch --show-current` gives, and nothing has to be created.
     const onBranch = async (name, body) => {
-      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd: WORKTREE });
+      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd: LINKED });
       try {
         await body();
       } finally {
-        await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+        await execFileAsync('git', ['checkout', '-q', '--detach', 'main'], { cwd: LINKED });
       }
     };
 
@@ -579,7 +597,7 @@ describe('re-anchoring', () => {
       await stop({ worktree: WORKTREE, home });
 
       await onBranch(`DESKTOP-${ISSUE}/join-container-command`, async () => {
-        const decision = await startSession();
+        const decision = await startIn(LINKED);
         assert.equal(decision.block, false);
         assert.match(decision.message, /issue 18248 — triaged/);
         assert.match(decision.message, /task {4}: none running/);
@@ -598,7 +616,7 @@ describe('re-anchoring', () => {
       await transition(18249, 'abandoned', { home });
 
       await onBranch('DESKTOP-18249/gone', async () => {
-        assert.equal((await startSession()).message, undefined);
+        assert.equal((await startIn(LINKED)).message, undefined);
       });
     });
 
@@ -606,8 +624,27 @@ describe('re-anchoring', () => {
       await stop({ worktree: WORKTREE, home });
 
       await onBranch('DESKTOP-11111/unknown', async () => {
-        assert.equal((await startSession()).message, undefined);
+        assert.equal((await startIn(LINKED)).message, undefined);
       });
+    });
+
+    // DESKTOP-18915: the pull request's branch in the main checkout, and a
+    // summary saying "this tree is issue N's" kept the review round there.
+    test('in the main checkout there is no summary, only the way to the issue\'s tree', async () => {
+      await stop({ worktree: WORKTREE, home });
+      const branch = `DESKTOP-${ISSUE}/join-container-command`;
+
+      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${branch}`], { cwd: WORKTREE });
+      try {
+        const { message } = await startSession();
+        assert.match(message, new RegExp(`this is the main checkout, standing on ${branch} — issue ${ISSUE}'s, triaged`));
+        assert.match(message, new RegExp(`^ +git -C ${WORKTREE} switch main$`, 'm'));
+        assert.match(message, new RegExp(`^ +pdkit worktree create --issue ${ISSUE} --branch ${branch}$`, 'm'));
+        assert.match(message, new RegExp(`EnterWorktree tool with path: ${join(dirname(WORKTREE), 'pd-worktrees', `DESKTOP-${ISSUE}`)}$`, 'm'));
+        assert.doesNotMatch(message, /run {5}:/);
+      } finally {
+        await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+      }
     });
   });
 
@@ -631,31 +668,32 @@ describe('re-anchoring', () => {
       }
     };
 
-    const onBranch = async (name, body) => {
-      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd: WORKTREE });
+    // Between phases in the linked tree; with a task running, in the main
+    // checkout the task pointer is keyed on.
+    const onBranch = async (name, body, cwd = LINKED) => {
+      await execFileAsync('git', ['symbolic-ref', 'HEAD', `refs/heads/${name}`], { cwd });
       try {
         await body();
       } finally {
-        await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
+        if (cwd === LINKED) await execFileAsync('git', ['checkout', '-q', '--detach', 'main'], { cwd });
+        else await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd });
       }
     };
 
     test('between phases, both trees are named and no command is', async () => {
       await stop({ worktree: WORKTREE, home });
 
-      // A real tree for the rival, so the line has a path to name: git needs a
-      // commit before it can add a worktree.
-      await execFileAsync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: WORKTREE });
+      // A real tree for the rival, so the line has a path to name.
       const rivalTree = join(await realpath(tmpdir()), `pdkit-rival-${process.pid}`, `DESKTOP-${RIVAL}`);
       await execFileAsync('git', ['worktree', 'add', '-q', '-b', `DESKTOP-${RIVAL}/quit-and-install`, rivalTree], { cwd: WORKTREE });
 
       try {
         await onBranch(`DESKTOP-${ISSUE}/join-container-command`, () =>
           withRival(async () => {
-            const { message } = await startSession();
+            const { message } = await startIn(LINKED);
 
             assert.match(message, /this tree is issue 18248's — triaged/);
-            assert.match(message, new RegExp(`tree {4}: ${WORKTREE} on DESKTOP-18248/join-container-command`));
+            assert.match(message, new RegExp(`tree {4}: ${LINKED} on DESKTOP-18248/join-container-command`));
             assert.match(message, new RegExp(`${RIVAL} — triaged, moved .*, tree ${rivalTree} on DESKTOP-${RIVAL}/quit-and-install`));
             assert.match(message, /run {5}: not named/);
             assert.doesNotMatch(message, /\/pd:plan/);
@@ -677,7 +715,7 @@ describe('re-anchoring', () => {
 
       try {
         await onBranch(`DESKTOP-${ISSUE}/join-container-command`, async () => {
-          const { message } = await startSession();
+          const { message } = await startIn(LINKED);
           assert.doesNotMatch(message, /moved/);
           assert.match(message, /run {5}: \/pd:plan 18248/);
         });
@@ -699,13 +737,17 @@ describe('re-anchoring', () => {
     // The task pointer and the branch are written by different commands. When
     // they name different issues, neither is the answer on its own.
     test('a task of one issue on a branch of another is said out loud', async () => {
-      await onBranch(`DESKTOP-${RIVAL}/quit-and-install`, async () => {
-        const { message } = await startSession();
+      await onBranch(
+        `DESKTOP-${RIVAL}/quit-and-install`,
+        async () => {
+          const { message } = await startSession();
 
-        assert.match(message, /issue 18248 — triaged/);
-        assert.match(message, new RegExp(`branch {2}: DESKTOP-${RIVAL}/quit-and-install, which is issue ${RIVAL}'s — the task running here is 18248's`));
-        assert.match(message, /run {5}: not named/);
-      });
+          assert.match(message, /issue 18248 — triaged/);
+          assert.match(message, new RegExp(`branch {2}: DESKTOP-${RIVAL}/quit-and-install, which is issue ${RIVAL}'s — the task running here is 18248's`));
+          assert.match(message, /run {5}: not named/);
+        },
+        WORKTREE,
+      );
     });
   });
 });
