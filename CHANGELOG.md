@@ -9,6 +9,20 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-20
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. To use `/pd:editor`, set `editor.path` in
+`$PDKIT_HOME/config.yaml` to the absolute path of your IDE — `pdkit editor`
+prints the lines for your platform when it is unset.
+
 ### Added
 
 - **`pdkit editor [<issue>]` and `/pd:editor`** open the issue's worktree in the
@@ -1530,7 +1544,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.0...v0.5.1
