@@ -317,7 +317,9 @@ describe('the validation and config-drift checks', () => {
   // The half of the same check that every platform can answer, and the one a
   // misconfigured path actually hits.
   test('a configured binary that is not there is a warning that names the source', async () => {
-    await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${join(repo, 'absent-binary')}\n`);
+    // An .exe on Windows, or the refusal is about the extension rather than the absence.
+    const absent = join(repo, process.platform === 'win32' ? 'absent-binary.exe' : 'absent-binary');
+    await writeFile(join(home, 'config.yaml'), `validation:\n  app:\n    binary: ${absent}\n`);
 
     const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
     const app = find(report.checks, 'validate:app');

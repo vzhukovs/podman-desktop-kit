@@ -37,7 +37,7 @@ import { realpath } from 'node:fs/promises';
 
 import { buildPackageMap } from '../lib/repo.js';
 import { forIssue, issueBranches } from '../lib/worktree.js';
-import { cleanup, commitAll, git, initRepo, seedWorkspace, writeFiles } from './helpers/repo-fixture.js';
+import { cleanup, commitAll, git, initRepo, seedWorkspace, sh, writeFiles } from './helpers/repo-fixture.js';
 
 const exec = promisify(execFile);
 const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
@@ -201,7 +201,7 @@ describe('slice suggest from a tree on another issue\'s branch', () => {
     assert.equal(said.ok, false);
     assert.equal(said.here.branch, OTHER_BRANCH);
     assert.equal(said.home.path, tree);
-    assert.equal(said.commands[0], `cd ${tree} && pdkit slice suggest --issue ${OURS} --json`);
+    assert.equal(said.commands[0], `cd ${sh(tree)} && pdkit slice suggest --issue ${OURS} --json`);
     assert.ok(said.commands.includes(`pdkit slice suggest --issue ${OURS} --json --ref ${OUR_BRANCH}`));
     assert.equal(said.files, undefined, 'no file list is produced from the wrong diff');
   });
@@ -211,7 +211,7 @@ describe('slice suggest from a tree on another issue\'s branch', () => {
     assert.equal(result.code, 1);
     assert.equal(result.stdout, '');
     assert.match(result.stderr, /this tree is not DESKTOP-100's, so nothing was run/);
-    assert.ok(result.stderr.includes(`cd ${tree} && pdkit slice suggest --issue ${OURS}`));
+    assert.ok(result.stderr.includes(`cd ${sh(tree)} && pdkit slice suggest --issue ${OURS}`));
   });
 
   test('from the issue\'s worktree it reads that diff, and names the branch beside refName', async () => {
@@ -266,7 +266,7 @@ describe('preflight from a tree on another issue\'s branch', () => {
 
     assert.equal(result.code, 1);
     assert.match(result.stderr, /this tree is not DESKTOP-100's, so nothing was run/);
-    assert.ok(result.stderr.includes(`cd ${tree} && pdkit preflight ${OURS}`));
+    assert.ok(result.stderr.includes(`cd ${sh(tree)} && pdkit preflight ${OURS}`));
     assert.equal(await present(join(repo, 'typecheck-ran.txt')), false, 'typecheck ran on the other issue\'s tree');
     assert.equal(await present(join(home, 'issues', String(OURS), 'preflight.json')), false, 'a run was recorded');
   });
@@ -278,7 +278,7 @@ describe('preflight from a tree on another issue\'s branch', () => {
     const said = JSON.parse(result.stdout);
     assert.equal(said.ok, false);
     assert.deepEqual(said.results, []);
-    assert.equal(said.commands[0], `cd ${tree} && pdkit preflight ${OURS} --json`);
+    assert.equal(said.commands[0], `cd ${sh(tree)} && pdkit preflight ${OURS} --json`);
   });
 
   test('in the main checkout on the issue\'s own branch it refuses, and moves the branch out', async () => {
@@ -288,7 +288,7 @@ describe('preflight from a tree on another issue\'s branch', () => {
     const said = JSON.parse(result.stdout);
     assert.equal(said.home.source, 'checkout');
     assert.deepEqual(said.commands, [
-      `git -C ${repo} switch main && pdkit worktree create --issue ${OTHER} --branch ${OTHER_BRANCH} && cd ${join(trees, `DESKTOP-${OTHER}`)} && pdkit preflight ${OTHER} --json`,
+      `git -C ${sh(repo)} switch main && pdkit worktree create --issue ${OTHER} --branch ${OTHER_BRANCH} && cd ${sh(join(trees, `DESKTOP-${OTHER}`))} && pdkit preflight ${OTHER} --json`,
     ]);
     assert.equal(await present(join(repo, 'typecheck-ran.txt')), false, 'typecheck ran in the main checkout');
   });

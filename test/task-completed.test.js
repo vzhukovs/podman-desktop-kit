@@ -39,6 +39,7 @@ import { writeReceipt } from '../lib/evidence.js';
 import { handle as sessionStart } from '../lib/hooks/session-start.js';
 import { HOOK_HANDLERS } from '../lib/hooks/events.js';
 import { IMPLEMENTER, STALL_LIMIT, handle as taskCompleted } from '../lib/hooks/task-completed.js';
+import { escapeRegExp as esc } from '../lib/globs.js';
 import { read as readJournal } from '../lib/journal.js';
 import { TRANSITIONS, setOwns, transition } from '../lib/state.js';
 
@@ -638,9 +639,9 @@ describe('re-anchoring', () => {
       try {
         const { message } = await startSession();
         assert.match(message, new RegExp(`this is the main checkout, standing on ${branch} — issue ${ISSUE}'s, triaged`));
-        assert.match(message, new RegExp(`^ +git -C ${WORKTREE} switch main$`, 'm'));
+        assert.match(message, new RegExp(`^ +git -C ${esc(WORKTREE)} switch main$`, 'm'));
         assert.match(message, new RegExp(`^ +pdkit worktree create --issue ${ISSUE} --branch ${branch}$`, 'm'));
-        assert.match(message, new RegExp(`EnterWorktree tool with path: ${join(dirname(WORKTREE), 'pd-worktrees', `DESKTOP-${ISSUE}`)}$`, 'm'));
+        assert.match(message, new RegExp(`EnterWorktree tool with path: ${esc(join(dirname(WORKTREE), 'pd-worktrees', `DESKTOP-${ISSUE}`))}$`, 'm'));
         assert.doesNotMatch(message, /run {5}:/);
       } finally {
         await execFileAsync('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: WORKTREE });
@@ -693,8 +694,8 @@ describe('re-anchoring', () => {
             const { message } = await startIn(LINKED);
 
             assert.match(message, /this tree is issue 18248's — triaged/);
-            assert.match(message, new RegExp(`tree {4}: ${LINKED} on DESKTOP-18248/join-container-command`));
-            assert.match(message, new RegExp(`${RIVAL} — triaged, moved .*, tree ${rivalTree} on DESKTOP-${RIVAL}/quit-and-install`));
+            assert.match(message, new RegExp(`tree {4}: ${esc(LINKED)} on DESKTOP-18248/join-container-command`));
+            assert.match(message, new RegExp(`${RIVAL} — triaged, moved .*, tree ${esc(rivalTree)} on DESKTOP-${RIVAL}/quit-and-install`));
             assert.match(message, /run {5}: not named/);
             assert.doesNotMatch(message, /\/pd:plan/);
             assert.doesNotMatch(message, /recent/);
