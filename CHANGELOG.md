@@ -9,6 +9,23 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-20
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+A `validation.app.binary` or `validation.app.args` kept in `.pdkit.yaml` moves
+to `$PDKIT_HOME/config.yaml`; a relative `PODMAN_DESKTOP_BINARY` becomes
+absolute. `pdkit doctor` names either.
+
+MINOR rather than PATCH because a value that used to be read stops being read:
+only for those two keys, and only where they lived in `.pdkit.yaml`.
+
 ### Security
 
 `validation.app.binary` is held to the rules 0.6.1 set for `editor.path`.
@@ -27,12 +44,6 @@ anywhere, and `validation.app.args` reached Electron, where
 - The checks are shared with `pdkit editor`: `checkedProgram` in
   `lib/reveal.js`, and `trustedValue` in `lib/config.js` for which layers a
   key that names a program is read from.
-
-### Upgrading
-
-A `validation.app.binary` or `validation.app.args` kept in `.pdkit.yaml` moves
-to `$PDKIT_HOME/config.yaml`; a relative `PODMAN_DESKTOP_BINARY` becomes
-absolute. `pdkit doctor` names either.
 
 ## [0.6.1] - 2026-10-20
 
@@ -1569,7 +1580,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.1...v0.5.2
