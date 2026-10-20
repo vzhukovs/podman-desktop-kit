@@ -9,6 +9,62 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-20
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+If the fork's own checkout stands on a `DESKTOP-<n>/…` branch, move the branch
+out before working on that issue:
+
+```
+git -C <fork> switch main
+pdkit worktree create --issue <n> --branch DESKTOP-<n>/<branch>
+```
+
+Every command that takes the issue number prints exactly these lines when it
+refuses, so there is nothing to look up.
+
+MINOR rather than PATCH because commands that used to run in the main checkout
+on an issue's branch now refuse there.
+
+### Changed
+
+- **The main checkout is nobody's tree.** It is the template worktrees are made
+  from and stays on the base branch. An issue branch found there is reported as
+  held by the main checkout, and the commands that are held to an issue's tree
+  — `preflight`, `audit`, `validate`, `e2e stability`, `slice suggest|set|
+  materialize|cascade` — refuse with one command to paste: switch the checkout
+  back, create the worktree on that branch, rerun the command there.
+  `pdkit editor` and `pdkit open tree` say the same.
+- **The prompt hook moves the session instead of pointing.** A `/pd:` command
+  typed outside the issue's tree now tells Claude to call `EnterWorktree` with
+  the issue's tree before anything else, and lists the commands that create the
+  tree first when it does not exist, to be shown to you before they run. A
+  hook cannot change a session's directory, and that directory is where
+  subagents work: started in the main checkout, `pr-sync`'s thread resolvers
+  committed there. After `EnterWorktree`, subagents started afterwards work in
+  the issue's tree — checked by hand with a general-purpose agent and
+  `pd-scout`.
+- **SessionStart in the main checkout on an issue branch** gives the same
+  instruction instead of the issue's summary, which used to call the checkout
+  the issue's tree.
+
+### Fixed
+
+- An issue branch held by the main checkout was reported as "checked out
+  nowhere", and the `worktree create` offered for it failed with git's
+  "already checked out".
+- On DESKTOP-18915 `slice materialize`, run from the main checkout, left the
+  pull request's branch there, and the next session's `pr-sync` committed the
+  review fixes beside the issue's worktree. The branch name made the checkout
+  look like the issue's tree, so no guard fired.
+
 ## [0.7.0] - 2026-10-20
 
 ### Upgrading
@@ -1580,7 +1636,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.5.2...v0.6.0
