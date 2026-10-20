@@ -39,6 +39,7 @@ import { promisify } from 'node:util';
 import { PLUGIN_ROOT, issueDir } from '../lib/config.js';
 import { FAIL_CLOSED, HOOK_HANDLERS } from '../lib/hooks/events.js';
 import { argumentKind, handle, parseCommand } from '../lib/hooks/prompt-submit.js';
+import { escapeRegExp as esc } from '../lib/globs.js';
 import { transition } from '../lib/state.js';
 
 const execFileAsync = promisify(execFile);
@@ -120,10 +121,10 @@ describe('a command for one issue, typed in another issue\'s tree', () => {
     assert.match(decision.message, /\/pd:preflight is about issue 18915 — triaged, and this tree is not its/);
     assert.match(
       decision.message,
-      new RegExp(`here {4}: ${MAIN} on DESKTOP-${HERE}/1-fix-main-event-stream-reconnect — the main checkout — issue ${HERE}'s`),
+      new RegExp(`here {4}: ${esc(MAIN)} on DESKTOP-${HERE}/1-fix-main-event-stream-reconnect — the main checkout — issue ${HERE}'s`),
     );
-    assert.match(decision.message, new RegExp(`${AWAY} {3}: ${AWAY_TREE} on DESKTOP-${AWAY}/1-quit-and-install-race`));
-    assert.match(decision.message, new RegExp(`Call the EnterWorktree tool with path: ${AWAY_TREE}$`, 'm'));
+    assert.match(decision.message, new RegExp(`${AWAY} {3}: ${esc(AWAY_TREE)} on DESKTOP-${AWAY}/1-quit-and-install-race`));
+    assert.match(decision.message, new RegExp(`Call the EnterWorktree tool with path: ${esc(AWAY_TREE)}$`, 'm'));
     // The tree exists: nothing to run first.
     assert.doesNotMatch(decision.message, /pdkit worktree create|git -C/);
   });
@@ -133,7 +134,7 @@ describe('a command for one issue, typed in another issue\'s tree', () => {
 
     assert.match(decision.message, new RegExp(`DESKTOP-${PARKED}/1-store-image-info-ui, a local branch checked out nowhere`));
     assert.match(decision.message, new RegExp(`^ +pdkit worktree create --issue ${PARKED} --branch DESKTOP-${PARKED}/1-store-image-info-ui$`, 'm'));
-    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${join(base, 'pd-worktrees', `DESKTOP-${PARKED}`)}$`, 'm'));
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${esc(join(base, 'pd-worktrees', `DESKTOP-${PARKED}`))}$`, 'm'));
     // Only the main checkout's own branch is switched away from, never this one.
     assert.doesNotMatch(decision.message, /git -C/);
     // No record for it: the line says nothing it does not know.
@@ -147,7 +148,7 @@ describe('a command for one issue, typed in another issue\'s tree', () => {
     try {
       const decision = await submit('/pd:pr-sync 19750');
       assert.match(decision.message, /\/pd:pr-sync is about issue 18915/);
-      assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${AWAY_TREE}$`, 'm'));
+      assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${esc(AWAY_TREE)}$`, 'm'));
     } finally {
       await rm(join(issueDir(home, AWAY), 'prs.json'), { force: true });
     }
@@ -168,7 +169,7 @@ describe('the main checkout on the issue\'s own branch', () => {
       `pdkit worktree create --issue ${HERE} --branch DESKTOP-${HERE}/1-fix-main-event-stream-reconnect`,
     ]);
     assert.match(decision.message, /Show the person these commands and run them once they agree/);
-    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${join(base, 'pd-worktrees', `DESKTOP-${HERE}`)}$`, 'm'));
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${esc(join(base, 'pd-worktrees', `DESKTOP-${HERE}`))}$`, 'm'));
   });
 });
 
@@ -232,6 +233,6 @@ describe('the hook is registered on the prompt', () => {
     });
 
     assert.equal(run.code, 0);
-    assert.match(run.stdout, new RegExp(`${AWAY_TREE} on DESKTOP-${AWAY}/1-quit-and-install-race`));
+    assert.match(run.stdout, new RegExp(`${esc(AWAY_TREE)} on DESKTOP-${AWAY}/1-quit-and-install-race`));
   });
 });

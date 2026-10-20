@@ -992,18 +992,30 @@ setTimeout(() => {
   });
 
   test('the binary is resolved from config, then the environment, then the working tree', async () => {
-    const configured = await validation.resolveBinary({
-      repoRoot: repo,
-      app: { binary: process.execPath, args: ['--flag'] },
-      env: { PODMAN_DESKTOP_BINARY: process.execPath },
-    });
-    assert.equal(configured.command, await realpath(process.execPath));
-    assert.equal(configured.source, 'validation.app.binary');
-    assert.deepEqual(configured.args, ['--flag']);
+    // A program of the fixture's own rather than process.execPath: on the
+    // ubuntu runner node lives in a tool cache every user can write, which the
+    // check below rightly refuses. An .exe on Windows, where only that runs.
+    const windows = platform() === 'win32';
+    const program = join(repo, windows ? 'podman-desktop.exe' : 'podman-desktop');
+    await writeFile(program, windows ? 'MZ\n' : '#!/bin/sh\nexit 0\n');
+    if (!windows) await chmod(program, 0o755);
 
-    const fromEnv = await validation.resolveBinary({ repoRoot: repo, app: {}, env: { PODMAN_DESKTOP_BINARY: process.execPath } });
-    assert.equal(fromEnv.source, 'PODMAN_DESKTOP_BINARY');
-    assert.deepEqual(fromEnv.args, []);
+    try {
+      const configured = await validation.resolveBinary({
+        repoRoot: repo,
+        app: { binary: program, args: ['--flag'] },
+        env: { PODMAN_DESKTOP_BINARY: program },
+      });
+      assert.equal(configured.command, await realpath(program));
+      assert.equal(configured.source, 'validation.app.binary');
+      assert.deepEqual(configured.args, ['--flag']);
+
+      const fromEnv = await validation.resolveBinary({ repoRoot: repo, app: {}, env: { PODMAN_DESKTOP_BINARY: program } });
+      assert.equal(fromEnv.source, 'PODMAN_DESKTOP_BINARY');
+      assert.deepEqual(fromEnv.args, []);
+    } finally {
+      await rm(program);
+    }
   });
 
   // Launched from the working tree, where Windows looks for a bare name first.

@@ -471,7 +471,7 @@ describe('the tasks an amendment writes', () => {
     const out = await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
 
     assert.notEqual(out.code, 0);
-    assert.match(out.stderr, /tasks\/T3\.md: already there as "something else entirely"/);
+    assert.match(out.stderr, /tasks[\\/]T3\.md: already there as "something else entirely"/);
     assert.equal(parseTask(await readFile(issueFile('tasks', 'T3.md'), 'utf8')).title, 'something else entirely');
   });
 });

@@ -240,3 +240,15 @@ export function packageMap(root = '/fixture') {
     },
   };
 }
+
+/**
+ * A word as `pdkit` quotes it in the commands it prints — the same rule as
+ * shellWord in lib/cli.js. A Windows path has backslashes, so it comes back
+ * quoted, and an assertion that pastes the bare path fails only there.
+ *
+ * @param {string} word
+ * @returns {string}
+ */
+export function sh(word) {
+  return /^[\w./:@%+=,-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`;
+}
