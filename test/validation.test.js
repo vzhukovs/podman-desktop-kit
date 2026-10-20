@@ -30,7 +30,7 @@
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { platform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -994,14 +994,48 @@ setTimeout(() => {
   test('the binary is resolved from config, then the environment, then the working tree', async () => {
     const configured = await validation.resolveBinary({
       repoRoot: repo,
-      config: { validation: { app: { binary: '/opt/podman-desktop' } } },
-      env: { PODMAN_DESKTOP_BINARY: '/from/env' },
+      app: { binary: process.execPath, args: ['--flag'] },
+      env: { PODMAN_DESKTOP_BINARY: process.execPath },
     });
-    assert.equal(configured.command, '/opt/podman-desktop');
+    assert.equal(configured.command, await realpath(process.execPath));
+    assert.equal(configured.source, 'validation.app.binary');
+    assert.deepEqual(configured.args, ['--flag']);
 
-    const fromEnv = await validation.resolveBinary({ repoRoot: repo, config: {}, env: { PODMAN_DESKTOP_BINARY: '/from/env' } });
-    assert.equal(fromEnv.command, '/from/env');
+    const fromEnv = await validation.resolveBinary({ repoRoot: repo, app: {}, env: { PODMAN_DESKTOP_BINARY: process.execPath } });
+    assert.equal(fromEnv.source, 'PODMAN_DESKTOP_BINARY');
     assert.deepEqual(fromEnv.args, []);
+  });
+
+  // Launched from the working tree, where Windows looks for a bare name first.
+  test('a bare name or a relative path is refused, from config and from the environment', async () => {
+    const fromConfig = await validation.resolveBinary({ repoRoot: repo, app: { binary: 'podman-desktop' }, env: {} });
+    assert.equal(fromConfig.ok, false);
+    assert.match(fromConfig.error, /validation\.app\.binary podman-desktop .*absolute path/);
+
+    const fromEnv = await validation.resolveBinary({ repoRoot: repo, app: {}, env: { PODMAN_DESKTOP_BINARY: './dist/podman-desktop' } });
+    assert.equal(fromEnv.ok, false);
+    assert.match(fromEnv.error, /PODMAN_DESKTOP_BINARY .*absolute path/);
+  });
+
+  test('a configured binary that is not there is named, not spawned', async () => {
+    const missing = platform() === 'win32' ? 'C:\\nowhere\\podman-desktop.exe' : '/nowhere/podman-desktop';
+    const resolved = await validation.resolveBinary({ repoRoot: repo, app: { binary: missing }, env: {} });
+
+    assert.equal(resolved.ok, false);
+    assert.match(resolved.error, /which does not exist/);
+  });
+
+  // Anyone on the machine could then choose what validate launch starts.
+  test('a binary every user can write is refused', { skip: platform() === 'win32' && 'no mode bits on Windows' }, async () => {
+    const shared = join(repo, 'shared-binary');
+    await writeFile(shared, '#!/bin/sh\n');
+    await chmod(shared, 0o777);
+    try {
+      const resolved = await validation.resolveBinary({ repoRoot: repo, app: { binary: shared }, env: {} });
+      assert.match(resolved.error, /writable by every user/);
+    } finally {
+      await rm(shared);
+    }
   });
 
   test('a working tree with electron installed needs no packaged binary', async () => {
@@ -1019,7 +1053,7 @@ setTimeout(() => {
     await writeFile(electron, windows ? 'MZ\n' : '#!/bin/sh\nexit 0\n');
     if (!windows) await chmod(electron, 0o755);
 
-    const resolved = await validation.resolveBinary({ repoRoot: repo, config: {}, env: {} });
+    const resolved = await validation.resolveBinary({ repoRoot: repo, env: {} });
 
     assert.equal(resolved.command, electron);
     assert.deepEqual(resolved.args, ['.'], 'the development build is run as `electron .`, which is what pnpm build produces');
@@ -1028,7 +1062,7 @@ setTimeout(() => {
   });
 
   test('nothing to drive is an explanation, not a stack trace', async () => {
-    const resolved = await validation.resolveBinary({ repoRoot: repo, config: {}, env: {} });
+    const resolved = await validation.resolveBinary({ repoRoot: repo, env: {} });
 
     assert.equal(resolved.ok, false);
     assert.match(resolved.error, /PODMAN_DESKTOP_BINARY/);
@@ -1043,7 +1077,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app } },
+      app,
       timeoutMs: 20_000,
     });
 
@@ -1062,7 +1096,7 @@ setTimeout(() => {
   test('launching twice does not start a second copy on the same port', needsDisplay, async () => {
     const app = await stub('app-twice.js', APP);
     const port = await freePort();
-    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
+    const input = { issue: ISSUE, home, repoRoot: repo, port, app, timeoutMs: 20_000 };
 
     const first = await launch(input);
     const second = await launch(input);
@@ -1087,7 +1121,7 @@ setTimeout(() => {
         home,
         repoRoot: repo,
         port,
-        config: { validation: { app } },
+        app,
         timeoutMs: 5000,
       });
 
@@ -1108,7 +1142,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app } },
+      app,
       timeoutMs: 30_000,
     });
 
@@ -1126,7 +1160,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app } },
+      app,
       timeoutMs: 1500,
     });
 
@@ -1144,7 +1178,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app } },
+      app,
       timeoutMs: 20_000,
     });
     assert.equal(launched.ok, true, launched.error);
@@ -1177,7 +1211,7 @@ setTimeout(() => {
       home,
       repoRoot: repo,
       port,
-      config: { validation: { app } },
+      app,
       timeoutMs: 20_000,
     });
     assert.equal(launched.ok, true, launched.error);
@@ -1208,7 +1242,7 @@ setTimeout(() => {
         home,
         repoRoot: repo,
         port,
-        config: { validation: { app: await stub('never-used.js', APP) } },
+        app: await stub('never-used.js', APP),
         timeoutMs: 60_000,
       });
 
@@ -1226,7 +1260,7 @@ setTimeout(() => {
   test('a second launch is marked as a relaunch, and the first is not', needsDisplay, async () => {
     const app = await stub('relaunch.js', APP);
     const port = await freePort();
-    const input = { issue: ISSUE, home, repoRoot: repo, port, config: { validation: { app } }, timeoutMs: 20_000 };
+    const input = { issue: ISSUE, home, repoRoot: repo, port, app, timeoutMs: 20_000 };
 
     const first = await launch(input);
     assert.equal(first.ok, true, first.error);

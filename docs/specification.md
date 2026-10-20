@@ -1732,7 +1732,10 @@ The division of labour follows directly:
   (`validation.app.binary`, then `PODMAN_DESKTOP_BINARY`, then
   `node_modules/.bin/electron .` after `pnpm build`), spawns it with the port,
   waits for readiness and records the pid and port in `validation.json`.
-  Packaging is not required for this and costs noticeably more.
+  Packaging is not required for this and costs noticeably more. The first two
+  name a program from outside the tree, so they are read only from what the
+  person wrote — `$PDKIT_HOME/config.yaml` and the environment, never a
+  repository's `.pdkit.yaml` — and must be absolute.
 - **The user connects the server.** No `.mcp.json` ships, deliberately, and the
   plugin cannot grant a server to one agent. `/pd:doctor` checks that the server
   is configured **with `--cdp-endpoint` and at the right port**, and says what to

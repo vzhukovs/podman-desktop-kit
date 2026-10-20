@@ -9,6 +9,31 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Security
+
+`validation.app.binary` is held to the rules 0.6.1 set for `editor.path`.
+Validation runs the tree's own code by design, so a repository choosing the
+binary gains less than it did choosing the IDE — but the binary could live
+anywhere, and `validation.app.args` reached Electron, where
+`--remote-debugging-address=0.0.0.0` hands the debug port to the network.
+
+- `validation.app.binary` and `validation.app.args` are read from
+  `$PDKIT_HOME/config.yaml` only. A `.pdkit.yaml` that sets either, or that
+  moves `state.root` to a config of its own, makes `validate launch` refuse
+  before anything is built, and `doctor` says so.
+- The configured binary and `PODMAN_DESKTOP_BINARY` must be absolute paths —
+  the launch runs from the working tree, where Windows looks for a bare name
+  first — an `.exe` on Windows, and not writable by every user.
+- The checks are shared with `pdkit editor`: `checkedProgram` in
+  `lib/reveal.js`, and `trustedValue` in `lib/config.js` for which layers a
+  key that names a program is read from.
+
+### Upgrading
+
+A `validation.app.binary` or `validation.app.args` kept in `.pdkit.yaml` moves
+to `$PDKIT_HOME/config.yaml`; a relative `PODMAN_DESKTOP_BINARY` becomes
+absolute. `pdkit doctor` names either.
+
 ## [0.6.1] - 2026-10-20
 
 ### Upgrading

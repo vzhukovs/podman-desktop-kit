@@ -172,6 +172,12 @@ validation:
   # in the working tree — the development build, which is what upstream's own
   # e2e drives when no packaged binary is set. Packaging costs minutes and
   # proves nothing extra for validation.
+  #
+  # `binary` and `args` are read from $PDKIT_HOME/config.yaml only, as
+  # editor.path is: a repository's .pdkit.yaml that sets either — or moves
+  # state.root to a config of its own — is refused. `binary`, like
+  # PODMAN_DESKTOP_BINARY, is an absolute path, an .exe on Windows, and not
+  # writable by every user.
   app:
     binary: ""
     debug_port: 9222

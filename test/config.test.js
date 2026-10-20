@@ -41,6 +41,7 @@ import {
   load,
   paths,
   resolveHome,
+  trustedValue,
 } from '../lib/config.js';
 
 let root;
@@ -196,6 +197,67 @@ describe('definedIn', () => {
     } finally {
       await rm(home, { recursive: true, force: true });
       await rm(repo, { recursive: true, force: true });
+    }
+  });
+});
+
+// Keys that name a program pdkit runs. A pull request under review decides
+// what its tree holds, .pdkit.yaml included.
+describe('trustedValue', () => {
+  test('reads $PDKIT_HOME/config.yaml and the defaults', async () => {
+    const own = await mkdtemp(join(tmpdir(), 'pdkit-trusted-home-'));
+    const tree = await mkdtemp(join(tmpdir(), 'pdkit-trusted-repo-'));
+    process.env.PDKIT_HOME = own;
+
+    try {
+      await writeFile(join(own, 'config.yaml'), 'editor:\n  path: /Applications/WebStorm.app\n');
+      assert.deepEqual(trustedValue('editor.path', { repoRoot: tree }), {
+        value: '/Applications/WebStorm.app',
+        configFile: join(own, 'config.yaml'),
+      });
+      assert.equal(trustedValue('validation.app.binary', { repoRoot: tree }).value, '', 'the shipped default');
+    } finally {
+      await rm(own, { recursive: true, force: true });
+      await rm(tree, { recursive: true, force: true });
+    }
+  });
+
+  // Refused rather than ignored, so the person learns the value does nothing.
+  test('a repository that sets the key is refused, even over a value of the person’s own', async () => {
+    const own = await mkdtemp(join(tmpdir(), 'pdkit-trusted-home-'));
+    const tree = await mkdtemp(join(tmpdir(), 'pdkit-trusted-repo-'));
+    process.env.PDKIT_HOME = own;
+
+    try {
+      await writeFile(join(own, 'config.yaml'), 'validation:\n  app:\n    binary: /opt/podman-desktop\n');
+      await writeFile(join(tree, '.pdkit.yaml'), 'validation:\n  app:\n    args: [--remote-debugging-address=0.0.0.0]\n');
+
+      const read = trustedValue('validation.app.args', { repoRoot: tree });
+      assert.match(read.error, /validation\.app\.args is set in .*\.pdkit\.yaml, and a repository does not choose what pdkit runs/);
+      assert.ok(read.error.includes(join(own, 'config.yaml')), 'says where it belongs');
+      assert.equal(trustedValue('validation.app.binary', { repoRoot: tree }).value, '/opt/podman-desktop', 'other keys are unaffected');
+    } finally {
+      await rm(own, { recursive: true, force: true });
+      await rm(tree, { recursive: true, force: true });
+    }
+  });
+
+  // Moving state.root moves the config.yaml read — so a repository could
+  // write its own and have it taken for the person's.
+  test('a config.yaml a repository moved state.root to is refused', async () => {
+    const tree = await mkdtemp(join(tmpdir(), 'pdkit-trusted-repo-'));
+    const planted = join(tree, 'planted-home');
+    delete process.env.PDKIT_HOME;
+
+    try {
+      await mkdir(planted);
+      await writeFile(join(planted, 'config.yaml'), 'validation:\n  app:\n    binary: /tmp/evil\n');
+      await writeFile(join(tree, '.pdkit.yaml'), `state:\n  root: ${planted}\n`);
+
+      const read = trustedValue('validation.app.binary', { repoRoot: tree });
+      assert.match(read.error, /is set in .*planted-home.*config\.yaml/);
+    } finally {
+      await rm(tree, { recursive: true, force: true });
     }
   });
 });
