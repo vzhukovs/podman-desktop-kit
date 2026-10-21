@@ -9,6 +9,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pdkit pr diff` no longer counts upstream's files as outside the slice.**
+  The "outside slice #k after the push" list was measured from the local
+  `main`. On DESKTOP-18833 that branch was 43 commits behind, so the list named
+  more than two hundred files that upstream had touched, none of them carried
+  by the pull request. That list is shown right before the push question in
+  `/pd:pr-sync`. The base now goes through the same resolver as preflight. A
+  stacked pull request still measures from its slice branch.
+
 ## [0.9.5] - 2026-10-21
 
 ### Upgrading

@@ -124,3 +124,53 @@ describe('pr diff', () => {
     assert.match(result.error, /is not in this repository/);
   });
 });
+
+// DESKTOP-18833: rebased onto upstream/main with the local main 43 commits
+// behind. `outside` was measured from that main, and listed every file
+// upstream had touched since as one the pull request would carry.
+describe('pr diff, with the local main behind upstream', () => {
+  const UPSTREAM_FILE = '.github/workflows/pr-check.yaml';
+  let repo_;
+  let home_;
+  let pushed;
+
+  before(async () => {
+    repo_ = await initRepo('pdkit-pr-diff-stale-');
+    home_ = await realpath(await mkdtemp(join(tmpdir(), 'pdkit-pr-diff-stale-home-')));
+
+    await writeFiles(repo_, { [INDEX]: 'export const a = 1;\n' });
+    await commitAll(repo_, 'chore: base');
+
+    await git(['switch', '-c', BRANCH], repo_);
+    await writeFiles(repo_, { [INDEX]: 'export const a = 2;\n' });
+    pushed = await commitAll(repo_, 'fix(main): quit and install race');
+
+    // Upstream moves; only the remote-tracking ref sees it.
+    await git(['switch', '-c', 'scratch', 'main'], repo_);
+    await writeFiles(repo_, { [UPSTREAM_FILE]: 'on: pull_request\n' });
+    await git(['update-ref', 'refs/remotes/upstream/main', await commitAll(repo_, 'ci: upstream work')], repo_);
+
+    await git(['switch', BRANCH], repo_);
+    await git(['branch', '-D', 'scratch'], repo_);
+    await git(['rebase', '--quiet', 'upstream/main'], repo_);
+
+    const dir = issueDir(home_, ISSUE);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'prs.json'), JSON.stringify({ prs: [{ number: PR, slice: 1, branch: BRANCH, base: 'main' }] }));
+    await writeFile(
+      join(dir, 'slices.json'),
+      JSON.stringify({ issue: ISSUE, slices: [{ index: 1, slug: 'quit-and-install-race', branch: BRANCH, files: [INDEX], baseSlice: null }] }),
+    );
+  });
+
+  after(async () => {
+    await cleanup(repo_, home_);
+  });
+
+  test('what upstream landed is not outside the slice', async () => {
+    const result = await pending({ issue: ISSUE, number: PR, cwd: repo_, home: home_, config: { repo: { upstream_remote: 'upstream' } }, head: pushed });
+
+    assert.equal(result.ok, true, result.error);
+    assert.deepEqual(result.outside, []);
+  });
+});
