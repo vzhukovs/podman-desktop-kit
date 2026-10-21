@@ -1130,6 +1130,11 @@ digest rather than by keeping more.
    standalone is flagged.
 8. Preflight → gate → push → replies and `resolve` through GraphQL.
 
+This is the only place `git push --force-with-lease` is permitted — through the
+gate, on your own branch, to the pull request it already has. That is how a
+branch rebased by `/pd:resume` or cascaded in step 7 reaches its pull request.
+`--force` without a lease is denied at the hook always.
+
 | Mechanically, `pdkit pr threads` | Left to the model |
 |---|---|
 | bot or human, by account type | what the reviewer meant |
@@ -1174,8 +1179,8 @@ the file is a candidate for a mechanical conflict; a commit in the cited lines i
 a candidate for a semantic one. It is a hint, not a verdict, and it must not turn
 into permission to skip reading the new commits.
 
-This is the only place `git push --force-with-lease` is permitted — through the
-gate, on your own branch. `--force` without a lease is denied at the hook always.
+Nothing is pushed from `resume`. The rebased branch reaches its pull request
+through `/pd:pr-sync`, step 8.
 
 **Work that predates the plugin is adopted, not replayed.** The ordinary case is
 the reverse of scenario 5: a branch and a pull request exist while `state.json`

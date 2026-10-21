@@ -466,10 +466,14 @@ record of why something a reviewer raised is not being done.
 
 ```
 /pd:sync
-/pd:resume 12345      → upstream drift, rebase, conflicts
+/pd:resume 12345      → main updated, upstream drift, rebase, conflicts
+/pd:pr-sync <pr#>     → what accumulated in review, and the push
 /pd:preflight 12345
 /pd:pr 12345
 ```
+
+`/pd:resume` pushes nothing. The rebased branch reaches its pull request in
+`/pd:pr-sync`, after `pdkit pr diff` has shown what the push changes.
 
 `pdkit drift 12345` measures each slice from **its own** branch point, and says
 separately which upstream commits touched lines the plan cites. A commit in the

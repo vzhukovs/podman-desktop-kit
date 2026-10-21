@@ -30,9 +30,23 @@ instead of the requirement that was.
 
 ## Steps
 
-1. **Fetch.** `git fetch upstream --prune` and `git fetch origin --prune`.
-   `pdkit drift` reads the local `upstream/main` and fetches nothing, so
-   without this step it measures against whatever was last fetched.
+1. **Fetch, and bring `main` up to date.** `git fetch upstream --prune` and
+   `git fetch origin --prune`. `pdkit drift` reads the local `upstream/main`
+   and fetches nothing, so without this step it measures against whatever was
+   last fetched.
+
+   Then the local `main`, fast-forward only. Find where it is checked out with
+   `git worktree list --porcelain` (the entry with `branch refs/heads/main`):
+
+   - checked out nowhere: `git fetch . upstream/main:main`, which refuses
+     anything but a fast-forward;
+   - checked out in a tree: `git -C <that tree> merge --ff-only upstream/main`,
+     and only if `git -C <that tree> status --porcelain` is empty.
+
+   Skip it and say why when that tree is dirty, or when
+   `git rev-list --count upstream/main..main` is not 0. A `main` ahead of
+   upstream carries a commit somebody made on the base branch, and the person
+   decides what happens to it. Nothing else is touched in that tree.
 
    Do it here rather than through `/pd:sync`: that command is the person's to
    run, and the Skill tool refuses it. If they want the full picture of every
@@ -89,19 +103,11 @@ instead of the requirement that was.
    describes a diff that no longer exists — and the digest check will say so
    before you do.
 
-5. **Publish under a gate.**
-
-   ```
-   pdkit state <n> --to preflight-green
-   pdkit gate open --issue <n> --branch <b>
-   git push --force-with-lease origin <b>
-   ```
-
-   This is the only place `--force-with-lease` is allowed: your own branch,
-   under a token. `--force` without a lease is refused always, token or not.
-
-6. **Hand over to `/pd:pr-sync <k>`** for whatever accumulated in review while
-   the branch sat.
+5. **Hand over to `/pd:pr-sync <k>`.** Nothing is pushed from here. The
+   rebased branch reaches its pull request in `/pd:pr-sync` step 9, after
+   `pdkit pr diff` has shown what the push changes, together with whatever
+   accumulated in review while the branch sat. `pdkit pr list --issue <n>`
+   gives `<k>`.
 
 ## When it is worse than a rebase
 
