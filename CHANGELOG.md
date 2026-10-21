@@ -9,6 +9,33 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. The new line appears only when the model the
+session is on and the model the phase is routed to differ.
+
+### Added
+
+- **A reminder when the session is on another model than the phase.** On any
+  `/pd:<skill>`, the prompt hook compares the skill's `model:` with the model
+  the session is on and, when they differ, shows you one line — "/pd:exec runs
+  on sonnet, and this session is on opus — type /model sonnet now". It is shown
+  to you (as `systemMessage`), not to the model, because only you can type
+  `/model`. Hooks are not given the model, so it is read from the transcript:
+  the last answer or the last `/model`, and right after `/clear` — when the
+  transcript is new and the model has carried over — from the previous
+  transcript of the same `claude` process (`CLAUDE_PID`). With nothing to read
+  it falls back to the fork's default and says so; with no default either it
+  stays quiet. Haiku skills are skipped.
+
 ## [0.9.0] - 2026-10-21
 
 ### Upgrading
@@ -1688,7 +1715,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.6.1...v0.7.0
