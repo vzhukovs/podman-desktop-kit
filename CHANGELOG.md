@@ -9,6 +9,19 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. If `pdkit pr diff` listed files outside the
+slice that the pull request never touched, run it again.
+
 ### Fixed
 
 - **`pdkit pr diff` no longer counts upstream's files as outside the slice.**
@@ -1838,7 +1851,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...v0.9.3
