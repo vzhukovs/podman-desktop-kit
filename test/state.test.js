@@ -618,6 +618,35 @@ describe('preflight-green has to be earned', () => {
     assert.equal((await transition(705, 'preflight-green', { home, head })).ok, true);
   });
 
+  // The same two passes the other way round. The full pass runs the
+  // body-dependent checks too and, with no body, they skip — which used to
+  // overwrite the verdicts the body pass had just recorded.
+  test('the body pass counts when it ran first', async () => {
+    await atSlicesApproved(707);
+    const head = 'd'.repeat(40);
+
+    await write({
+      issue: 707,
+      report: { ok: true, results: BODY_DEPENDENT.map((id) => ({ id, status: 'pass', blocking: true, summary: 'ok' })) },
+      context: { branch: null, slice: null, headSha: head, baseInfo: null, prBody: 'body' },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+    await write({
+      issue: 707,
+      report: {
+        ok: true,
+        results: CHECK_IDS.map((id) => ({ id, status: BODY_DEPENDENT.includes(id) ? 'skip' : 'pass', blocking: true, summary: 'ok' })),
+      },
+      context: { branch: null, slice: null, headSha: head, baseInfo: null, prBody: null },
+      bodyDependent: BODY_DEPENDENT,
+      home,
+    });
+
+    const moved = await transition(707, 'preflight-green', { home, head });
+    assert.equal(moved.ok, true, moved.error);
+  });
+
   // Adoption is the deliberate exception: work that predates the plugin never
   // ran preflight, and inventing the artefacts of the states it skipped is the
   // thing `adopt` exists not to do.
