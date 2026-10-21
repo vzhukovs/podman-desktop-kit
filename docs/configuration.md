@@ -177,8 +177,12 @@ Not in this file. Models are set by `model:` in `skills/*/SKILL.md` and
 This is deliberate: a skill's own model can only be set in its frontmatter, so a
 config key would control the subagents and not the skill — a lever that half
 works is worse than no lever. Opus is kept where no machine re-checks the
-verdict: `triage`, `plan`, `plan-review` and the agents `pd-auditor`,
-`pd-plan-critic`, `pd-review-synth`. The rest is Sonnet.
+verdict: `triage`, `plan`, `plan-review`, `pr-sync` and the agents
+`pd-auditor`, `pd-plan-critic`, `pd-review-synth`. The rest is Sonnet.
+`pr-sync` came back to Opus in 0.9.0: a machine checks that a review fix
+compiles and passes, not which of a reviewer's alternatives to take, nor
+whether a reply answers what was asked. Its resolvers stay on Sonnet — they
+carry out a decision the person has already approved.
 
 A skill's `model:` and `effort:` hold only until the end of the turn it was
 invoked in (see CONTRIBUTING.md). After the first reply from you or from a
@@ -187,8 +191,8 @@ settings outside this repository therefore decide most of what a phase costs,
 and they are yours to change, not the plugin's:
 
 - **The model.** Start each phase in its own session (`pdkit next <n>` prints
-  the command) and pick the model there: `/model opus` before `triage`, `plan`
-  and `plan-review`; `/model sonnet` before the rest.
+  the command) and pick the model there: `/model opus` before `triage`, `plan`,
+  `plan-review` and `pr-sync`; `/model sonnet` before the rest.
 
   `pdkit init` also writes `"model"` into the fork's
   `.claude/settings.local.json`, so a fresh `claude` there starts on the model
@@ -203,10 +207,10 @@ and they are yours to change, not the plugin's:
 - **The effort level.** A global `"effortLevel": "xhigh"` in
   `~/.claude/settings.json` applies to every turn the skill's own `effort:` no
   longer covers — including `pdkit state <n>` and the other mechanical turns of
-  `exec`, `preflight`, `slice`, `pr` and `pr-sync`. Reasoning tokens are paid as
+  `exec`, `preflight`, `slice` and `pr`. Reasoning tokens are paid as
   output, and output is the dearest token there is. Recommended: leave
   `effortLevel` unset or at `medium`, and raise it with `/effort high` in the
-  sessions for `triage`, `plan` and `plan-review`. `pdkit init` does not write
+  sessions for `triage`, `plan`, `plan-review` and `pr-sync`. `pdkit init` does not write
   `effortLevel` into the fork's settings: nothing confirms Claude Code reads it
   at project level, and an unknown key is accepted without a word. Set the
   level per session with `/effort`, or `claude --effort` at launch.

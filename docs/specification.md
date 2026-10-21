@@ -557,7 +557,7 @@ its own.
 | `/pd:preflight <issue\|slice>` | issue/slice | pass/fail + output | `preflight-green` | sonnet | — |
 | `/pd:pr <issue> [slice]` | issue | branches, PR bodies, open PRs | `pr-open` | opus | **push gate** |
 | `/pd:pr-status` | — | dashboard across open PRs | — | sonnet | — |
-| `/pd:pr-sync <pr#>` | PR | plan amendment → fixes → replies | — | opus + sonnet resolvers | human: the amendment; **push gate** |
+| `/pd:pr-sync <pr#>` | PR | decision table → plan amendment → fixes → `pr diff` → replies | — | opus + sonnet resolvers | human: the decisions, the amendment; **push gate** after the diff; replies |
 | `/pd:resume <issue>` | issue | drift analysis, rebase, amendment | — | opus | — |
 | `/pd:review-pr <pr#>` | PR | `reviews/<pr>.md` | — | opus + 4 sonnet axes | — |
 | `/pd:quickfix <issue>` | issue | fix + PR | `pr-open` | sonnet | **push gate** |
