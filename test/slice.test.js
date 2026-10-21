@@ -1406,3 +1406,100 @@ describe('--from-pr', () => {
     );
   });
 });
+
+// DESKTOP-18833: the branch was rebased onto upstream/main while the local
+// `main` sat 43 commits behind. Verify diffed against `main`, preflight against
+// `upstream/main`, and upstream had touched the slice's own files — so the two
+// digests never agreed, and re-verifying wrote the same disagreement again.
+describe('a local base branch behind upstream', () => {
+  const issue = 4343;
+  let repo_;
+  let home_;
+  let trees_;
+  let stale;
+  let tip;
+  let work;
+  let graph;
+
+  /** @returns {object} */
+  const config_ = () => ({ ...CONFIG, repo: { ...CONFIG.repo, upstream_remote: 'upstream' }, worktrees: { ...CONFIG.worktrees, root: trees_ } });
+
+  before(async () => {
+    repo_ = await initRepo('pdkit-stale-main-');
+    home_ = await initRepo('pdkit-stale-main-home-');
+    trees_ = join(repo_, '..', `${basename(repo_)}-trees`);
+
+    await seedWorkspace(repo_);
+    stale = await commitAll(repo_, 'chore: seed');
+
+    // Upstream moves on, in the slice's file and beside it. Only the
+    // remote-tracking ref sees it; the local `main` stays where it was.
+    await git(['checkout', '-b', 'scratch'], repo_);
+    await writeFiles(repo_, {
+      [THEME]: '// SPDX-License-Identifier: Apache-2.0\nexport const theme = "dark";\n',
+      'docs/meanwhile.md': 'what upstream landed while main sat\n',
+    });
+    tip = await commitAll(repo_, 'feat(ui): upstream changes the theme');
+    await git(['update-ref', 'refs/remotes/upstream/main', tip], repo_);
+
+    await git(['checkout', '-b', `DESKTOP-${issue}/work`, 'upstream/main'], repo_);
+    await git(['branch', '-D', 'scratch'], repo_);
+    await writeFiles(repo_, { [THEME]: '// SPDX-License-Identifier: Apache-2.0\nexport const theme = "high-contrast";\n' });
+    work = await commitAll(repo_, 'feat(ui): high contrast');
+
+    await state.transition(issue, 'triaged', { home: home_ });
+    await state.transition(issue, 'planned', { home: home_ });
+    await ids.allocateRequirement(issue, { home: home_ });
+    await ids.freezeRequirements(issue, { home: home_ });
+    await writeTask({ home: home_, issue, id: 'T1', satisfies: ['R1'], owns: [THEME] });
+  });
+
+  after(async () => {
+    await cleanup(repo_, home_, trees_);
+  });
+
+  test('facts measure the change set from upstream, not from the stale main', async () => {
+    const facts = await slice.facts({ issue, repoRoot: repo_, home: home_, config: config_(), packageMap: packageMap(repo_) });
+
+    assert.deepEqual(facts.files.map((file) => file.path), [THEME], 'what upstream landed is not part of the change set');
+    assert.equal(facts.base, 'main', 'the graph keeps the name; resolving it is done where it is used');
+
+    const result = await slice.set({
+      issue,
+      proposal: proposal([{ slug: 'ui-contrast', title: 'high contrast', files: [THEME], baseSlice: null }]),
+      facts,
+      config: config_(),
+      home: home_,
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+    graph = result.graph;
+  });
+
+  test('verify builds on upstream, and preflight finds the verification fresh', async () => {
+    const result = await slice.verifySlice({ issue, index: 1, repoRoot: repo_, home: home_, config: config_(), packageMap: packageMap(repo_) });
+
+    assert.equal(result.ok, true, result.error ?? result.output);
+    assert.equal(result.verification.base, 'upstream/main');
+    assert.equal(result.verification.baseCommit, tip);
+    assert.notEqual(result.verification.baseCommit, stale);
+
+    // The base preflight resolves and passes in.
+    const fresh = await slice.checkFreshness({ graph: result.graph, index: 1, repoRoot: repo_, base: 'upstream/main', ref: work });
+    assert.equal(fresh.fresh, true, fresh.reason);
+    graph = result.graph;
+  });
+
+  test('a materialized branch on upstream verifies against upstream, and stays fresh', async () => {
+    const branch = graph.slices[0].branch;
+    await git(['branch', branch, work], repo_);
+
+    const result = await slice.verifySlice({ issue, index: 1, repoRoot: repo_, home: home_, config: config_(), packageMap: packageMap(repo_) });
+    assert.equal(result.ok, true, result.error ?? result.output);
+    assert.equal(result.verification.baseCommit, tip);
+
+    const viaPreflight = await slice.checkFreshness({ graph: result.graph, index: 1, repoRoot: repo_, base: 'upstream/main', ref: branch });
+    const byDefault = await slice.checkFreshness({ graph: result.graph, index: 1, repoRoot: repo_, ref: branch, config: config_() });
+    assert.equal(viaPreflight.fresh, true, viaPreflight.reason);
+    assert.equal(byDefault.fresh, true, byDefault.reason);
+  });
+});

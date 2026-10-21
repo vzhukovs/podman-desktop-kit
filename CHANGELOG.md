@@ -9,6 +9,19 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A local `main` that has fallen behind upstream no longer makes a slice
+  verification stale.** `pdkit slice verify`, `materialize`, `cascade`, `slice
+  facts` and `pdkit drift` diffed against the local `main`, while preflight
+  diffed against `upstream/main`. Once a branch was rebased onto upstream and
+  upstream had touched the slice's files, the two digests never matched, and
+  `slice-standalone` stayed red however many times the slice was re-verified.
+  The only way out was fast-forwarding `main` by hand in another checkout.
+  Every one of them now resolves the base the way preflight does. A stacked
+  slice still bases on its parent's local branch. Drift no longer reports
+  commits that the branch already contains. Found on DESKTOP-18833.
+
 ## [0.9.3] - 2026-10-21
 
 ### Upgrading

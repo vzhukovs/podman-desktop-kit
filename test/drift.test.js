@@ -208,6 +208,29 @@ describe('collecting drift', () => {
     assert.equal(report.total, 2);
   });
 
+  // DESKTOP-18833: rebased onto upstream, with the local main left behind. The
+  // fork point against `main` is the old tip, and every upstream commit since
+  // read as drift the branch already contained.
+  test('a branch already on upstream has not drifted, however far behind main is', async () => {
+    const branch = 'DESKTOP-7303/1-handler';
+    const was = await git(['rev-parse', branch], repo);
+    try {
+      await git(['checkout', '-q', '-B', branch, 'upstream-main'], repo);
+      await writeFiles(repo, { [HANDLER]: ['// one', '// two', '// three', 'export const timeout = 900;', '// five', '// six', '// seven'].join('\n') });
+      await commitAll(repo, 'fix(main): raise the timeout');
+      await git(['checkout', '-q', 'main'], repo);
+
+      const report = await drift.collect({ issue: ISSUE, repoRoot: repo, home, config: CONFIG, upstream: 'upstream-main' });
+      const handler = report.units.find((unit) => unit.slice === 1);
+
+      assert.equal(handler.base, 'upstream-main');
+      assert.equal(handler.commits.length, 0, 'what the branch is built on is not drift');
+    } finally {
+      await git(['checkout', '-q', 'main'], repo);
+      await git(['branch', '-f', branch, was], repo);
+    }
+  });
+
   // The hint the whole module exists for: touching the file is mechanical,
   // touching the line the plan built on is a candidate for semantic.
   test('a commit on a cited line is separated from a commit merely in the file', async () => {
