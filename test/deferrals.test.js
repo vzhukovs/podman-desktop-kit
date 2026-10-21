@@ -72,22 +72,22 @@ describe('deferredEntry', () => {
   });
 
   test('where it came from is carried when there is a where', () => {
-    const composed = deferredEntry({ id: 'D1', what: 'the renderer needs an ellipsis', pr: 18561, raisedBy: 'simonrey1', url: 'https://x/1' });
+    const composed = deferredEntry({ id: 'D1', what: 'the renderer needs an ellipsis', pr: 18561, raisedBy: 'reviewer3', url: 'https://x/1' });
 
-    assert.match(composed.detail, /^D1 — the renderer needs an ellipsis \(simonrey1, #18561\) https:\/\/x\/1$/);
+    assert.match(composed.detail, /^D1 — the renderer needs an ellipsis \(reviewer3, #18561\) https:\/\/x\/1$/);
   });
 });
 
 describe('list and open', () => {
   test('a deferral is open until something settles it', async () => {
-    await defer({ issue: ISSUE, id: 'D1', what: 'the renderer needs an ellipsis', pr: 18561, raisedBy: 'simonrey1', home });
+    await defer({ issue: ISSUE, id: 'D1', what: 'the renderer needs an ellipsis', pr: 18561, raisedBy: 'reviewer3', home });
 
     const [entry] = await list({ issue: ISSUE, home });
     assert.equal(entry.id, 'D1');
     assert.equal(entry.status, 'open');
     assert.equal(entry.followUp, null);
     assert.equal(entry.what, 'the renderer needs an ellipsis');
-    assert.equal(entry.raisedBy, 'simonrey1');
+    assert.equal(entry.raisedBy, 'reviewer3');
     assert.equal(entry.pr, 18561);
 
     assert.equal((await open({ issue: ISSUE, home })).length, 1);

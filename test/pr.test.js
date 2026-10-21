@@ -596,7 +596,7 @@ describe('refreshing from GitHub', () => {
           ],
         },
         threads: threadPage([thread('t1', false), thread('t2', true)]),
-        discussion: { reviews: [{ author: { login: 'benoitf' }, state: 'CHANGES_REQUESTED', body: 'split it', submittedAt: '2026-06-05T05:58:37Z' }], comments: [] },
+        discussion: { reviews: [{ author: { login: 'maintainer1' }, state: 'CHANGES_REQUESTED', body: 'split it', submittedAt: '2026-06-05T05:58:37Z' }], comments: [] },
         peers: [{ number: 18550, statusCheckRollup: [{ name: 'Linux', status: 'COMPLETED', conclusion: 'FAILURE' }] }],
         runs: { check_runs: [{ name: 'Linux', conclusion: 'failure' }] },
       }),

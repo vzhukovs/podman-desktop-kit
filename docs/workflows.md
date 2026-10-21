@@ -384,7 +384,7 @@ There is nothing to push, so `/pd:pr-sync` has nothing to drive. What is left is
 a decision, and the decision has to survive the issue closing.
 
 ```
-pdkit defer new --issue 18248 --pr 18561 --raised-by simonrey1 --kind bug \
+pdkit defer new --issue 18248 --pr 18561 --raised-by reviewer3 --kind bug \
   --what "a very long container command may break the interface display; it needs an ellipsis plus a tooltip in the renderer" \
   --url https://github.com/podman-desktop/podman-desktop/pull/18561#issuecomment-5266241008
 ```
@@ -438,7 +438,7 @@ It **warns rather than refuses**:
 
 ```
   ! D1 is still open, and closing does not settle it:
-      a very long container command may break the interface display … — simonrey1, #18561
+      a very long container command may break the interface display … — reviewer3, #18561
       https://github.com/podman-desktop/podman-desktop/pull/18561#issuecomment-5266241008
       `pdkit defer resolve D1 --issue 18248 --follow-up <n>` when you open one.
 DESKTOP-18248 is merged

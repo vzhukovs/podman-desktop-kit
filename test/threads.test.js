@@ -93,7 +93,7 @@ describe('who is a bot', () => {
   test('and the names the config lists', () => {
     assert.equal(threads.isBot('coderabbitai', CONFIG), true);
     assert.equal(threads.isBot('CodeRabbitAI', CONFIG), true);
-    assert.equal(threads.isBot('jiridostal', CONFIG), false);
+    assert.equal(threads.isBot('reviewer2', CONFIG), false);
     assert.equal(threads.isBot(null, CONFIG), false);
   });
 });
@@ -131,7 +131,7 @@ describe('collecting', () => {
       pr: 17577,
       config: CONFIG,
       home,
-      threads: [thread(), thread({ id: 't2', author: 'jiridostal', body: 'x'.repeat(4000) })],
+      threads: [thread(), thread({ id: 't2', author: 'reviewer2', body: 'x'.repeat(4000) })],
       discussion: empty,
     });
 
@@ -165,7 +165,7 @@ describe('collecting', () => {
       config: CONFIG,
       home,
       satisfies: { T1: ['R1'] },
-      threads: [thread({ author: 'jiridostal' })],
+      threads: [thread({ author: 'reviewer2' })],
       discussion: empty,
     });
 
@@ -184,7 +184,7 @@ describe('collecting', () => {
       pr: 17577,
       config: CONFIG,
       home,
-      threads: [thread({ author: 'jiridostal', path: 'packages/preload/src/index.ts' })],
+      threads: [thread({ author: 'reviewer2', path: 'packages/preload/src/index.ts' })],
       discussion: empty,
     });
 
@@ -198,7 +198,7 @@ describe('collecting', () => {
       pr: 17577,
       config: CONFIG,
       home,
-      threads: [thread({ author: 'jiridostal', isResolved: true, path: 'packages/preload/src/index.ts' })],
+      threads: [thread({ author: 'reviewer2', isResolved: true, path: 'packages/preload/src/index.ts' })],
       discussion: empty,
     });
 
@@ -217,8 +217,8 @@ describe('collecting', () => {
       home,
       threads: [thread(), thread({ id: 't2', path: UI })],
       discussion: {
-        reviews: [{ author: 'benoitf', state: 'CHANGES_REQUESTED', body: 'please split this', at: '2026-06-05T00:00:00Z' }],
-        comments: [{ author: 'jiridostal', body: 'any update?', at: '2026-06-02T00:00:00Z' }],
+        reviews: [{ author: 'maintainer1', state: 'CHANGES_REQUESTED', body: 'please split this', at: '2026-06-05T00:00:00Z' }],
+        comments: [{ author: 'reviewer2', body: 'any update?', at: '2026-06-02T00:00:00Z' }],
       },
     });
 
@@ -350,7 +350,7 @@ describe('formatting', () => {
       items: [
         {
           kind: 'thread',
-          author: 'jiridostal',
+          author: 'reviewer2',
           isBot: false,
           collapsed: false,
           escalated: [],
@@ -390,7 +390,7 @@ describe('when there is nothing to map against', () => {
       threads: [
         {
           id: 't1',
-          author: 'jiridostal',
+          author: 'reviewer2',
           body: 'this looks wrong',
           path: 'packages/main/src/anything.ts',
           line: 4,

@@ -136,22 +136,22 @@ describe('who answered, and whether anyone did', () => {
     const candidate = facts({
       comments: {
         total: 1,
-        recent: [{ author: 'benoitf', isBotAccount: false, association: 'MEMBER', at: '2026-07-31T12:00:00Z' }],
+        recent: [{ author: 'maintainer1', isBotAccount: false, association: 'MEMBER', at: '2026-07-31T12:00:00Z' }],
       },
     });
 
-    assert.deepEqual(candidate.maintainer, { login: 'benoitf', at: '2026-07-31T12:00:00Z' });
+    assert.deepEqual(candidate.maintainer, { login: 'maintainer1', at: '2026-07-31T12:00:00Z' });
     assert.ok(candidate.signals.includes('maintainer-replied'));
   });
 
   test('the reporter is not the project answering, even when they are a member', () => {
-    // Live on #18381: author kyetter is a MEMBER and the only commenter. Their
+    // Live on #18381: author member5 is a MEMBER and the only commenter. Their
     // own follow-up would otherwise read as the project having weighed in.
     const candidate = facts({
-      author: 'kyetter',
+      author: 'member5',
       comments: {
         total: 1,
-        recent: [{ author: 'kyetter', isBotAccount: false, association: 'MEMBER', at: '2026-07-31T20:24:25Z' }],
+        recent: [{ author: 'member5', isBotAccount: false, association: 'MEMBER', at: '2026-07-31T20:24:25Z' }],
       },
     });
 
@@ -198,7 +198,7 @@ describe('activity is what a human did, not what the timestamp moved for', () =>
       comments: {
         total: 4,
         recent: [
-          { author: 'rujutashinde', isBotAccount: false, association: 'MEMBER', at: '2026-02-02T00:12:34Z' },
+          { author: 'member6', isBotAccount: false, association: 'MEMBER', at: '2026-02-02T00:12:34Z' },
           { author: 'github-actions', isBotAccount: true, association: 'CONTRIBUTOR', at: '2026-08-01T00:52:54Z' },
         ],
       },

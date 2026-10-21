@@ -509,7 +509,7 @@ describe('reading a pull request', () => {
     let page = 0;
     const exec = (file, args, options, callback) => {
       calls.push({ file, args, options, stdin: null });
-      const body = page++ === 0 ? threadPage([thread('t1', 'coderabbitai')], true, 'CURSOR') : threadPage([thread('t2', 'jiridostal')]);
+      const body = page++ === 0 ? threadPage([thread('t1', 'coderabbitai')], true, 'CURSOR') : threadPage([thread('t2', 'reviewer2')]);
       queueMicrotask(() => callback(null, body, ''));
       return { stdin: { end: () => {} } };
     };
@@ -522,7 +522,7 @@ describe('reading a pull request', () => {
     assert.ok(calls[1].args.includes('cursor=CURSOR'));
     assert.deepEqual(
       threads.map((entry) => entry.author),
-      ['coderabbitai', 'jiridostal'],
+      ['coderabbitai', 'reviewer2'],
     );
   });
 
@@ -538,17 +538,17 @@ describe('reading a pull request', () => {
             reviews: {
               nodes: [
                 { author: { login: 'coderabbitai', __typename: 'Bot' }, state: 'COMMENTED', body: '', submittedAt: '2026-05-20T12:05:19Z' },
-                { author: { login: 'vancura', __typename: 'User' }, state: 'APPROVED', body: '', submittedAt: '2026-05-21T10:38:58Z' },
+                { author: { login: 'reviewer4', __typename: 'User' }, state: 'APPROVED', body: '', submittedAt: '2026-05-21T10:38:58Z' },
                 {
                   author: { login: 'copilot-pull-request-reviewer', __typename: 'Bot' },
                   state: 'COMMENTED',
                   body: 'Copilot was unable to review this pull request.',
                   submittedAt: '2026-06-01T00:00:00Z',
                 },
-                { author: { login: 'benoitf', __typename: 'User' }, state: 'CHANGES_REQUESTED', body: 'please split this', submittedAt: '2026-06-05T05:58:37Z' },
+                { author: { login: 'maintainer1', __typename: 'User' }, state: 'CHANGES_REQUESTED', body: 'please split this', submittedAt: '2026-06-05T05:58:37Z' },
               ],
             },
-            comments: { nodes: [{ author: { login: 'jiridostal', __typename: 'User' }, body: 'any update?', createdAt: '2026-06-02T09:06:38Z' }] },
+            comments: { nodes: [{ author: { login: 'reviewer2', __typename: 'User' }, body: 'any update?', createdAt: '2026-06-02T09:06:38Z' }] },
           },
         },
       },
@@ -561,9 +561,9 @@ describe('reading a pull request', () => {
     // nothing; the empty APPROVED one says everything it needs to in its state.
     assert.deepEqual(
       reviews.map((review) => `${review.author}:${review.state}`),
-      ['vancura:APPROVED', 'copilot-pull-request-reviewer:COMMENTED', 'benoitf:CHANGES_REQUESTED'],
+      ['reviewer4:APPROVED', 'copilot-pull-request-reviewer:COMMENTED', 'maintainer1:CHANGES_REQUESTED'],
     );
-    assert.deepEqual(comments.map((comment) => comment.author), ['jiridostal']);
+    assert.deepEqual(comments.map((comment) => comment.author), ['reviewer2']);
   });
 
   // The reason this call moved to GraphQL. `gh pr view --json reviews` answers
@@ -574,8 +574,8 @@ describe('reading a pull request', () => {
 
     const byLogin = Object.fromEntries(reviews.map((review) => [review.author, review.isBotAccount]));
     assert.equal(byLogin['copilot-pull-request-reviewer'], true, 'not in bots_collapsed, and still recognised');
-    assert.equal(byLogin.vancura, false);
-    assert.equal(byLogin.benoitf, false);
+    assert.equal(byLogin.reviewer4, false);
+    assert.equal(byLogin.maintainer1, false);
     assert.equal(comments[0].isBotAccount, false);
   });
 
@@ -595,11 +595,11 @@ describe('reading a pull request', () => {
       config: CONFIG,
       exec: fakeGh(
         threadPage([
-          thread('t1', 'jiridostal', {
+          thread('t1', 'reviewer2', {
             isResolved: true,
             comments: {
               nodes: [
-                { author: { login: 'jiridostal' }, body: 'ask', createdAt: '2026-06-02T09:06:38Z', url: 'u1' },
+                { author: { login: 'reviewer2' }, body: 'ask', createdAt: '2026-06-02T09:06:38Z', url: 'u1' },
                 { author: { login: 'vzhukovs' }, body: 'answer', createdAt: '2026-06-03T09:06:38Z', url: 'u2' },
               ],
             },

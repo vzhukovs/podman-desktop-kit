@@ -127,7 +127,7 @@ const LIVE = {
       title: 'feat: add scrollable left navigation bar (Closes #12775)',
       state: 'MERGED',
       body: 'Adds a scrollable area to the left navigation bar.',
-      author: { login: 'AlexonOliveiraRH' },
+      author: { login: 'contributor8' },
       createdAt: '2026-05-01T00:00:00Z',
       mergedAt: '2026-05-19T12:45:04Z',
       mergeCommit: { oid: '99bf76412460956f187776935256429b51a25855' },
@@ -135,7 +135,7 @@ const LIVE = {
       additions: 130,
       deletions: 12,
       reviews: [
-        { author: { login: 'benoitf' }, state: 'CHANGES_REQUESTED', body: 'typecheck is failing, css is used rather than class attributes', submittedAt: '2026-05-10T00:00:00Z' },
+        { author: { login: 'maintainer1' }, state: 'CHANGES_REQUESTED', body: 'typecheck is failing, css is used rather than class attributes', submittedAt: '2026-05-10T00:00:00Z' },
         { author: { login: 'someone' }, state: 'APPROVED', body: 'looks fine', submittedAt: '2026-05-18T00:00:00Z' },
       ],
       comments: [{ author: { login: 'coderabbitai' }, body: 'Walkthrough of the changes', createdAt: '2026-05-02T00:00:00Z' }],
@@ -145,7 +145,7 @@ const LIVE = {
           isResolved: false,
           path: 'packages/renderer/src/AppNavigation.svelte',
           line: 10,
-          comments: { nodes: [{ author: { login: 'simonrey1' }, body: 'issue(blocking): this seems really hacky to me', createdAt: '2026-05-11T00:00:00Z' }] },
+          comments: { nodes: [{ author: { login: 'reviewer3' }, body: 'issue(blocking): this seems really hacky to me', createdAt: '2026-05-11T00:00:00Z' }] },
         },
       ],
     },
@@ -154,7 +154,7 @@ const LIVE = {
       title: 'revert: #16294',
       state: 'MERGED',
       body: 'Reverting https://github.com/podman-desktop/podman-desktop/pull/16294 as per discussion.\n\nThis reverts commit 99bf764. Regression in #17800.',
-      author: { login: 'axel7083' },
+      author: { login: 'contributor7' },
       mergedAt: '2026-06-11T07:37:21Z',
       mergeCommit: { oid: 'aaaa111' },
     },
@@ -162,7 +162,7 @@ const LIVE = {
       number: 17900,
       title: 'fix(renderer): remove overflow-hidden from nav',
       state: 'MERGED',
-      author: { login: 'vancura' },
+      author: { login: 'reviewer4' },
       mergedAt: '2026-06-16T09:00:00Z',
     },
   },
@@ -212,7 +212,7 @@ describe('what the reviewers said', () => {
 
     assert.deepEqual(
       report.discussion.changesRequested.map((review) => review.author),
-      ['benoitf'],
+      ['maintainer1'],
     );
     assert.match(report.discussion.changesRequested[0].summary, /use.*class attributes|typecheck is failing/);
   });
@@ -220,7 +220,7 @@ describe('what the reviewers said', () => {
   test('a blocking thread survives to the report, and bots are marked rather than dropped', async () => {
     const report = await dig({ exec: fakeGh(LIVE) });
 
-    const blocking = report.discussion.threads.find((thread) => thread.author === 'simonrey1');
+    const blocking = report.discussion.threads.find((thread) => thread.author === 'reviewer3');
     assert.match(blocking.summary, /really hacky/);
     assert.equal(blocking.isBot, false);
 

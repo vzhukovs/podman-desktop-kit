@@ -55,7 +55,7 @@ Two rules about how you write it:
 
 - **Quote rather than paraphrase into agreement.** "Reviewers had concerns
   about the CSS" is a sentence that survives contact with any evidence.
-  "`benoitf`: do not embed custom css directive → use tailwind" tells the next
+  "`maintainer1`: do not embed custom css directive → use tailwind" tells the next
   person what to do.
 - **Say what you could not establish.** An unstated revert reason, a discussion
   held somewhere you cannot see, a regression issue nobody filed. A redo that

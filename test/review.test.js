@@ -127,7 +127,7 @@ const THREADS = JSON.stringify({
               isResolved: false,
               path: 'packages/main/src/exec.ts',
               line: 20,
-              comments: { nodes: [{ author: { login: 'jiridostal' }, body: 'This changes behaviour on Windows.', createdAt: '2026-07-03T00:00:00Z' }] },
+              comments: { nodes: [{ author: { login: 'reviewer2' }, body: 'This changes behaviour on Windows.', createdAt: '2026-07-03T00:00:00Z' }] },
             },
           ],
         },
