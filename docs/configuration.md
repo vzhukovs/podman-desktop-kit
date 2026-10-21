@@ -192,7 +192,11 @@ and they are yours to change, not the plugin's:
 
 - **The model.** Start each phase in its own session (`pdkit next <n>` prints
   the command) and pick the model there: `/model opus` before `triage`, `plan`,
-  `plan-review` and `pr-sync`; `/model sonnet` before the rest.
+  `plan-review` and `pr-sync`; `/model sonnet` before the rest. When you
+  forget, the prompt hook says so on the `/pd:` command, in a line shown to
+  you: it reads the model from the session's transcript, and after `/clear`
+  from the previous transcript of the same `claude` process. It cannot switch
+  the model — nothing outside the session can.
 
   `pdkit init` also writes `"model"` into the fork's
   `.claude/settings.local.json`, so a fresh `claude` there starts on the model

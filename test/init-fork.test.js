@@ -32,7 +32,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { adoptFork } from '../lib/cli.js';
-import { SETTINGS_FILE, sessionModel, writeModel } from '../lib/session-model.js';
+import { SETTINGS_FILE, familyOf, lastModelIn, sessionModel, writeModel } from '../lib/session-model.js';
 
 const CONFIG_TEXT = [
   'repo:',
@@ -237,3 +237,37 @@ describe('the model the skills declare', () => {
     assert.equal((await sessionModel()).model, 'sonnet');
   });
 });
+
+// What the prompt hook reads to tell which model a session is on.
+describe('the model a transcript says', () => {
+  let dir;
+  before(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'pdkit-transcript-'));
+  });
+  after(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test('a family from an id, a picker label or an alias', () => {
+    assert.equal(familyOf('claude-opus-5-5'), 'opus');
+    assert.equal(familyOf('Sonnet 5.5'), 'sonnet');
+    assert.equal(familyOf('haiku'), 'haiku');
+    assert.equal(familyOf('<synthetic>'), null);
+    assert.equal(familyOf(undefined), null);
+  });
+
+  test('a record further back than the tail read is still found', async () => {
+    const path = join(dir, 'long.jsonl');
+    const filler = `${JSON.stringify({ type: 'attachment', text: 'x'.repeat(1000) })}\n`.repeat(2500);
+    await writeFile(path, `${JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5-5' } })}\n${filler}`);
+    assert.equal(await lastModelIn(path), 'opus');
+  });
+
+  test('no file, or a file that says nothing, is null', async () => {
+    assert.equal(await lastModelIn(join(dir, 'absent.jsonl')), null);
+    const path = join(dir, 'quiet.jsonl');
+    await writeFile(path, `${JSON.stringify({ type: 'user', message: { content: '<command-name>/clear</command-name>' } })}\n`);
+    assert.equal(await lastModelIn(path), null);
+  });
+});
+
