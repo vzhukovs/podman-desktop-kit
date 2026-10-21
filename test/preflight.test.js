@@ -44,6 +44,7 @@ import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../
 import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
+import { staleCopyright } from '../lib/preflight/checks/maintainer-rules.js';
 import { candidatesFor, runScript, scopedScripts } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
@@ -937,6 +938,64 @@ describe('the artefact checks', () => {
     assert.equal(report.ok, true, 'a warning must not block');
     assert.match(report.results[0].summary, /console\.log/);
     assert.match(report.results[0].summary, /any/);
+  });
+});
+
+describe('maintainer-rules', () => {
+  // Scope is the difference between a check that is read and one that is
+  // ignored: Playwright specs keep afterEach, extensions may export functions.
+  test('a pattern outside the files its rule covers is not reported', async () => {
+    const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
+    await mkdir(join(repo, 'tests/playwright/src'), { recursive: true });
+    await writeFile(join(repo, 'tests/playwright/src/flow.spec.ts'), 'afterEach(() => {});\nvi.spyOn(a, "b");\n');
+    await mkdir(join(repo, 'extensions/foo/src'), { recursive: true });
+    await writeFile(join(repo, 'extensions/foo/src/util.ts'), 'export function helper(): void {}\n');
+    await git(['add', '-A']);
+    await git(['commit', '-q', '-m', 'chore: elsewhere\n\nSigned-off-by: Test <test@example.com>']);
+
+    const checks = (await loadChecks()).filter((check) => check.id === 'maintainer-rules');
+    const report = await run(await context(), checks);
+
+    // The fixture repository is shared and earlier tests leave commits in it,
+    // so the claim is about these labels, not about the status as a whole.
+    const summary = report.results[0].summary;
+    assert.doesNotMatch(summary, /afterEach/);
+    assert.doesNotMatch(summary, /vi\.spyOn/);
+    assert.doesNotMatch(summary, /export function/);
+  });
+
+  // Warnings: upstream's review agent raises every one of these, and the
+  // point is that the implementer hears it first. A grep cannot see context,
+  // so it must never block.
+  test('warns on the patterns the maintainer rejects, citing the section', async () => {
+    const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
+    await writeFile(
+      join(repo, 'packages/main/src/rules.spec.ts'),
+      "import { readFile } from 'fs';\nimport x from '../other';\nvi.spyOn(x, 'f');\nafterEach(() => {});\n",
+    );
+    await writeFile(join(repo, 'packages/main/src/rules.ts'), '/* Copyright (C) 2022-2024 Red Hat, Inc. */\nexport function helper(): void {}\n');
+    await git(['add', '-A']);
+    await git(['commit', '-q', '-m', 'chore: rules\n\nSigned-off-by: Test <test@example.com>']);
+
+    const checks = (await loadChecks()).filter((check) => check.id === 'maintainer-rules');
+    const report = await run(await context(), checks);
+    const result = report.results[0];
+
+    assert.equal(result.status, 'warn');
+    assert.equal(report.ok, true, 'a warning must not block');
+    assert.match(result.summary, /vi\.spyOn ×1 \(§2\)/);
+    assert.match(result.summary, /afterEach\/afterAll\/beforeAll ×1/);
+    assert.match(result.summary, /relative \.\.\/ import ×1 \(§5\)/);
+    assert.match(result.summary, /node built-in without node: ×1/);
+    assert.match(result.summary, /export function in packages\/main ×1 \(§6\)/);
+    assert.match(result.summary, /copyright not \d{4} alone ×1 \(§1\)/);
+  });
+
+  test('a copyright line is stale when it is a range or not this year', () => {
+    assert.equal(staleCopyright(' * Copyright (C) 2026 Red Hat, Inc.', 2026), false);
+    assert.equal(staleCopyright(' * Copyright (C) 2024 Red Hat, Inc.', 2026), true);
+    assert.equal(staleCopyright(' * Copyright (C) 2022-2026 Red Hat, Inc.', 2026), true);
+    assert.equal(staleCopyright('const x = 1;', 2026), false);
   });
 });
 

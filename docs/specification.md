@@ -1554,7 +1554,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 
 ## 7. Preflight — the deterministic gates
 
-`pdkit preflight [--slice N]` returns a machine-readable report. Twenty-one checks:
+`pdkit preflight [--slice N]` returns a machine-readable report. Twenty-two checks:
 
 | Check | How | Blocking |
 |---|---|---|
@@ -1578,6 +1578,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 | e2e environment | a test needing an environment CI does not have requires a `Notes for reviewers` entry | ✅ |
 | **validation evidence** | a validation step with no attached artefact is named in `Notes for reviewers`. Skipped on `quickfix` and when `validation.require_evidence: false` | ✅ |
 | debug leftovers | `console.log`, `.only`, `.skip`, `@ts-ignore`, `any` in the diff | ⚠️ warn, listing them |
+| maintainer rules | the greppable part of `knowledge/maintainer-rules.md` in the added lines, each pattern scoped to the files its rule covers: `vi.spyOn`, `Object.defineProperty(window)`, `clearAllMocks`, `afterEach` in unit specs; `as unknown as`, `eslint-disable`, `*Sync(`, `../` imports, built-ins without `node:`; `export function` in `packages/main`; `<style>` and `$:` in Svelte; a hardcoded "Podman Desktop", a hex colour in the colour registry; a copyright year other than this one | ⚠️ warn, with the rule's section |
 | CI blind spots | the diff touches build, packaging, platform-specific behaviour or the **dependency graph** — CI will not check it; a `Notes for reviewers` entry is required, worded per the area that fired | ✅ |
 
 Three results, and the difference between them matters: **pass** (the check ran

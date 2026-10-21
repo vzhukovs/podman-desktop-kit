@@ -34,6 +34,21 @@ fixes — see [RELEASING.md](RELEASING.md).
   reproduce. The synthesis applies the maintainer's calibration, and the
   verdict now follows mechanically from the findings.
 
+- **A `maintainer-rules` preflight check warns on the greppable part of those
+  rules.** It looks only at added lines, and each pattern only in the files its
+  rule is about:
+  - in unit specs: `vi.spyOn`, `Object.defineProperty(window)`,
+    `clearAllMocks`, `afterEach`;
+  - in package sources: `as unknown as`, `eslint-disable`, synchronous
+    fs/exec calls, `../` imports, built-ins without `node:`;
+  - in `packages/main`: `export function`;
+  - in Svelte: `<style>` and `$:`;
+  - a hardcoded "Podman Desktop", a hex colour in the colour registry, and a
+    copyright year other than this one.
+
+  Each hit names its section. It never blocks: a grep cannot see context, and
+  the point is that the implementer hears it before the maintainer does.
+
 ### Changed
 
 - **The review report has a `Counts` line and no `Should fix before merge`
