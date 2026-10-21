@@ -40,6 +40,12 @@ Checked: 60 of 60 sampled files under `packages/main/src` carry it. A new file
 with only `// SPDX-License-Identifier: Apache-2.0` is not in the house format
 and will be asked about in review.
 
+**A new file carries the current year only.** A header copied from a
+neighbouring file brings that file's year, or a `2022-2024` range, with it, and
+the maintainer asks for it to be changed. This applies to GitHub workflow YAML
+as well. Nothing mechanical catches it. The source is maintainer review, see
+`maintainer-rules.md` section 1.
+
 ### Sign-off
 
 Exactly one `Signed-off-by` trailer per commit. `.husky/commit-msg` appends the
@@ -115,6 +121,11 @@ and they are what a reviewer expects to find:
 Also from `CONTRIBUTING.md`:
 
 - Break large PRs into smaller ones; squash commits into logical pieces.
+- **Do not change existing tests and their implementation in the same PR.**
+  If an existing assertion was wrong, fix it in a pull request of its own.
+  Otherwise a reviewer cannot tell which side was wrong: the code or the test
+  that used to describe it. A new test for new behaviour is not a change to an
+  existing test. Source: maintainer review, `maintainer-rules.md` section 1.
 - Changes made in response to review go in a **new commit**, so reviewers can
   see what changed between rounds. Do not force-push a rewritten history
   mid-review.
@@ -129,6 +140,13 @@ Format and lint checking, cross-platform builds (Windows, macOS, Linux), unit
 tests on Linux, and e2e tests on Linux. **E2E failures do not block merging**
 — they are known to be unstable — which means a green PR is not evidence that
 the e2e suite passed. Read the run.
+
+## Beyond this file
+
+The maintainer's own review rules are a larger set: tests, Svelte 5,
+TypeScript, DI, imports and PR hygiene. Upstream's review agent applies them to
+every pull request. They live in `maintainer-rules.md`, because no machine
+enforces them.
 
 ## What to add here
 

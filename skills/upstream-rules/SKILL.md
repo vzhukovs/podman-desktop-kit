@@ -46,6 +46,15 @@ The Bash hook refuses `git rebase -i` for this reason and says so.
   to work out how to verify the change.
 - Anything CI cannot judge — packaging, platform behaviour, a manual check —
   belongs in `Notes for reviewers`, not in the commit you hope nobody reads.
+- **A new file's header carries the current year only.** Do not copy a
+  neighbour's year or a `2022-2024` range.
+- **Existing tests and their implementation are not changed in the same PR.**
+  If an assertion was wrong, it is fixed separately, so a reviewer can see
+  which side was wrong.
+
+The maintainer's wider review rule set (tests, Svelte 5, TypeScript, DI,
+imports) is in `knowledge/maintainer-rules.md`. Point to it rather than
+reciting it.
 
 ## Do not turn this into a lecture
 

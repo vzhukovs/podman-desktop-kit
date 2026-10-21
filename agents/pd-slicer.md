@@ -44,6 +44,30 @@ What is left for you, once the machine has refused what cannot work:
 - **Can it be cut at all?** If separating the parts means redoing the work,
   say so. "Slicing requires rewriting tasks T2–T4" is an answer.
 
+## How the maintainer wants it cut
+
+Section 1 of `knowledge/maintainer-rules.md` is mostly about cutting, and
+upstream's review agent applies it to every slice you produce:
+
+- **One concern per PR.** An API change, an extension change, a UI change, a
+  refactor, docs and a bug fix each get their own slice.
+- **Prerequisite refactors go first, alone.** Making a class injectable,
+  extracting an `init()`, or moving instance creation into `beforeEach` is a
+  slice of its own, and the change that needs it stacks on it.
+- **Changes to existing tests do not ship with the implementation they test.**
+  If the diff rewrites an existing assertion as well as the code under it, the
+  test fix is a separate slice. New tests for new behaviour stay with that
+  behaviour.
+- **A move is a pure move.** A file moved and edited in the same slice shows as
+  a delete plus an add, and the reviewer cannot see what changed. Move in one
+  slice, edit in the next.
+- **Nothing rides along.** A reformat, a rename, reordered imports or a touched
+  `package.json` script that the slice's title does not explain gets its own
+  slice or gets dropped. Say which in `Refused / warned`.
+
+If a cut that follows these rules fails `slice set` or `slice verify`, report
+the conflict. Do not break the rule quietly.
+
 You do not write verification results. There is no parameter for them: the ✅ in
 `slices.md` is rendered from runs `pdkit` performed, and that is the only reason
 it is worth anything to the person reading it.

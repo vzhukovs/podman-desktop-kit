@@ -9,6 +9,29 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`knowledge/maintainer-rules.md`: the rules upstream's review agent applies
+  to every pull request.** podman-desktop/podman-desktop#19798 adds a
+  `review-podman-desktop` skill built from about 1200 of benoitf's review
+  comments. Its rule set (tests, Svelte 5, TypeScript, DI, imports, PR hygiene)
+  and its calibration of what actually blocks are copied verbatim, pinned to
+  `43ab21a3`. That pull request was still open at the time.
+  - `pd-implementer` reads the sections for the files it owns before it writes
+    anything.
+  - `pd-plan-critic` checks a plan against the rules a plan can break.
+  - `pd-slicer` cuts the way section 1 asks: one concern per PR, prerequisite
+    refactors first, pure moves, and test fixes apart from the implementation.
+
+### Changed
+
+- **`knowledge/upstream-rules.md` gains two maintainer-review rules.** A new
+  file's licence header carries the current year only. Existing tests and the
+  implementation they test are not changed in the same PR.
+- **The `conventional-commits` note on a missing scope now says the
+  maintainer's review asks for one.** commitlint still does not require it, so
+  the check still passes.
+
 ## [0.9.6] - 2026-10-21
 
 ### Upgrading

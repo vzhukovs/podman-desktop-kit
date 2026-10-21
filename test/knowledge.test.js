@@ -113,6 +113,14 @@ describe('references that stopped being true', () => {
     assert.deepEqual((await collect()).findings, []);
   });
 
+  test('an import alias is a specifier, not a path, and is left alone', async () => {
+    await base({
+      'notes.md': ['# Notes', '', 'Import it as `/@product.json`.', '', '## What to add here', '- things', ''].join('\n'),
+    });
+
+    assert.deepEqual((await collect()).findings, []);
+  });
+
   test('paths inside the plugin are not checked against the fork', async () => {
     await base({
       'notes.md': ['# Notes', '', 'The rule lives in `lib/upstream.js`.', '', '## What to add here', '- things', ''].join('\n'),

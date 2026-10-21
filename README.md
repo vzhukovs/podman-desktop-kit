@@ -234,7 +234,7 @@ lib/               its implementation: state machine, slicing, gates, preflight,
 skills/            24 skills — the workflow surface
 agents/            14 agents — scouts, implementers, auditors, reviewers
 hooks/hooks.json   seven entries; the rules live in lib/hooks/
-knowledge/         upstream constitution, package map, known traps
+knowledge/         upstream constitution, maintainer review rules, package map, known traps
 templates/         plan, task, receipt, validation, slices, PR body, review report
 test/              node --test, zero dependencies
 docs/              the documents above

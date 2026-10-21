@@ -57,7 +57,15 @@ misses one gets redone rather than patched:
    task with no requirement are both errors.
 7. **`Upstream compliance` is filled in** from `knowledge/upstream-rules.md`:
    SPDX on new files, schemas touched, `extension-api.d.ts` touched, commit
-   scope.
+   scope. The plan must also not contradict section 1 of
+   `knowledge/maintainer-rules.md`:
+   - existing tests are not changed in the same slice as the implementation
+     they test;
+   - prerequisite refactors are planned as their own task, ahead of the change
+     that needs them;
+   - no drive-by renames or moves.
+
+   Upstream's review agent rejects all three.
 8. **`e2e coverage:` is decided here** — `required`, `optional` or `no` with a
    reason. Deciding afterwards produces a test for what was built rather than
    for what was required.
