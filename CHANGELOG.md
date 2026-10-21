@@ -9,6 +9,29 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. If a `/pd:resume` stopped at step 1 asking you
+to run `/pd:sync`, run `/pd:resume` again in a new session: its drift report
+was measured against whatever `upstream/main` was last fetched.
+
+### Fixed
+
+- **`/pd:resume` fetches instead of calling `/pd:sync`.** Step 1 was a bare
+  `/pd:sync`, which the model tried to invoke through the Skill tool. That
+  command is reserved for the person, so the call was refused, nothing was
+  fetched, and `pdkit drift` — which reads the local `upstream/main` and
+  fetches nothing itself — measured against a stale ref. The step now runs
+  `git fetch upstream --prune` and `git fetch origin --prune` directly.
+
 ## [0.9.2] - 2026-10-21
 
 ### Upgrading
@@ -1743,7 +1766,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.8.0...v0.9.0

@@ -1,6 +1,6 @@
 {
   "name": "podman-desktop-kit",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "private": true,
   "type": "module",
   "description": "Workflow kit for working upstream issues in podman-desktop.",
