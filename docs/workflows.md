@@ -328,6 +328,13 @@ fix would touch or create a file outside the slice, or the plan changes. Then
 the push, shown as `pdkit pr diff` first; then the replies, all drafts in
 full.
 
+The table also carries **our own findings**, as `self (§n)` rows below the
+reviewers' ones. They come from `pdkit preflight <n> --only maintainer-rules`,
+run against the whole pull request because upstream's review agent reads all
+of it. On the first round of an **adopted** issue they also come from a full
+self-review: the `/pd:review-pr` axes on the local diff, recorded in
+`reviews/<k>.md`. A `self` row is fixed in its own commit and gets no reply.
+
 What the dashboard tells you, and what it deliberately does not:
 
 ```
@@ -481,6 +488,10 @@ file is a candidate for a mechanical conflict; a commit in those lines is a
 candidate for a semantic one, and semantic means stop.
 
 A previous green preflight means nothing after a rebase.
+
+A mechanical conflict is resolved to what both sides need and nothing more. A
+reordered import or a reformatted block made while resolving reaches the pull
+request as a change its title does not explain.
 
 ## 9. The reviewer rejected the approach, not the diff
 

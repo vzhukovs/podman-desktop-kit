@@ -27,6 +27,36 @@ spent twice.
    `cites`, with its slice or **unmapped**. #19750's review was one body with
    eight findings and no threads at all.
 
+   **Then what no reviewer has said yet.** Upstream's review agent reads the
+   whole diff of the pull request, not the last round. A violation of
+   `knowledge/maintainer-rules.md` that nobody has named will be named in the
+   next round, so find it in this one:
+
+   ```
+   pdkit preflight <n> [--slice <i>] --only maintainer-rules
+   ```
+
+   It reads the branch against its base, so on a pull request opened before
+   these rules existed it covers everything the pull request carries. The
+   report's `base` line is the base that step 1a below diffs against.
+
+1a. **Adopted issue, first round: a self-review.** If `pdkit state <n>` shows
+   `adopted`, no plan critic and no slicer ever looked at this work. Section 1
+   violations are most likely here: several concerns in one PR, tests changed
+   together with their implementation, drive-by edits. A grep does not see
+   them. So, once per pull request, review it the way `/pd:review-pr` reviews
+   somebody else's:
+   - the four `pd-review-*` axes, in parallel, on `git diff <base>...HEAD` in
+     the local tree. Use the local tree, not `refs/pull/<k>/head`: after
+     `/pd:resume` the rebased branch is not pushed yet;
+   - then `pd-review-synth`, then `pdkit review render <k> --values <f>`.
+
+   No threads go to the axes or to the synthesis. The threads are already this
+   round's agenda, and the self-review exists to find what they missed.
+
+   The rendered `$PDKIT_HOME/reviews/<k>.md` is the record that it was done.
+   If that file exists, skip this step. Do it again only if the person asks.
+
 2. **Bots.** Collapsed to one line with a link, never dropped. A thread the
    escalation words expanded is read in full, like a person's. If a collapsed
    line looks like it might matter, open the link: collapsing is about
@@ -84,6 +114,24 @@ spent twice.
    - the fix would touch a file outside the item's slice, or create one;
    - the decision changes what the plan promised (step 5).
 
+   **Our own findings are rows too**, below the reviewers' ones, with the
+   source `self (§n)`. They come from the `maintainer-rules` check in step 1
+   and from the step 1a self-review. They never merge into a reviewer's row:
+   nobody asked for them, and a reply must not present them as an answer to
+   someone.
+   - Propose `accept` when the fix stays inside the item's slice.
+   - Mark ⚠ and propose `defer` when it does not, and for any section 1
+     finding. Splitting an open pull request mid-review is a decision about
+     the pull request, not a fix.
+   - Propose `reject`, with the reason, when the hit is a false positive. A
+     grep cannot see context.
+
+   ```
+   #  Item (who, where)                    Decision  How                         Files
+   8  self (§2), main.spec.ts:40           accept    vi.mock(import(…))          main.spec.ts
+   9  self (§1), tests and impl together   ⚠ defer   separate PR for the test    —
+   ```
+
    Everything else you may propose outright. The person answers in a line —
    "3b, 6 do it here" — and nothing is edited until they have. A fix the person
    did not see decided is the failure this step exists for: on #19750 the
@@ -108,6 +156,12 @@ spent twice.
    back to the person. Resolvers draft the reply as well as the change. They
    never publish.
 
+   A `self` row goes to a resolver as well. Tell it there is no thread, so it
+   drafts no reply. Its fixes go in a commit of their own, apart from the
+   commits that answer reviewers. Upstream asks for review rounds to be
+   visible as new commits, and a reviewer reading "address review" should find
+   only what they asked for.
+
 7. **Cascade.** If a fix touched a slice something else is stacked on:
    `pdkit slice cascade --issue <n> --from <i>`. It rebases the dependants and
    verifies them again, and marks anything that stopped being standalone rather
@@ -115,6 +169,11 @@ spent twice.
 
 8. **Preflight.** `pdkit preflight <n> --slice <i>`, both passes, as in
    `/pd:pr`. A previous green means nothing now.
+
+   `maintainer-rules` is advisory, but a hit that was **not** a row in step 4
+   is something a fix in this round introduced. Go back to step 4 with it.
+   Fixing it now without a decision is the unseen change step 4 exists to
+   prevent. Pushing it unread means the maintainer reads it first.
 
 9. **Publish, in this order.** First show what the push would change:
 

@@ -73,8 +73,12 @@ instead of the requirement that was.
 3. **Rebase, slice by slice, in merge order.** `pd-conflict-analyst` classifies
    every conflict:
 
-   - **mechanical** — imports, formatting, a moved file, a rename. Resolve it,
-     and journal the resolution:
+   - **mechanical** — imports, formatting, a moved file, a rename. Resolve it
+     to exactly what both sides need and nothing more. Do not reorder or
+     reformat beyond the conflict. Imports keep the `/@/` aliases and the
+     `node:` prefix (`knowledge/maintainer-rules.md` §5). A tidy-up made while
+     resolving reaches the pull request as a change its title does not
+     explain, and the maintainer rejects that (§1). Journal the resolution:
 
      ```
      pdkit journal conflict --issue <n> [--slice <i>] --kind mechanical \

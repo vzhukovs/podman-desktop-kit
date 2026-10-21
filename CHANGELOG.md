@@ -49,8 +49,23 @@ fixes — see [RELEASING.md](RELEASING.md).
   Each hit names its section. It never blocks: a grep cannot see context, and
   the point is that the implementer hears it before the maintainer does.
 
+- **`/pd:pr-sync` finds what the maintainer will say before they say it.**
+  Step 1 runs `preflight --only maintainer-rules` over the whole pull request,
+  not only the last round, because upstream's review agent reads all of it.
+  On the first round of an adopted issue it also runs a self-review: the
+  `/pd:review-pr` axes on the local, rebased diff. That work never passed a
+  plan critic or a slicer. The findings join the step 4 table as `self (§n)`
+  rows, decided by the person like any other row. They get their own commit
+  and no reply. A section 1 finding is proposed as `defer`, because splitting
+  an open pull request is a decision, not a fix. A `maintainer-rules` hit at
+  step 8 that was not in the table goes back to step 4. The rendered
+  `reviews/<k>.md` marks the self-review as done.
+
 ### Changed
 
+- **`/pd:resume` resolves a mechanical conflict without tidying around it.**
+  No reordered imports and no reformatting beyond the conflict. Either one
+  reaches the pull request as a change its title does not explain.
 - **The review report has a `Counts` line and no `Should fix before merge`
   section.** With `issue:` / `nit:` / `question:` labels, every finding
   already has a section, and "should fix" was a fourth label nobody could
