@@ -9,6 +9,40 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+After a `/pd:resume`, continue with `/pd:pr-sync <pr#>` in a new session. That
+is where the rebased branch is pushed now. If `main` is checked out somewhere
+with uncommitted changes, `/pd:resume` leaves it alone and says so.
+
+### Changed
+
+- **`/pd:resume` no longer pushes. It hands the rebased branch to
+  `/pd:pr-sync`, as the specification always said.** Its step 5 told the model
+  to run `state --to preflight-green`, `gate open` and
+  `git push --force-with-lease` itself. That step was not in the specification
+  and skipped `pdkit pr diff`. On a pull request that was already open, it also
+  stopped at the body-dependent preflight checks, which is what happened on
+  DESKTOP-18833. The push now happens in `/pd:pr-sync` step 9, through
+  `pdkit publish --pr`. The specification's rule that `--force-with-lease` is
+  permitted in one place has moved to the `pr-sync` section, which is where
+  that push happens. `docs/workflows.md` §8 now gives the same route as the
+  specification: `resume` → `pr-sync`.
+- **`/pd:resume` brings the local `main` up to date.** The specification's step
+  1 says to fetch upstream and update `main`, and only the fetch was being
+  done. `main` is fast-forwarded to `upstream/main`. Where `main` is checked out
+  nowhere, this goes through `git fetch . upstream/main:main`. Where it is
+  checked out in a clean tree, it goes through `git -C <tree> merge --ff-only`.
+  A dirty tree, or a `main` with commits of its own, is skipped and reported.
+
 ## [0.9.4] - 2026-10-21
 
 ### Upgrading
@@ -1794,7 +1828,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...v0.9.2
