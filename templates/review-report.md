@@ -2,6 +2,7 @@
 
 Verdict: {{verdict}}       <!-- APPROVE | APPROVE_WITH_NITS | REQUEST_CHANGES | NEEDS_DISCUSSION -->
 Confidence: {{confidence}} <!-- high | medium | low — and why -->
+Counts: {{counts}}         <!-- Blockers N · Nits N · Questions N · Files reviewed N/N -->
 
 ## Requirement fit
 
@@ -16,10 +17,8 @@ Confidence: {{confidence}} <!-- high | medium | low — and why -->
 {{requirementFit}}
 
 ## Blocking (correctness, compatibility, data loss)
+<!-- Every `issue:`. One line each: `path:LINE — issue: … (§n)`. -->
 {{blocking}}
-
-## Should fix before merge
-{{shouldFix}}
 
 ## Nits (author's discretion)
 {{nits}}

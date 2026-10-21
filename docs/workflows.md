@@ -570,6 +570,13 @@ and the review would ask the author about work they never did.
 Then four axes in parallel — architecture, API compatibility, tests, product — and
 `pd-review-synth` to dedupe and reach one verdict.
 
+The axes apply `knowledge/maintainer-rules.md`, the rule set upstream's own review
+agent uses, and label every finding `issue:`, `nit:` or `question:`. They judge
+**without** the threads already on the pull request, so the review is a second
+opinion and not an echo. Only the synthesis reads those threads, after the
+judgement, and marks a finding a reviewer already raised as `(already raised by
+@login)`.
+
 ### What comes out
 
 A file with a fixed shape, rendered from `templates/review-report.md` rather than
@@ -580,11 +587,11 @@ written free-hand, so a section cannot go missing by being forgotten:
 
 Verdict: APPROVE | APPROVE_WITH_NITS | REQUEST_CHANGES | NEEDS_DISCUSSION
 Confidence: high | medium | low — and why
+Counts: Blockers N · Nits N · Questions N · Files reviewed N/N
 
 ## Requirement fit                                  ← one row per issue requirement
 | Issue requirement | Covered | Where |
 ## Blocking (correctness, compatibility, data loss)
-## Should fix before merge
 ## Nits (author's discretion)
 ## Questions for the author
 ## What I could not verify

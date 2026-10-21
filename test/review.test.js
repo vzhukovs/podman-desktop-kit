@@ -425,13 +425,13 @@ describe('the report', () => {
         title: 'feat(main): add a thing',
         verdict: 'APPROVE_WITH_NITS',
         confidence: 'medium — Windows behaviour was not exercised',
+        counts: 'Blockers 0 · Nits 1 · Questions 1 · Files reviewed 2/2',
         requirementFit: [
           '| R1 — the thing runs | yes | `packages/main/src/added.ts:1` |',
           '| R2 — it is licensed | no | nowhere: the file has no SPDX header |',
         ],
         blocking: '_None._',
-        shouldFix: '- The new file has no SPDX header.',
-        nits: '_None._',
+        nits: '- packages/main/src/added.ts:1 — nit: the new file has no SPDX header (§1)',
         questions: '- Is the schema change intentional without regenerating?',
         couldNotVerify: '- Windows behaviour: no Windows machine here.',
       },
@@ -443,6 +443,7 @@ describe('the report', () => {
     assert.match(document, /# Review: PR #2903/);
     assert.match(document, /## What I could not verify/);
     assert.match(document, /no Windows machine here/);
+    assert.match(document, /^Counts: Blockers 0 · Nits 1 · Questions 1 · Files reviewed 2\/2/m);
     assert.equal(/\{\{/.test(document), false, 'every placeholder is filled: render.js throws otherwise');
 
     // An issue has as many requirements as it has, and the table has to hold

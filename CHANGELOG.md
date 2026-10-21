@@ -23,8 +23,24 @@ fixes — see [RELEASING.md](RELEASING.md).
   - `pd-slicer` cuts the way section 1 asks: one concern per PR, prerequisite
     refactors first, pure moves, and test fixes apart from the implementation.
 
+- **`/pd:review-pr` reviews by the same rules as upstream's review agent, and
+  keeps its own judgement.** The four axes apply `maintainer-rules.md` and
+  label every finding `issue:`, `nit:` or `question:` with the section it
+  rests on. They no longer see the threads already on the pull request. An
+  axis that has read what someone else said ends up echoing it or arguing with
+  it. `pd-review-synth` gets the threads after the judgement and marks a
+  finding a reviewer already raised as `(already raised by @login)`. It does
+  not drop that finding, and it does not import threads the axes did not
+  reproduce. The synthesis applies the maintainer's calibration, and the
+  verdict now follows mechanically from the findings.
+
 ### Changed
 
+- **The review report has a `Counts` line and no `Should fix before merge`
+  section.** With `issue:` / `nit:` / `question:` labels, every finding
+  already has a section, and "should fix" was a fourth label nobody could
+  define. Values files that still pass `shouldFix` are ignored. Values files
+  that do not pass `counts` fail to render.
 - **`knowledge/upstream-rules.md` gains two maintainer-review rules.** A new
   file's licence header carries the current year only. Existing tests and the
   implementation they test are not changed in the same PR.

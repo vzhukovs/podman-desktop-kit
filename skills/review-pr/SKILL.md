@@ -44,11 +44,36 @@ raising rather than a gap to paper over.
 | `pd-review-tests` | are the claimed edge cases covered; skips, weakened assertions, `any`, `@ts-ignore`; determinism |
 | `pd-review-product` | does it do what the issue asked; i18n, a11y, contrast; error and empty states; neighbouring regressions |
 
-Each gets the diff, the facts above, and the target files. Give each the threads
-that already exist: a review repeating what somebody said a week ago reads as
-automated, and gets treated accordingly.
+Each axis gets the diff, the facts above, the target files and the linked
+issue, **but not the threads already on the pull request**. Leave out
+`feedback` from what `review fetch` returned. An axis that has read what
+someone else already said ends up agreeing with it, or arguing with it. Either
+way the review stops being a second opinion. The threads are not wasted: they
+go to the synthesis, after the judgement is made.
 
-Then `pd-review-synth` merges them — dedupe, prioritise, one verdict.
+Each axis reads `knowledge/maintainer-rules.md`: its calibration, and the
+sections named in its own prompt. That is the rule set upstream's own review
+agent applies, so a finding grounded in it is one the maintainer would also
+raise. Every finding is one line with a Semantic Code Reviews label:
+
+```
+path/to/file.ts:LINE — issue: <what and why, imperative, one or two sentences> (§<n>)
+```
+
+- `issue:` blocks approval.
+- `nit:` is optional.
+- `question:` needs an answer in the PR.
+
+`(§n)` cites the section of `maintainer-rules.md`. A finding that comes from
+our own axis lens and not from those rules (does it solve the issue, does it
+regress a neighbouring scenario) is marked `(outside the rule set)`. That
+marker is a label, not a downgrade. A finding is reported only after it has
+been checked in the actual code. If it could not be checked, it becomes a
+`question:`.
+
+Then `pd-review-synth` merges them. It is given the four reports **and**
+`feedback` from step 1: dedupe, calibrate, mark what reviewers already raised,
+and reach one verdict.
 
 ## 3. The report
 
@@ -65,12 +90,30 @@ render still succeeds; drop the flag if you would rather it stayed quiet. `What 
 mandatory and is never empty by default: the platforms you did not exercise,
 the steps that need a human, the behaviour you could only read about.
 
+The verdict follows from the findings. It is not a separate judgement. Take
+the first row that matches, the same order upstream's review agent uses:
+
+| Verdict | When |
+|---|---|
+| `REQUEST_CHANGES` | at least one `issue:`, or CI is red, or the diff carries changes the title and body do not describe |
+| `NEEDS_DISCUSSION` | no `issue:`, but a rule requires a check nobody here can do: platform or QE validation, UX approval, a public extension-API change, running the app. Name each one under `What I could not verify` |
+| `APPROVE_WITH_NITS` | only `nit:` and `question:` |
+| `APPROVE` | nothing to report |
+
+`Counts` is `Blockers N · Nits N · Questions N · Files reviewed N/N`. Do not
+add a numeric grade.
+
 ## Discipline
 
 A reviewer told to find problems will find them in correct code, and the second
 time that happens nobody reads the report. So:
 
-- do not report style;
+- do not report what the linter already catches. The rules in
+  `maintainer-rules.md` are not style in this sense, even the ones that look
+  like it: the maintainer raises them, so they are reported, as `nit:` where
+  the calibration says so;
+- a violation that already existed in a touched file is a `nit:` marked
+  pre-existing, never an `issue:`, unless the PR adds a new occurrence;
 - do not ask for defensive code against impossible states;
 - do not suggest one more abstraction;
 - **do not mention commit scope.** Upstream does not require it — it is our own
