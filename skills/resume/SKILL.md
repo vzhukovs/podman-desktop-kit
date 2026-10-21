@@ -30,7 +30,13 @@ instead of the requirement that was.
 
 ## Steps
 
-1. **`/pd:sync`** — fetch, and see where the fork stands. Read-only.
+1. **Fetch.** `git fetch upstream --prune` and `git fetch origin --prune`.
+   `pdkit drift` reads the local `upstream/main` and fetches nothing, so
+   without this step it measures against whatever was last fetched.
+
+   Do it here rather than through `/pd:sync`: that command is the person's to
+   run, and the Skill tool refuses it. If they want the full picture of every
+   worktree, suggest they run it themselves.
 
 2. **`pdkit drift <issue>`** — the upstream commits that landed since each slice
    branched and touched that slice's files.
