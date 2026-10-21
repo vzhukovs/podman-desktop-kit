@@ -9,6 +9,21 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. If preflight reported `slice-standalone` as
+stale right after a rebase and re-verifying did not clear it, run
+`pdkit slice verify` and `pdkit preflight` once more. You no longer need to
+fast-forward the local `main` first.
+
 ### Fixed
 
 - **A local `main` that has fallen behind upstream no longer makes a slice
@@ -1779,7 +1794,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...HEAD
+[0.9.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.0...v0.9.1
