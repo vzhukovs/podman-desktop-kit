@@ -9,6 +9,42 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **`/pd:pr-sync` asks before it changes code.** After reading the review it
+  shows one table — every open item, the decision, how, and the files it would
+  touch — and waits. Rows where the reviewer offered alternatives, where a fix
+  would touch or create a file outside the slice, or where the plan changes are
+  marked ⚠ and left to you. Only then do the resolvers run, each given its
+  approved row, and a resolver that finds it needs another file or approach
+  stops and reports instead of choosing. On #19750 the session chose, on its
+  own, to move the fix into two new files outside the slice, and the first sign
+  of it was the push.
+- **The push in `/pd:pr-sync` is asked about with the diff on screen.**
+- **`/pd:pr-sync` runs on Opus again, at `effort: high`.** 0.5.0 moved it to
+  Sonnet on the grounds that a machine checks its verdict. A machine checks
+  that a fix compiles and passes; it does not check which of a reviewer's
+  alternatives to take, or whether a reply answers what was asked. The
+  resolvers stay on Sonnet: they carry out a decision already approved.
+
+### Added
+
+- **`pdkit pr diff <k> [--stat]`** — what a push would change on an open pull
+  request: its head as GitHub has it against the local branch, ahead and behind
+  (a rewrite is said to be one), and every file the pull request would then
+  carry outside its slice. The head is fetched from the fork when missing.
+- **`pdkit pr threads` maps the files a review body cites.** Every
+  `path:line` in a review or comment comes back under `cites`, with its slice
+  or **unmapped**, and such an item counts as unmapped like a thread on that
+  file. A review that never opened a thread used to map to nothing at all.
+
+### Fixed
+
+- On Windows every path git printed (`C:/Users/…`) is now in the platform's
+  form (`C:\Users\…`), so a refusal no longer names the issue's tree one way
+  and the current tree the other. CI is green on all three platforms again,
+  for the first time since 0.6.0.
+
 ## [0.8.0] - 2026-10-20
 
 ### Upgrading

@@ -318,8 +318,15 @@ deciding on our own that somebody else's problem went away is not ours to decide
 
 ```
 /pd:pr-status                        → what is open, what is blocked, how idle
-/pd:pr-sync 17577                    → threads, fixes, replies
+/pd:pr-sync 17577                    → a decision per item, fixes, the diff, replies
 ```
+
+`pr-sync` stops three times, and the first is before any code changes: a table
+with every open item — thread, review body or comment — and what to do about
+it. Rows marked ⚠ are yours to decide: the reviewer offered alternatives, the
+fix would touch or create a file outside the slice, or the plan changes. Then
+the push, shown as `pdkit pr diff` first; then the replies, all drafts in
+full.
 
 What the dashboard tells you, and what it deliberately does not:
 
@@ -327,7 +334,10 @@ What the dashboard tells you, and what it deliberately does not:
 pdkit pr list                        every row, and how old its reading is
 pdkit pr refresh 17577               read GitHub into prs.json
 pdkit pr ci 17577                    the CI verdict, plus the failure text
-pdkit pr threads 17577               bots collapsed, threads mapped to slices
+pdkit pr threads 17577               bots collapsed, threads and the files a
+                                     review cites mapped to slices
+pdkit pr diff 17577                  what a push would change, against the
+                                     pull request's head on GitHub
 ```
 
 **`pr list` is local, and every row says when it was last read** — `read:3d`, with

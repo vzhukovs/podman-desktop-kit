@@ -3,8 +3,8 @@ name: pr-sync
 description: "Process review feedback: triage threads, fix, reply, resolve."
 argument-hint: "<pr-number>"
 disable-model-invocation: true
-model: sonnet
-effort: medium
+model: opus
+effort: high
 ---
 
 The reviewer spent their time. This command exists so it does not have to be
@@ -22,6 +22,10 @@ spent twice.
    top-level comments, and on a stale pull request that is usually where the
    blocking feedback is. #17577 has two open threads, both a bot's, while the
    reason it is stuck is a four-line `CHANGES_REQUESTED` body.
+
+   A review body is mapped too: every `path:line` it cites comes back under
+   `cites`, with its slice or **unmapped**. #19750's review was one body with
+   eight findings and no threads at all.
 
 2. **Bots.** Collapsed to one line with a link, never dropped. A thread the
    escalation words expanded is read in full, like a person's. If a collapsed
@@ -47,8 +51,8 @@ spent twice.
 
    - `reject` — we disagree, with the reason, stated once.
 
-   A thread flagged **unmapped** — its file belongs to no slice and no task — is
-   a signal, not noise. Either the reviewer found a requirement the plan missed,
+   An item flagged **unmapped** — a thread on a file in no slice and no task, or
+   a review that cites one — is a signal, not noise. Either the reviewer found a requirement the plan missed,
    or the pull request failed to explain itself. Decide which, out loud.
 
    **A fifth outcome exists and is not on that list: the reviewer rejected the
@@ -60,7 +64,33 @@ spent twice.
    stop — what to do instead is the next planning round's question, and the
    reviewer usually named it.
 
-4. **Amendments.** If an `accept` changes what the plan promised — a new
+4. **Decide with the person, before any code changes.** Show one table, every
+   open item a row, and stop:
+
+   ```
+   #  Item (who, where)                    Decision  How                         Files
+   1  reviewer, index.spec.ts:226          accept    type the callback           index.spec.ts
+   3  reviewer, index.spec.ts:211-246      accept    ⚠ a) existing test pattern  index.spec.ts
+                                                       b) extract a module       + before-quit-handler.ts (outside slice #1)
+   6  reviewer, index.ts:82                defer     separate PR
+   7  reviewer, question                   discuss   answer from validation V2
+   ```
+
+   Mark ⚠, and leave the choice to the person, wherever the decision is not
+   yours to take:
+
+   - the reviewer offered alternatives — "either … or …" is a question to the
+     author, and the author is the person, not the session;
+   - the fix would touch a file outside the item's slice, or create one;
+   - the decision changes what the plan promised (step 5).
+
+   Everything else you may propose outright. The person answers in a line —
+   "3b, 6 do it here" — and nothing is edited until they have. A fix the person
+   did not see decided is the failure this step exists for: on #19750 the
+   session chose the extraction on its own, and the first anyone heard of the
+   two new files was the push.
+
+5. **Amendments.** If an `accept` changes what the plan promised — a new
    requirement, a changed one, a slice that has to move — then
    `pdkit amendment new --issue <n> --values <f>`, with every requirement it
    touches as a row of `rows` — `{"rid": "R7" | ["R2", "R6"], "change": …,
@@ -71,19 +101,31 @@ spent twice.
    quietly turns the plan into a record of what happened rather than a statement
    of what was intended.
 
-5. **Fix.** One `pd-thread-resolver` per accepted thread, each confined to the
-   files that thread concerns. They draft the reply as well as the change. They
+6. **Fix.** One `pd-thread-resolver` per accepted row, given the row as
+   approved: the item, the decision, the option chosen, and the files it may
+   touch. It implements that and nothing wider; if the fix turns out to need
+   another file or another approach, it stops and reports, and the row comes
+   back to the person. Resolvers draft the reply as well as the change. They
    never publish.
 
-6. **Cascade.** If a fix touched a slice something else is stacked on:
+7. **Cascade.** If a fix touched a slice something else is stacked on:
    `pdkit slice cascade --issue <n> --from <i>`. It rebases the dependants and
    verifies them again, and marks anything that stopped being standalone rather
    than rebasing it into a lie.
 
-7. **Preflight.** `pdkit preflight <n> --slice <i>`, both passes, as in
+8. **Preflight.** `pdkit preflight <n> --slice <i>`, both passes, as in
    `/pd:pr`. A previous green means nothing now.
 
-8. **Publish, in this order.**
+9. **Publish, in this order.** First show what the push would change:
+
+   ```
+   pdkit pr diff <k>
+   ```
+
+   The pull request's head on GitHub against the local branch, and any file the
+   pull request would then carry outside its slice. Show it in full before
+   asking about the push — the question is about this diff, and a push
+   approved without it is approved blind. Then:
 
    ```
    pdkit publish --issue <n> --branch <b> --pr <k> [--slice <i>]   # push: per branch
@@ -107,7 +149,7 @@ spent twice.
    Show every draft reply in full before asking. Not a summary: the point of the
    gate is that a person reads what is about to be published under their name.
 
-9. **Record.** `pdkit pr render <k>` writes `prs/<k>.md`, including what was
+10. **Record.** `pdkit pr render <k>` writes `prs/<k>.md`, including what was
    done about each thread. A conversation with a reviewer outlives the
    conversation.
 

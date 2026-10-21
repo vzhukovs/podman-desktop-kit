@@ -232,6 +232,88 @@ describe('collecting', () => {
   });
 });
 
+// PR #19750: the review was one body naming eight `path:line` findings, and
+// no threads at all.
+describe('files a review body cites', () => {
+  const review = (body, extra = {}) => ({ author: 'reviewer-a', state: 'COMMENTED', body, at: '2026-10-20T13:26:11Z', ...extra });
+
+  test('are mapped like a thread\'s path, once per path and line', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19750,
+      config: CONFIG,
+      home,
+      threads: [],
+      discussion: {
+        reviews: [review(`- \`${MAIN}:226\` — issue: eslint-disable\n- \`${MAIN}:226\` again\n- ${MAIN}:211-246 brittle`)],
+        comments: [],
+      },
+    });
+
+    assert.deepEqual(
+      facts.items[0].mentions.map(({ path, line, endLine, slice }) => ({ path, line, endLine, slice })),
+      [
+        { path: MAIN, line: 226, endLine: null, slice: 1 },
+        { path: MAIN, line: 211, endLine: 246, slice: 1 },
+      ],
+    );
+    assert.deepEqual(facts.unmapped, []);
+  });
+
+  test('a file in no slice makes the review unmapped', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19750,
+      config: CONFIG,
+      home,
+      threads: [],
+      discussion: { reviews: [review('move it into packages/main/src/before-quit-handler.ts.')], comments: [] },
+    });
+
+    assert.equal(facts.unmapped.length, 1);
+    assert.deepEqual(facts.items[0].mentions[0], {
+      path: 'packages/main/src/before-quit-handler.ts',
+      line: null,
+      endLine: null,
+      slice: null,
+      tasks: [],
+      requirements: [],
+      mapped: false,
+    });
+    assert.match(threads.format(facts), /cites: `packages\/main\/src\/before-quit-handler\.ts` \*\*unmapped\*\*/);
+  });
+
+  test('a URL\'s path, a bare file name and "e.g." are not files', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19750,
+      config: CONFIG,
+      home,
+      threads: [],
+      discussion: {
+        reviews: [review('see https://github.com/podman-desktop/podman-desktop/blob/main/packages/main/src/util.ts, e.g. index.ts:3')],
+        comments: [],
+      },
+    });
+
+    assert.deepEqual(facts.items[0].mentions, []);
+  });
+
+  test('a collapsed bot cites nothing, and a thread keeps its own path only', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19750,
+      config: CONFIG,
+      home,
+      threads: [{ id: 't1', author: 'reviewer-b', body: `see ${UI}`, path: MAIN, line: 1, isResolved: false, createdAt: '2026-10-20T00:00:00Z' }],
+      discussion: { reviews: [], comments: [{ author: 'review-bot[bot]', body: 'nit in packages/preload/src/index.ts', at: '2026-10-20T00:00:01Z' }] },
+    });
+
+    assert.deepEqual(facts.items.map((item) => item.mentions), [[], []]);
+    assert.deepEqual(facts.unmapped, []);
+  });
+});
+
 describe('formatting', () => {
   test('a collapsed bot keeps its link', () => {
     const text = threads.format({
