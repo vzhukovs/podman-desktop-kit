@@ -9,6 +9,34 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-21
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. A body that preflight used to refuse now
+passes; nothing that passed before is refused.
+
+### Fixed
+
+- **A ticked test checkbox no longer fails `pr-body-template`.** The check
+  matched the template's `- [ ] Tests are covering the bug fix or the new
+  feature` verbatim, so `- [x]` read as the line missing and only an
+  unfinished body passed — the body preflight saw and the body published
+  differed. Checkboxes are now compared unticked; a body without the line
+  still fails.
+- **The two preflight passes count in either order.** Running
+  `--body-only --body <file>` first and the full pass second left `pdkit
+  publish` refusing with "has only ever run without the pull request body":
+  the full pass skips the body-dependent checks for want of a body, and those
+  skips replaced the verdicts the body pass had recorded. A skip without the
+  body no longer replaces a result that had it.
+
 ## [0.9.1] - 2026-10-21
 
 ### Upgrading
@@ -1715,7 +1743,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.7.0...v0.8.0
