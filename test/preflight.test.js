@@ -642,6 +642,17 @@ describe('the artefact checks', () => {
       assert.match(result.output, /Tests are covering/);
     });
 
+    // The box is there to be ticked; ticking it is filling the template in.
+    test("a body with upstream's test checkbox ticked passes", async () => {
+      for (const mark of ['x', 'X']) {
+        const result = await only('pr-body-template', {
+          prBody: (await rendered()).replace('- [ ] Tests are covering', `- [${mark}] Tests are covering`),
+        });
+
+        assert.equal(result.status, 'pass', `- [${mark}]`);
+      }
+    });
+
     test('a missing section is named too', async () => {
       const result = await only('pr-body-template', { prBody: (await rendered()).replace('### How to test this PR?', '') });
 
