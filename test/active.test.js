@@ -61,6 +61,22 @@ describe('the pointer', () => {
     assert.ok(Date.parse(found.startedAt) > 0);
   });
 
+  test('records the session that started it, from the shell Claude Code runs it in', async () => {
+    const saved = process.env.CLAUDE_CODE_SESSION_ID;
+    process.env.CLAUDE_CODE_SESSION_ID = 'session-from-env';
+    try {
+      await start({ issue: 18248, taskId: 'T1', worktree: '/work/fork', home });
+      assert.equal((await current({ worktree: '/work/fork', home })).session, 'session-from-env');
+
+      delete process.env.CLAUDE_CODE_SESSION_ID;
+      await start({ issue: 18248, taskId: 'T1', worktree: '/work/fork', home });
+      assert.equal('session' in (await current({ worktree: '/work/fork', home })), false, 'no session is recorded rather than an empty one');
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = saved;
+    }
+  });
+
   test('a tree with nothing running has no pointer', async () => {
     assert.equal(await current({ worktree: '/work/untouched', home }), null);
   });

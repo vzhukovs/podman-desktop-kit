@@ -86,7 +86,7 @@ before(async () => {
 
 beforeEach(async () => {
   await rm(receiptPath(), { force: true });
-  await start({ issue: ISSUE, taskId: 'T1', worktree: WORKTREE, home });
+  await start({ issue: ISSUE, taskId: 'T1', worktree: WORKTREE, session: null, home });
 });
 
 after(async () => {
@@ -186,6 +186,63 @@ describe('who the gate is for', () => {
   // A host that stops naming agents must not open the gate.
   test('a finish that does not say who it was is gated', async () => {
     const decision = await taskCompleted({ agent_id: 'agent-22', cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+    assert.equal(decision.block, true);
+  });
+
+  // The host's own agents, prompt suggestions among them, report an empty
+  // agent_type. On DESKTOP-19818 they were held for T2's receipt, then
+  // journalled as "T2 accepted".
+  test('one of the host\'s own agents is neither held nor counted', async () => {
+    const before = (await readJournal({ issue: ISSUE, event: 'agent-done' }, { home })).length;
+
+    const decision = await finish('');
+
+    assert.equal(decision.block, false);
+    assert.equal((await readJournal({ issue: ISSUE, event: 'agent-done' }, { home })).length, before);
+  });
+
+  describe('when the task records the session that started it', () => {
+    const SESSION = 'session-running-T1';
+    const finishIn = (sessionId) =>
+      taskCompleted(
+        { agent_id: 'agent-23', agent_type: IMPLEMENTER, session_id: sessionId, cwd: WORKTREE },
+        { event: 'subagent-stop', pluginRoot: '' },
+      );
+
+    beforeEach(async () => {
+      await start({ issue: ISSUE, taskId: 'T1', worktree: WORKTREE, session: SESSION, home });
+    });
+
+    test('its own implementer is held to the receipt', async () => {
+      const decision = await finishIn(SESSION);
+      assert.equal(decision.block, true);
+    });
+
+    // A review agent another session started in the same checkout was filed
+    // under T2 on DESKTOP-19818.
+    test('another session\'s agent in the same tree is let through, and counted as not the task\'s', async () => {
+      const decision = await finishIn('session-elsewhere');
+
+      assert.equal(decision.block, false);
+      const last = (await readJournal({ event: 'agent-done' }, { home })).at(-1);
+      assert.doesNotMatch(last.detail, /while T1 was active/);
+      assert.match(last.detail, /from another session than the one running T1/);
+    });
+
+    test('a payload that does not say its session is held as before', async () => {
+      const decision = await taskCompleted({ agent_id: 'agent-24', agent_type: IMPLEMENTER, cwd: WORKTREE }, { event: 'subagent-stop', pluginRoot: '' });
+      assert.equal(decision.block, true);
+    });
+  });
+
+  test('a pointer that recorded no session holds every session\'s implementer', async () => {
+    await start({ issue: ISSUE, taskId: 'T1', worktree: WORKTREE, session: null, home });
+
+    const decision = await taskCompleted(
+      { agent_id: 'agent-25', agent_type: IMPLEMENTER, session_id: 'any-session', cwd: WORKTREE },
+      { event: 'subagent-stop', pluginRoot: '' },
+    );
+
     assert.equal(decision.block, true);
   });
 
