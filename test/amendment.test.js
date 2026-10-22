@@ -422,9 +422,14 @@ describe('the tasks an amendment writes', () => {
 
   test('task start on the withdrawn task is refused, and says what replaced it', async () => {
     await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
-    const repo = join(home, 'repo');
-    await mkdir(repo);
-    await exec('git', ['init', '-q', '-b', 'main'], { cwd: repo });
+    // A linked worktree on the issue's branch: a task runs in the issue's own
+    // tree and nowhere else.
+    const main = join(home, 'repo');
+    const repo = join(home, `DESKTOP-${ISSUE}`);
+    await mkdir(main);
+    await exec('git', ['init', '-q', '-b', 'main'], { cwd: main });
+    await exec('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: main });
+    await exec('git', ['worktree', 'add', '-q', '-b', `DESKTOP-${ISSUE}/close-handler`, repo], { cwd: main });
 
     const out = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T2', '--repo', repo);
 
@@ -433,6 +438,22 @@ describe('the tasks an amendment writes', () => {
 
     const live = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T3', '--repo', repo);
     assert.equal(live.code, 0, live.stderr);
+  });
+
+  // DESKTOP-19818: exec started in the main checkout and committed there.
+  test('task start refuses the main checkout, and says how to make the issue\'s tree', async () => {
+    const main = join(home, 'clone');
+    await mkdir(main);
+    await exec('git', ['init', '-q', '-b', 'main'], { cwd: main });
+    await exec('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: main });
+
+    const out = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T1', '--repo', main);
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /DESKTOP-18915 has no tree yet, and a task does not run in .*, the main checkout/);
+    assert.match(out.stderr, /pdkit worktree create --issue 18915 --slug <slug>/);
+    assert.match(out.stderr, /EnterWorktree path: .*DESKTOP-18915/);
+    assert.equal((await pdkit('task', 'show')).stdout, 'no task is running in any working tree\n');
   });
 
   test('a task heading the plan parser cannot read leaves the amendment proposed and nothing written', async () => {

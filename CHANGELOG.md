@@ -9,6 +9,26 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **`/pd:exec` runs in the issue's own tree, and nowhere else.** It starts by
+  creating `DESKTOP-<n>` with `pdkit worktree create --issue <n> --slug <slug>`
+  and moving the session there with EnterWorktree, before the checkpoint.
+  `pdkit task start` refuses any other tree, the main checkout included, and
+  `/pd:exec` typed for an issue with no tree is told to create one. On
+  DESKTOP-19818 exec ran in the main checkout and committed T1 on a branch it
+  named itself.
+
+### Fixed
+
+- **Only the session that started a task is held to its receipt.** SubagentStop
+  also fires for Claude Code's own agents, such as prompt suggestions, with an
+  empty `agent_type`, and the gate took them for the implementer: on
+  DESKTOP-19818 they were held for T2's receipt, then journalled as "T2
+  accepted". They are now neither gated nor counted. `pdkit task start` records
+  the session it ran in, and an agent from another session working in the same
+  tree is counted without being filed under the task.
+
 ## [0.10.2] - 2026-10-22
 
 ### Upgrading

@@ -107,6 +107,12 @@ new one for the next; `pdkit next 12345` prints what to run. This is not a
 preference about tidiness — see [one session per phase](#one-session-per-phase)
 for what carrying one session through the whole list costs.
 
+**The code is written in the issue's own tree.** `/pd:exec` starts by creating
+`DESKTOP-12345` with `pdkit worktree create --issue 12345 --slug <slug>` and
+moving the session there. The main checkout stays on the base branch as the
+template trees are made from, and `pdkit task start` refuses to run a task in
+it.
+
 **Starting with what you already know.** The first line is the command;
 everything after it in the same message is kept verbatim as prior context:
 

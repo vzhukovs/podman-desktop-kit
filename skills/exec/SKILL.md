@@ -22,13 +22,37 @@ after validation found the plan wrong: the state has no way back, and
 
 ## Once, before the first task
 
+**First, the issue's own tree.** Every task runs there, and nothing is written
+in the main checkout: that checkout is the template trees are made from, and
+it stays on the base branch. `pdkit worktree list` shows whether
+`DESKTOP-<n>` exists. If it does not:
+
+```
+pdkit worktree create --issue <n> --slug <a few words of the issue title>
+```
+
+The slug names the branch, `DESKTOP-<n>/<slug>`, and that is the branch the
+pull request will carry, so choose it as you would its title. Show the
+command to the person before running it. Then call the **EnterWorktree** tool
+with the path it printed. A `cd` moves one shell, while EnterWorktree moves
+the session and every subagent started after it. Implementers inherit the
+session's directory, and that is where their edits land.
+
+`pdkit task start` refuses any other tree, the main checkout included. On
+DESKTOP-19818 exec started in the main checkout, committed T1 there on a
+branch it named itself, and the checkpoint taken before it had no branch to
+record.
+
+Then, from inside the tree:
+
 ```
 pdkit checkpoint <n> --phase exec
 pdkit task sync --issue <n>
 ```
 
 The checkpoint is the way back if the run goes wrong: see the end of this
-file.
+file. Taken in the tree, it records the branch at its base, the tree itself,
+and the branch the main checkout stands on.
 
 Reads the `Owns` sets out of the task files into the state record, which is
 what the pre-write hook enforces. Skip it and the hook has nothing to enforce:
@@ -37,8 +61,8 @@ because it looks like nothing happened.
 
 ## Per task
 
-1. `pdkit task start --issue <n> --task T1` in the working tree the task runs
-   in. From here until `task stop`, writes outside `T1`'s files are refused and
+1. `pdkit task start --issue <n> --task T1` in the issue's tree. From here
+   until `task stop`, writes outside `T1`'s files are refused and
    completing the task requires its receipt.
 2. Give the worker the task, its `Owns` list, its `Done when` command, and the
    frozen interfaces. Nothing else — not the whole plan, not the issue thread.

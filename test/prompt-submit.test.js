@@ -178,6 +178,37 @@ describe('the main checkout on the issue\'s own branch', () => {
   });
 });
 
+// DESKTOP-19818: /pd:exec typed in the main checkout of an issue that had no
+// tree, and T1 committed there on a branch the session named itself.
+describe('/pd:exec for an issue with no tree yet', () => {
+  let FRESH;
+  before(async () => {
+    FRESH = join(base, 'fresh-clone');
+    await mkdir(FRESH);
+    await git(['init', '-q', '-b', 'main'], FRESH);
+    await git(['commit', '-q', '--allow-empty', '-m', 'init'], FRESH);
+  });
+
+  test('from the main checkout: create the tree, then move the session into it', async () => {
+    const decision = await submit('/pd:exec 19818', FRESH);
+
+    assert.match(decision.message, /\/pd:exec writes DESKTOP-19818's code in its own tree, and there is none yet/);
+    assert.match(decision.message, /the main checkout, a template for the trees/);
+    const steps = decision.message.split('\n').filter((line) => /^ {7}\S/.test(line)).map((line) => line.trim());
+    assert.deepEqual(steps, ['pdkit worktree create --issue 19818 --slug <a few words of the issue title>']);
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${esc(join(base, 'pd-worktrees', 'DESKTOP-19818'))}$`, 'm'));
+  });
+
+  test('from a tree on another issue\'s branch, the tree to make is still this one\'s', async () => {
+    const decision = await submit('/pd:exec 19818');
+    assert.match(decision.message, /pdkit worktree create --issue 19818/);
+  });
+
+  test('a skill that does not write code still starts anywhere', async () => {
+    assert.equal((await submit('/pd:plan 19818', FRESH)).message, undefined);
+  });
+});
+
 describe('everything else is quiet', () => {
   test('the issue\'s own tree', async () => {
     assert.equal((await submit(`/pd:preflight ${AWAY}`, AWAY_TREE)).message, undefined);
