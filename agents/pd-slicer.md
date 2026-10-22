@@ -68,6 +68,12 @@ upstream's review agent applies it to every slice you produce:
 If a cut that follows these rules fails `slice set` or `slice verify`, report
 the conflict. Do not break the rule quietly.
 
+A `slice set` refusal for a file in two slices, where the work genuinely needs
+that file changed twice in sequence, cannot be cut away. Report it under
+`Cannot be cut` as "needs a separate issue that merges first" and stop. The
+dispatching session takes it to the person as `pdkit issue draft-blocker`.
+Never drop the file from a slice to get a graph stored.
+
 You do not write verification results. There is no parameter for them: the ✅ in
 `slices.md` is rendered from runs `pdkit` performed, and that is the only reason
 it is worth anything to the person reading it.

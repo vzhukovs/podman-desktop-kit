@@ -24,6 +24,22 @@ fixes — see [RELEASING.md](RELEASING.md).
     wait ends: `unblock`, then `/pd:resume`.
   - `blocks --check` reads each blocker's state from GitHub and lifts nothing,
     because closed is not always merged.
+- **`/pd:pr-sync` has a sixth outcome, `block`, and no invented ones.** When a
+  reviewer wants something landed first, the session compares that change's
+  files with the slices before offering anything:
+  - no file in common: a new slice of this issue, through an amendment;
+  - a file in common: `block`. It drafts the upstream issue, records the wait
+    once the person has opened it, and hands over the exact `/pd:triage`
+    message for a new session, with the existing branch named as prior work.
+
+  The rows that wait are marked `blocked by`, and the rest of the round moves.
+  Every option shown to the person now names the pdkit command that carries
+  it out. One with no command behind it is marked as unsupported and never
+  recommended. A refusal from `amendment approve`, `slice set` or `task start`
+  goes back to the person. It is never routed around by deleting task headings
+  or dropping files. `/pd:resume` checks what the issue waits on before
+  rebasing, and `/pd:exec`, `/pd:slice` and `pd-slicer` say the same about
+  refusals.
 - **A refused `slice set` says where to go, not only that nothing was
   stored.** A file in two slices points to a separate issue and
   `issue block`. A requirement no slice carries points to an amendment. Both

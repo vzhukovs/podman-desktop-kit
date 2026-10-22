@@ -119,6 +119,13 @@ neither the plan checks nor `pd-plan-critic`.
    mechanical checks on the new tasks — an executable `Done when`, a live
    R-ID, no `Owns` shared with a task that stays, no reused ID — and refuses
    on any of them, leaving the amendment `proposed` with the line to fix.
+   It also refuses an amendment that leaves an R-ID with no live task.
+   **A refusal is an answer.** Fix the line it names. If the fix would mean
+   two tasks owning one file, the work does not belong to this issue: bring
+   that to the person as `pdkit issue draft-blocker` and `pdkit issue block`.
+   Never delete task headings, or rewrite tasks as prose, to get the check
+   out of the way. On DESKTOP-18833 that bought an approval, and the gap came
+   back as a refused `slice set` after the work was done.
    Then it applies the requirement table and materialises the tasks: it
    renders `tasks/T<k>.md`, adds the blocks to `plan.md`, marks the replaced
    tasks `withdrawn by A<k>` and re-runs `task sync`. `pdkit plan check <n>`

@@ -94,6 +94,40 @@ spent twice.
    stop — what to do instead is the next planning round's question, and the
    reviewer usually named it.
 
+   **A sixth: the reviewer wants something landed first.** "This should be its
+   own PR, before this one." Before offering anything, compare the files that
+   change would touch with the files of the existing slices
+   (`pdkit slice show --issue <n>` lists them):
+
+   - **No file in common.** It can be a new slice of this issue, through an
+     amendment, like any other plan change.
+   - **A file in common.** This issue cannot hold it. A slice is the diff
+     restricted to its files, so one file has one slice, and two pull requests
+     changing the same file one after the other are not something the slice
+     model can express. It is `block`: a separate upstream issue that must merge
+     first, and this pull request waits for it. Do not offer "a new slice under
+     this issue" here, and do not offer stacking: neither has a command behind
+     it, and on DESKTOP-18833 both ended in refusals, after the work was done.
+
+   Rows that only make sense once the blocker has merged are marked
+   `blocked by <row>`. Everything else in the table still moves this round.
+
+### Every option has a command behind it
+
+An option in the table, or in any question to the person, names the pdkit
+command that carries it out. An option no command carries is marked **"pdkit
+does not support this"**, and it is never the recommended one. On
+DESKTOP-18833 the session offered a three-commit stack that it had made up.
+The person chose it, and the plugin refused it two phases later.
+
+**A refusal is an answer, not an obstacle.** When `amendment approve`,
+`slice set` or `task start` refuses, stop and bring the refusal to the person
+with the options that are supported. Do not route around it. That means no
+deleting task headings so ownership stops being checked, no dropping a file
+from a slice until the overlap goes away, no rewriting work as prose so
+nothing parses it. Each of those turns a refusal now into a worse one later,
+or into nothing at all.
+
 4. **Decide with the person, before any code changes.** Show one table, every
    open item a row, and stop:
 
@@ -137,6 +171,42 @@ spent twice.
    did not see decided is the failure this step exists for: on #19750 the
    session chose the extraction on its own, and the first anyone heard of the
    two new files was the push.
+
+4b. **A `block` row, once decided.** Nothing about it is edited on this branch.
+
+   ```
+   pdkit issue draft-blocker <n> --what "<what it carries>" --pr <k> \
+     --raised-by <who> --url <comment> [--prior <branch>]
+   ```
+
+   This writes the upstream issue draft into `blockers/`. Give the person its
+   path. **Opening the issue is theirs:** `gh issue create` is denied at the
+   hook. When they come back with its number:
+
+   ```
+   pdkit issue block <n> --by <new issue> --reason "<what it carries>"
+   ```
+
+   From then on, `next`, `state` and `pr list` say what this issue waits on.
+   The new issue is worked **in a new session**, starting from triage. Hand
+   the person the exact message to start it with, the invocation line first
+   and the prior context after it:
+
+   ```
+   /pd:triage <new issue>
+   Requested by <who> on #<k> as a PR to land before it: <url>
+   Prior work: <branch>, written and tested under DESKTOP-<n>. Reuse it, but
+   plan, verify and preflight it from scratch under this issue.
+   ```
+
+   Prior work exists when code for it was already written, as on 18833. The
+   new issue gets its own `DESKTOP-<new>/…` branch: pdkit refuses a tree that
+   belongs to another issue, so the code is carried over by cherry-pick
+   during `/pd:exec`, not by working on the old branch.
+
+   Then this round carries on without the blocked rows. The replies for those
+   rows say the work was split out, name the new issue once it exists, and
+   say that this pull request will be rebased after it merges.
 
 5. **Amendments.** If an `accept` changes what the plan promised — a new
    requirement, a changed one, a slice that has to move — then

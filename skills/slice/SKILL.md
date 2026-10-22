@@ -93,6 +93,16 @@ API change mixed into another layer or merging after it, an R-ID that reaches
 no slice. Warnings — spanning layers, going over the size threshold — are
 conversations, not refusals.
 
+A refusal says where to go, and the proposal is not edited until it passes.
+**Two slices sharing a file** is not something re-cutting fixes when the work
+really has to change that file in two pull requests, one after the other. A
+slice is the diff restricted to its files, so this model has no way to hold an
+intermediate version of a file. Such work belongs in a separate issue that
+must merge first (`pdkit issue draft-blocker`, then `pdkit issue block`).
+**An R-ID that reaches no slice** means the task map lacks a task, which is an
+amendment. Never drop a file from a slice, or a requirement from the plan, to
+make the refusal go away.
+
 Nothing is stored unless the whole graph holds.
 
 ## 3. The criterion

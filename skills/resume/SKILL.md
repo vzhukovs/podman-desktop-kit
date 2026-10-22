@@ -30,6 +30,18 @@ instead of the requirement that was.
 
 ## Steps
 
+0. **What it was waiting on.** `pdkit issue blocks <issue> --check` reads each
+   blocker's state from GitHub.
+   - **Still open.** The rebase can still happen, but the rows marked
+     `blocked by` stay untouched, and the next `/pd:pr-sync` carries on
+     without them.
+   - **Closed, and what it carried has merged.** First
+     `pdkit issue unblock <issue> --by <blocker> --reason "merged as #<pr>"`.
+     The rebase below then brings the merged work under this branch, and the
+     next `/pd:pr-sync` does the rows that waited for it.
+   - **Closed without merging.** That is a decision for the person, not a
+     lift: the dependency was the reviewer's request, and it is still unmet.
+
 1. **Fetch, and bring `main` up to date.** `git fetch upstream --prune` and
    `git fetch origin --prune`. `pdkit drift` reads the local `upstream/main`
    and fetches nothing, so without this step it measures against whatever was

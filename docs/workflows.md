@@ -515,6 +515,28 @@ keeps everything and adds the objection as a requirement; a reset forgets the lo
 When a reviewer has told you what is wrong with the design, that sentence is the
 most valuable thing the review produced.
 
+### The reviewer wants something landed first
+
+"This should be its own PR, before this one." If that change touches no file the
+slices own, it is a new slice through an amendment. If it does, one issue cannot
+hold both: a slice is the diff restricted to its files, so one file has one slice.
+It becomes a separate upstream issue, and this one waits:
+
+```
+pdkit issue draft-blocker 18833 --what "<what it carries>" --pr 19375 --prior <branch>
+  … you open the issue upstream from the draft …
+pdkit issue block 18833 --by <new issue> --reason "<what it carries>"
+/pd:triage <new issue>          in a new session, prior work named after the number
+```
+
+`next`, `state` and `pr list` say what 18833 waits on. The review round carries on
+for the rows that do not depend on it. When the blocker has merged,
+`pdkit issue unblock 18833 --by <new issue>` and `/pd:resume 18833`.
+
+There is no stacking in this. Two pull requests changing one file in sequence is
+not something the slice model can express, and from a fork a pull request cannot
+target another one's branch anyway.
+
 ## 10. A pull request replaced by another
 
 A rework produces a second pull request, and the first one gets closed. Closed is
