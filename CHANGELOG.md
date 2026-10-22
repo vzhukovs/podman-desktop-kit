@@ -9,6 +9,19 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing changes in what you do. Only the dry run of `pdkit rollback` on
+Windows looks different.
+
 ### Fixed
 
 - **`pdkit rollback` names artefacts with forward slashes on Windows too.**
@@ -2010,7 +2023,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...v0.10.0
 [0.9.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...v0.9.5
