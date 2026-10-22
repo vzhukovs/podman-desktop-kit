@@ -29,6 +29,7 @@ import assert from 'node:assert/strict';
 
 import {
   addPlanTasks,
+  amendmentCoverageProblems,
   amendmentTaskProblems,
   checkPlan,
   parseAmendment,
@@ -702,6 +703,31 @@ describe('the tasks of an amendment', () => {
     assert.ok(problems.includes('T6 satisfies R5, which is not in the requirement set once A1 applies'));
     assert.ok(problems.includes('T3 is withdrawn by A1, and the plan has no T3'));
     assert.ok(problems.some((problem) => /T1 and T5 both claim packages\/main\/src\/index\.ts/.test(problem)), problems.join('\n'));
+  });
+});
+
+describe('amendmentCoverageProblems', () => {
+  const PLAN = parsePlan(
+    ['# PLAN: DESKTOP-18833', '', '- Requirements: R1, R2', '', '## Tasks', '### T1: x', '- Satisfies: R1', '- Owns: a.ts', '- Done when: `true`', '', '### T2: y', '- Satisfies: R2', '- Owns: b.ts', '- Done when: `true`', ''].join('\n'),
+  );
+  const amendment = (tasks) => ({ id: 'A3', tasks, unreadTasks: [], requirements: [] });
+  const task = (id, satisfies, replaces = []) => ({ id, title: id, satisfies, owns: [], command: 'true', doneWhen: '`true`', steps: '', replaces, block: '' });
+
+  test('an added requirement with no task is reported', () => {
+    assert.deepEqual(amendmentCoverageProblems({ amendment: amendment([]), plan: PLAN, before: ['R1', 'R2'], after: ['R1', 'R2', 'R3'] }), ['R3']);
+  });
+
+  test('an added requirement a new task satisfies is not', () => {
+    assert.deepEqual(amendmentCoverageProblems({ amendment: amendment([task('T3', ['R3'])]), plan: PLAN, before: ['R1', 'R2'], after: ['R1', 'R2', 'R3'] }), []);
+  });
+
+  test('withdrawing the only task behind a requirement orphans it', () => {
+    assert.deepEqual(amendmentCoverageProblems({ amendment: amendment([task('T3', ['R1'], ['T2'])]), plan: PLAN, before: ['R1', 'R2'], after: ['R1', 'R2'] }), ['R2']);
+  });
+
+  // Not this amendment's doing, so not this amendment's refusal.
+  test('a requirement already uncovered before it is left alone', () => {
+    assert.deepEqual(amendmentCoverageProblems({ amendment: amendment([]), plan: PLAN, before: ['R1', 'R2', 'R9'], after: ['R1', 'R2', 'R9'] }), []);
   });
 });
 

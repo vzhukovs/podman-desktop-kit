@@ -9,6 +9,17 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pdkit amendment approve` refuses an amendment that leaves a requirement
+  with no task.** On DESKTOP-18833, A3 added R18 and R19. It lost its task
+  headings to get past the file-ownership refusal and was then approved, with
+  nothing behind the two requirements. `slice set` found the hole hours later.
+  Approval now measures against `plan.md` the requirements the amendment adds,
+  and the ones it orphans by withdrawing a task. If any is satisfied by no live
+  task, the amendment stays proposed. A requirement that was already uncovered
+  is not counted, since it is not this amendment's doing.
+
 ### Added
 
 - **`knowledge/maintainer-rules.md`: the rules upstream's review agent applies

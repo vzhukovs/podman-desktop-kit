@@ -194,6 +194,22 @@ describe('amendment approve', () => {
     assert.deepEqual((await requirements()).ids, ['R1', 'R2']);
   });
 
+  // DESKTOP-18833: A3 added R18 and R19, lost its task headings to get past
+  // the ownership refusal, and was approved. slice set found the hole hours
+  // later. Approval is where it has to be found.
+  test('a requirement it adds that no live task satisfies leaves it proposed', async () => {
+    await writeFile(issueFile('plan.md'), plan('R1, R2').replace('- Satisfies: R1, R3', '- Satisfies: R1'));
+    const id = await propose();
+
+    const out = await pdkit('amendment', 'approve', id, '--issue', String(ISSUE));
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /after A1, R3 is satisfied by no live task, so it stays proposed/);
+    assert.match(out.stderr, /an issue of its own/);
+    assert.match(await readFile(issueFile('amendments', `${id}.md`), 'utf8'), /^- Status: proposed/m);
+    assert.deepEqual((await requirements()).ids, ['R1', 'R2']);
+  });
+
   test('reject changes the status and nothing else', async () => {
     const id = await propose();
     const before = await readFile(issueFile('plan.md'), 'utf8');
