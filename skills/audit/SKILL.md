@@ -47,7 +47,7 @@ It runs `pdkit audit` and reads `git diff main...HEAD` and the plan in its own
 context. Do not read the diff here, not even to hand it over: the auditor's
 context ends when it returns, and this session's is paid for again on every
 turn until it ends. What comes back is the short form at the end of
-`agents/pd-auditor.md`, and that is all this session needs.
+`${CLAUDE_PLUGIN_ROOT}/agents/pd-auditor.md`, and that is all this session needs.
 
 It does not get the implementer's account of the work — a summary of why the
 code is right is the most persuasive thing in the room and the least

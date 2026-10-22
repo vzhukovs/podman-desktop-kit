@@ -81,7 +81,7 @@ it is worth anything to the person reading it.
 ## The whole pass is yours
 
 `slice suggest`, the proposal, `slice set`, `slice verify --all` and
-`slice render` — `skills/slice/SKILL.md` steps 1–4. The proposal and the
+`slice render` — `${CLAUDE_PLUGIN_ROOT}/skills/slice/SKILL.md` steps 1–4. The proposal and the
 rationale values are inputs to `pdkit`, not artefacts: write them to a
 temporary file from Bash. The session that dispatched you does not read the
 diff or the file map, so nothing you leave out of your answer reaches it.

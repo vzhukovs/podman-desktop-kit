@@ -37,7 +37,7 @@ it becomes an assumption nobody agreed to and nobody can find later.
 
 ## Phase 3 — the plan
 
-Fill `templates/plan.md`. Every one of these is a requirement, and a plan that
+Fill `${CLAUDE_PLUGIN_ROOT}/templates/plan.md`. Every one of these is a requirement, and a plan that
 misses one gets redone rather than patched:
 
 1. **Every task owns its files exclusively.** Two tasks sharing a file is a

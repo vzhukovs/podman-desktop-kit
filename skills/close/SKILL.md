@@ -32,7 +32,7 @@ effort: medium
 
    `pdkit close --finish` refuses while anything is open, and it is right to.
 
-3. **Harvest.** Read the facts and decide what belongs in `knowledge/`:
+3. **Harvest.** Read the facts and decide what belongs in `${CLAUDE_PLUGIN_ROOT}/knowledge/`:
 
    - a trap that cost time and would cost it again (the `RunOptions` class of
      thing);
@@ -44,9 +44,13 @@ effort: medium
    a finding would not change what a future run does, it is not knowledge, it is
    a diary entry.
 
-   Propose the additions and let the user approve them. `knowledge/` ships with
+   Propose the additions and let the user approve them. `${CLAUDE_PLUGIN_ROOT}/knowledge/` ships with
    the plugin and is read by every later issue; growing it quietly is how it
    stops being read.
+
+   An approved entry is a commit to the plugin's own repository, not an edit
+   under `${CLAUDE_PLUGIN_ROOT}`: that directory is the installed copy, the
+   next update replaces it, and an edit made there is lost with it.
 
    This is the per-issue half, done while the details are still live. The pass
    over the whole base — entries that have gone stale, paths that moved, a
@@ -102,6 +106,6 @@ when the pull request merges.
 
 Nothing, for this issue: `merged` is terminal, and so is `resolved`. The next
 issue starts with `/pd:triage` **in a new session**. Nothing of this one needs to
-be in it — what it taught that is worth keeping went into `knowledge/`, which
+be in it — what it taught that is worth keeping went into `${CLAUDE_PLUGIN_ROOT}/knowledge/`, which
 every later issue reads, and the rest would only be re-read on every turn of
 work it has no bearing on.

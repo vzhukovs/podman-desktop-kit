@@ -6,7 +6,7 @@ model: opus
 effort: medium
 ---
 
-`knowledge/` ships with the plugin and is read by every later issue. Nobody
+`${CLAUDE_PLUGIN_ROOT}/knowledge/` ships with the plugin and is read by every later issue. Nobody
 re-derives what it states as settled, which is exactly why being quietly wrong
 there is expensive.
 
@@ -56,9 +56,13 @@ how a base grows entries nobody agreed to.
 ## 4. Propose, do not write
 
 Show the additions, the removals and the rewrites, and let the user approve
-them. `pdkit knowledge check` never edits `knowledge/`, and neither should this
+them. `pdkit knowledge check` never edits `${CLAUDE_PLUGIN_ROOT}/knowledge/`, and neither should this
 skill without a yes. A base that grows on its own is a base people stop reading,
 and once they stop reading it every entry in it is dead weight.
+
+An approved change is a commit to the plugin's own repository, not an edit
+under `${CLAUDE_PLUGIN_ROOT}`: that directory is the installed copy, the next
+update replaces it, and an edit made there is lost with it.
 
 ## The bridge outward
 

@@ -32,7 +32,7 @@ here, not even to check the cut. The slicer's context ends when it returns;
 this session's is paid for again on every turn until it ends, and on a large
 issue the file map alone is thousands of tokens.
 
-What comes back is the short form at the end of `agents/pd-slicer.md`: one
+What comes back is the short form at the end of `${CLAUDE_PLUGIN_ROOT}/agents/pd-slicer.md`: one
 line per slice with its verify result, then what was refused or warned about.
 If it is not enough to decide on, ask the slicer again — `pdkit slice show
 --issue <n>` prints the stored graph without the diff.

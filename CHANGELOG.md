@@ -19,6 +19,16 @@ fixes — see [RELEASING.md](RELEASING.md).
   home directory. The references are now `${CLAUDE_PLUGIN_ROOT}/knowledge/…`,
   which Claude Code substitutes when it loads the agent, and a test fails on any
   reference without the prefix.
+- **The same for templates, skills and agents named in each other's text.**
+  `pd-review-synth` reads its verdict table from `skills/review-pr/SKILL.md`,
+  `pd-slicer` follows `skills/slice/SKILL.md`, `pd-archaeologist` fills
+  `templates/archaeology.md`, and `/pd:plan` and `/pd:triage` fill
+  `templates/plan.md` and `templates/issue.md`. They are all reached from
+  `${CLAUDE_PLUGIN_ROOT}` now, and the test covers `knowledge/`, `templates/`,
+  `skills/` and `agents/`.
+- **`/pd:close` and `/pd:knowledge` say where an approved entry goes.** The
+  installed copy is replaced on every update, so an entry is a commit to the
+  plugin's repository, not an edit under `${CLAUDE_PLUGIN_ROOT}`.
 - **An implementer that cannot read the rules stops.** `pd-implementer` reports
   the path it tried instead of carrying on, and `/pd:exec` does not commit a
   task whose worker said it could not read a file it was told to read.

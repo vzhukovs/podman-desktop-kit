@@ -24,7 +24,7 @@ The axes judged without seeing the threads already on the pull request, so their
 
 ## Verdict and counts
 
-The verdict follows mechanically from the calibrated findings, by the table in `skills/review-pr/SKILL.md`. It is not a separate impression. Then `Counts`: `Blockers N · Nits N · Questions N · Files reviewed N/N`.
+The verdict follows mechanically from the calibrated findings, by the table in `${CLAUDE_PLUGIN_ROOT}/skills/review-pr/SKILL.md`. It is not a separate impression. Then `Counts`: `Blockers N · Nits N · Questions N · Files reviewed N/N`.
 
 `issue:` findings go under `Blocking`, `nit:` under `Nits`, `question:` under `Questions for the author`. Each keeps its `(§n)` or `(outside the rule set)` marker.
 

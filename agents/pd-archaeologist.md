@@ -48,7 +48,7 @@ exists to prevent twice over.
 
 ## What to report
 
-The template is `templates/archaeology.md`. Fill in the reading, not the
+The template is `${CLAUDE_PLUGIN_ROOT}/templates/archaeology.md`. Fill in the reading, not the
 numbers — the numbers are already in the JSON.
 
 Two rules about how you write it:

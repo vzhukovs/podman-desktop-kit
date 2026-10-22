@@ -228,7 +228,7 @@ Two things to carry into the requirements, and they are easy to lose:
 
 ## 6. Record
 
-Render `templates/issue.md` with `pdkit render issue --issue <n> --values <f>
+Render `${CLAUDE_PLUGIN_ROOT}/templates/issue.md` with `pdkit render issue --issue <n> --values <f>
 --path issue.md`, then `pdkit state <n> --to triaged --route <route> --reason
 "<verdict, and whether prior context was given>"`.
 
