@@ -19,6 +19,10 @@ slice applies back.
 `pdkit state <issue>` says `audited`. Slicing a diff nobody has audited means
 cutting up work that may not match its plan.
 
+Then, before the slicer is dispatched: `pdkit checkpoint <n> --phase slice`.
+Slicing creates branches and a stored graph, and the checkpoint is what takes
+them back if the cut turns out wrong.
+
 ## Who does what
 
 Dispatch `pd-slicer` with the issue number (and `--from-pr <k>` when splitting
@@ -192,3 +196,21 @@ sessions — the graph waits on disk. Taking slices one session at a time keeps
 the third from paying for the first two: context is re-read whole on every
 call, so a slice published at the end of a long session costs what the whole
 session did. `pdkit next <issue>` prints the line.
+
+## When the phase went somewhere it should not
+
+If this phase built on an option pdkit does not carry, or a refusal was routed
+around before anyone noticed, go back to its start rather than patch forward:
+
+```
+pdkit rollback <n>              what would come back, and what stays
+pdkit rollback <n> --confirm    after the person has read that
+```
+
+Branches return to their heads at the checkpoint, with the present tips kept
+under `refs/pdkit-backup/`. Artefacts return from the copy, with the present
+ones archived. The state record comes back too. It is refused if the phase
+moved the issue to another state, because a transition is not undone by
+rewriting the record. What was published stays published, and the journal
+keeps everything. Show the dry run in full and ask before `--confirm`. Then
+run the phase again, in a new session.

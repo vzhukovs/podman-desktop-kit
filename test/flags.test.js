@@ -113,7 +113,9 @@ describe('unknown flags', () => {
   // A suggestion that fits anything helps with nothing: two edits from "b"
   // reaches half the table.
   test('a flag that resembles nothing suggests nothing', () => {
-    assert.equal(unknownFlags('issue', { body: true })[0].suggestion, null);
+    // Was `--body`, until `issue block --by` made it two edits from a real
+    // flag. The suggestion was then right, and the case stopped being one.
+    assert.equal(unknownFlags('issue', { verbose: true })[0].suggestion, null);
     assert.equal(unknownFlags('init', { b: true })[0].suggestion, null, 'a one-letter flag is within two of everything');
   });
 

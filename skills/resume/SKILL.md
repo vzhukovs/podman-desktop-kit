@@ -30,7 +30,10 @@ instead of the requirement that was.
 
 ## Steps
 
-0. **What it was waiting on.** `pdkit issue blocks <issue> --check` reads each
+0. **Checkpoint.** `pdkit checkpoint <issue> --phase resume`, before anything
+   is fetched or rebased.
+
+0a. **What it was waiting on.** `pdkit issue blocks <issue> --check` reads each
    blocker's state from GitHub.
    - **Still open.** The rebase can still happen, but the rows marked
      `blocked by` stay untouched, and the next `/pd:pr-sync` carries on
@@ -124,6 +127,24 @@ instead of the requirement that was.
    `pdkit pr diff` has shown what the push changes, together with whatever
    accumulated in review while the branch sat. `pdkit pr list --issue <n>`
    gives `<k>`.
+
+## When the phase went somewhere it should not
+
+If this phase built on an option pdkit does not carry, or a refusal was routed
+around before anyone noticed, go back to its start rather than patch forward:
+
+```
+pdkit rollback <n>              what would come back, and what stays
+pdkit rollback <n> --confirm    after the person has read that
+```
+
+Branches return to their heads at the checkpoint, with the present tips kept
+under `refs/pdkit-backup/`. Artefacts return from the copy, with the present
+ones archived. The state record comes back too. It is refused if the phase
+moved the issue to another state, because a transition is not undone by
+rewriting the record. What was published stays published, and the journal
+keeps everything. Show the dry run in full and ask before `--confirm`. Then
+run the phase again, in a new session.
 
 ## When it is worse than a rebase
 

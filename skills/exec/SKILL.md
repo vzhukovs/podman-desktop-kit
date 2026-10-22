@@ -23,8 +23,12 @@ after validation found the plan wrong: the state has no way back, and
 ## Once, before the first task
 
 ```
+pdkit checkpoint <n> --phase exec
 pdkit task sync --issue <n>
 ```
+
+The checkpoint is the way back if the run goes wrong: see the end of this
+file.
 
 Reads the `Owns` sets out of the task files into the state record, which is
 what the pre-write hook enforces. Skip it and the hook has nothing to enforce:
@@ -207,3 +211,21 @@ what it saw; the reasoning that produced the code is the one thing it should
 not inherit, and running here it would — re-read in full on each turn. The
 receipts and the commits are what it needs. `pdkit next <issue>` prints the
 line, and so does the summary the session opens with.
+
+## When the phase went somewhere it should not
+
+If this phase built on an option pdkit does not carry, or a refusal was routed
+around before anyone noticed, go back to its start rather than patch forward:
+
+```
+pdkit rollback <n>              what would come back, and what stays
+pdkit rollback <n> --confirm    after the person has read that
+```
+
+Branches return to their heads at the checkpoint, with the present tips kept
+under `refs/pdkit-backup/`. Artefacts return from the copy, with the present
+ones archived. The state record comes back too. It is refused if the phase
+moved the issue to another state, because a transition is not undone by
+rewriting the record. What was published stays published, and the journal
+keeps everything. Show the dry run in full and ask before `--confirm`. Then
+run the phase again, in a new session.

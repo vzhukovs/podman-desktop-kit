@@ -537,6 +537,27 @@ There is no stacking in this. Two pull requests changing one file in sequence is
 not something the slice model can express, and from a fork a pull request cannot
 target another one's branch anyway.
 
+### Going back to the start of a phase
+
+`/pd:exec`, `/pd:slice`, `/pd:pr-sync` and `/pd:resume` take a checkpoint as their
+first step. If the phase went somewhere it should not, it is undone by command
+rather than from memory:
+
+```
+pdkit checkpoint list 18833
+pdkit rollback 18833                 dry run: what comes back, what stays
+pdkit rollback 18833 --confirm
+```
+
+- **Comes back:** branch heads, with the present tips kept under
+  `refs/pdkit-backup/`; the issue's artefacts, with the present ones archived; the
+  state record.
+- **Stays:** anything pushed or posted, branches created during the phase, and the
+  journal, which gains one `rolled-back` entry.
+- **Refused:** a phase that moved the issue to another state. There is no edge
+  back in the machine, and writing the old state over the new one would put a trip
+  in the history that the work never took. That is `pdkit reset`'s territory.
+
 ## 10. A pull request replaced by another
 
 A rework produces a second pull request, and the first one gets closed. Closed is

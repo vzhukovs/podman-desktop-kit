@@ -40,6 +40,22 @@ fixes — see [RELEASING.md](RELEASING.md).
   or dropping files. `/pd:resume` checks what the issue waits on before
   rebasing, and `/pd:exec`, `/pd:slice` and `pd-slicer` say the same about
   refusals.
+- **`pdkit checkpoint` and `pdkit rollback`: a phase can be undone by
+  command.** `/pd:exec`, `/pd:slice`, `/pd:pr-sync` and `/pd:resume` take a
+  checkpoint first. It copies the issue's artefacts and records its state and
+  `DESKTOP-<n>/…` branch heads.
+  - `rollback` shows what would come back and what stays, then with
+    `--confirm` restores all three. The present branch tips are kept under
+    `refs/pdkit-backup/`, and the present artefacts are archived, never
+    deleted.
+  - It is refused when the phase moved the issue to another state. The state
+    record is restored through `lib/state.js`, which is still its only writer,
+    and a transition is not undone by rewriting.
+  - Branches created during the phase, anything published, and the journal
+    stay.
+
+  On DESKTOP-18833 the only way back from an unsupported scenario was the
+  model's memory of what it had changed.
 - **A refused `slice set` says where to go, not only that nothing was
   stored.** A file in two slices points to a separate issue and
   `issue block`. A requirement no slice carries points to an amendment. Both

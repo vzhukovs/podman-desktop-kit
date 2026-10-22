@@ -12,6 +12,12 @@ spent twice.
 
 ## Steps
 
+0. **Checkpoint.** `pdkit checkpoint <n> --phase pr-sync`, where `<n>` is the
+   issue the pull request belongs to (`pdkit pr list` shows it). This round
+   can go somewhere it should not. On DESKTOP-18833 it built a stack the
+   plugin could not hold, and only a checkpoint makes the way back a command
+   instead of a recollection.
+
 1. **Read.** `pdkit pr refresh <k>` then `pdkit pr threads <k> --json`.
 
    What comes back is already sorted mechanically: who is a bot, which file and
@@ -281,6 +287,24 @@ or into nothing at all.
 10. **Record.** `pdkit pr render <k>` writes `prs/<k>.md`, including what was
    done about each thread. A conversation with a reviewer outlives the
    conversation.
+
+## When the phase went somewhere it should not
+
+If this phase built on an option pdkit does not carry, or a refusal was routed
+around before anyone noticed, go back to its start rather than patch forward:
+
+```
+pdkit rollback <n>              what would come back, and what stays
+pdkit rollback <n> --confirm    after the person has read that
+```
+
+Branches return to their heads at the checkpoint, with the present tips kept
+under `refs/pdkit-backup/`. Artefacts return from the copy, with the present
+ones archived. The state record comes back too. It is refused if the phase
+moved the issue to another state, because a transition is not undone by
+rewriting the record. What was published stays published, and the journal
+keeps everything. Show the dry run in full and ask before `--confirm`. Then
+run the phase again, in a new session.
 
 ## Replying well
 
