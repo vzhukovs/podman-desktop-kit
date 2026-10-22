@@ -9,6 +9,28 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing to change in your config.
+- `/pd:exec`, `/pd:slice`, `/pd:pr-sync` and `/pd:resume` now start with
+  `pdkit checkpoint`. Checkpoints live under `$PDKIT_HOME/checkpoints/`, and
+  nothing existing moves.
+- `pdkit amendment approve` refuses an amendment that leaves a requirement
+  with no task, where it used to accept it.
+- A `pdkit review render` values file needs `counts`, and `shouldFix` is
+  ignored.
+
+MINOR rather than PATCH because an approval that used to pass can now be
+refused, and every changing phase gained a first step.
+
 ### Added
 
 - **An issue can wait on another: `pdkit issue block`, `unblock`, `blocks` and
@@ -60,20 +82,6 @@ fixes — see [RELEASING.md](RELEASING.md).
   stored.** A file in two slices points to a separate issue and
   `issue block`. A requirement no slice carries points to an amendment. Both
   say not to edit the proposal until it passes.
-
-### Fixed
-
-- **`pdkit amendment approve` refuses an amendment that leaves a requirement
-  with no task.** On DESKTOP-18833, A3 added R18 and R19. It lost its task
-  headings to get past the file-ownership refusal and was then approved, with
-  nothing behind the two requirements. `slice set` found the hole hours later.
-  Approval now measures against `plan.md` the requirements the amendment adds,
-  and the ones it orphans by withdrawing a task. If any is satisfied by no live
-  task, the amendment stays proposed. A requirement that was already uncovered
-  is not counted, since it is not this amendment's doing.
-
-### Added
-
 - **`knowledge/maintainer-rules.md`: the rules upstream's review agent applies
   to every pull request.** podman-desktop/podman-desktop#19798 adds a
   `review-podman-desktop` skill built from about 1200 of benoitf's review
@@ -140,6 +148,17 @@ fixes — see [RELEASING.md](RELEASING.md).
 - **The `conventional-commits` note on a missing scope now says the
   maintainer's review asks for one.** commitlint still does not require it, so
   the check still passes.
+
+### Fixed
+
+- **`pdkit amendment approve` refuses an amendment that leaves a requirement
+  with no task.** On DESKTOP-18833, A3 added R18 and R19. It lost its task
+  headings to get past the file-ownership refusal and was then approved, with
+  nothing behind the two requirements. `slice set` found the hole hours later.
+  Approval now measures against `plan.md` the requirements the amendment adds,
+  and the ones it orphans by withdrawing a task. If any is satisfied by no live
+  task, the amendment stays proposed. A requirement that was already uncovered
+  is not counted, since it is not this amendment's doing.
 
 ## [0.9.6] - 2026-10-21
 
@@ -1983,7 +2002,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...v0.10.0
 [0.9.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.3...v0.9.4
