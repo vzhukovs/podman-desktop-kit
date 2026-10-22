@@ -88,13 +88,32 @@ pdkit doctor --gate-selftest --repo /path/to/podman-desktop
 #    run pdkit directly and none of them prove the plugin loads.
 claude --plugin-dir . -p "/pd:doctor"
 
-# 8. Commit, tag, push, release.
+# 8. Commit and push the release commit, and nothing else yet.
 git commit -am "chore(release): 0.2.0"
+git push
+
+# 9. Wait for CI on that commit to go green on every job. Stop here if it is red.
+gh run watch "$(gh run list --commit "$(git rev-parse HEAD)" -L 1 --json databaseId -q '.[0].databaseId')" --exit-status
+
+# 10. Only then tag and publish.
 git tag -a v0.2.0 -m "podman-desktop-kit 0.2.0"
-git push && git push origin v0.2.0
+git push origin v0.2.0
 gh release create v0.2.0 --title "0.2.0" \
   --notes-file <(sed -n '/^## \[0\.2\.0\]/,/^## \[/p' CHANGELOG.md | sed '$d')
 ```
+
+Step 9 exists because step 4 runs on one machine. CI runs the suite on
+Ubuntu, macOS and Windows, and a path separator or a shell quirk shows up only
+on the platform that has it. 0.10.0 was tagged and published before CI had
+finished. Its Windows job then failed on two tests that every local run had
+passed, and the fix had to ship after the release. A red run at step 9 costs a
+new commit. A red run after step 10 means a release that is already public,
+and that cannot be taken back: once a user has run `/plugin update` it is on
+their machine.
+
+If step 9 is red, fix it on `main`, push, and wait for green again. Do not
+move the release commit to the fix: the version bump and the fix are two
+commits, and the tag goes on whichever is newest once CI passes.
 
 Step 7 is not ceremony. Of the twenty-one skills this plugin ships, twenty have
 never been invoked through a Claude Code session, and every check above passes
