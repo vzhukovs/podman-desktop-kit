@@ -38,10 +38,7 @@ with the path it printed. A `cd` moves one shell, while EnterWorktree moves
 the session and every subagent started after it. Implementers inherit the
 session's directory, and that is where their edits land.
 
-`pdkit task start` refuses any other tree, the main checkout included. On
-DESKTOP-19818 exec started in the main checkout, committed T1 there on a
-branch it named itself, and the checkpoint taken before it had no branch to
-record.
+`pdkit task start` refuses any other tree, the main checkout included.
 
 Then, from inside the tree:
 
