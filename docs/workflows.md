@@ -555,11 +555,15 @@ pdkit rollback 18833                 dry run: what comes back, what stays
 pdkit rollback 18833 --confirm
 ```
 
-- **Comes back:** branch heads, with the present tips kept under
-  `refs/pdkit-backup/`; the issue's artefacts, with the present ones archived; the
-  state record.
-- **Stays:** anything pushed or posted, branches created during the phase, and the
-  journal, which gains one `rolled-back` entry.
+- **Comes back:** branch heads, and branches created during the phase are
+  deleted, with every present tip kept under `refs/pdkit-backup/`; the issue's
+  trees, with one created during the phase removed and one removed during it
+  added back; the branch the main checkout stood on; the issue's artefacts, with
+  the present ones archived; the state record. A task left running is stopped.
+- **Stays:** anything pushed or posted, and the journal, which gains one
+  `rolled-back` entry.
+- **Refused until it is committed or stashed:** uncommitted work in any tree the
+  rollback would move. A tree is the one place work exists outside git.
 - **Refused:** a phase that moved the issue to another state. There is no edge
   back in the machine, and writing the old state over the new one would put a trip
   in the history that the work never took. That is `pdkit reset`'s territory.

@@ -19,8 +19,23 @@ fixes — see [RELEASING.md](RELEASING.md).
   DESKTOP-19818 exec ran in the main checkout and committed T1 on a branch it
   named itself.
 
+- **`pdkit rollback` puts the repository back the way the phase found it.**
+  A branch created during the phase is now deleted instead of left alone, and
+  trees follow their branches: a tree the phase created is removed, one it
+  removed is added back, and the main checkout returns to the branch it stood
+  on. A task left running is stopped. Every present tip is kept under
+  `refs/pdkit-backup/` first, and uncommitted work in any tree the rollback
+  would move refuses it by name. Checkpoints now record the issue's trees and
+  the main checkout's branch. A checkpoint taken before this release touches
+  only the trees holding a branch it deletes.
+
 ### Fixed
 
+- **`pdkit rollback` sees a branch named `DESKTOP-<n>` with nothing after it.**
+  Only `DESKTOP-<n>/…` was matched, so on DESKTOP-19818 the branch exec had
+  created by hand, with T1 on it, was missing from the dry run altogether.
+- **A refused dry run no longer offers `--confirm`.** It says what to commit or
+  stash, and exits non-zero.
 - **Only the session that started a task is held to its receipt.** SubagentStop
   also fires for Claude Code's own agents, such as prompt suggestions, with an
   empty `agent_type`, and the gate took them for the implementer: on

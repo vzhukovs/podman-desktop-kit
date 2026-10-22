@@ -298,9 +298,13 @@ pdkit rollback <n>              what would come back, and what stays
 pdkit rollback <n> --confirm    after the person has read that
 ```
 
-Branches return to their heads at the checkpoint, with the present tips kept
-under `refs/pdkit-backup/`. Artefacts return from the copy, with the present
-ones archived. The state record comes back too. It is refused if the phase
+Branches return to their heads at the checkpoint, and a branch the phase
+created is deleted. Either way the present tip is kept under
+`refs/pdkit-backup/` first. Trees follow: one the phase created is removed,
+one it removed comes back, and the main checkout returns to the branch it
+stood on. A task left running is stopped. Uncommitted changes in any of those
+trees refuse the whole rollback, by name: commit or stash them first.
+Artefacts return from the copy, with the present ones archived. The state record comes back too. It is refused if the phase
 moved the issue to another state, because a transition is not undone by
 rewriting the record. What was published stays published, and the journal
 keeps everything. Show the dry run in full and ask before `--confirm`. Then
