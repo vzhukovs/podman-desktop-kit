@@ -9,6 +9,24 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-10-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing else changes.
+
+### Changed
+
+- **`/pd:exec` states the tree rule without the incident behind it.** The skill
+  says that `pdkit task start` refuses any tree but the issue's own; the account
+  of the issue that prompted the rule is left to this changelog.
+
 ## [0.10.3] - 2026-10-22
 
 ### Upgrading
@@ -2113,7 +2131,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...HEAD
+[0.10.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...v0.10.1
