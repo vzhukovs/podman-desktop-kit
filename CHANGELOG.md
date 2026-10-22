@@ -9,6 +9,14 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pdkit rollback` names artefacts with forward slashes on Windows too.**
+  The dry run listed `amendments\A3.md` there. The restore itself was right,
+  since both sides of the comparison came from the same function. CI's
+  Windows job caught it on 0.10.0, along with a test that expected a POSIX
+  path from `issue draft-blocker`.
+
 ## [0.10.0] - 2026-10-22
 
 ### Upgrading

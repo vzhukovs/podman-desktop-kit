@@ -134,7 +134,8 @@ describe('draft-blocker', () => {
 
     assert.equal(out.code, 0, out.stderr);
     const path = out.stdout.split('\n')[0];
-    assert.match(path, /blockers\/resolve-images-by-engine-and-id.*\.md$/);
+    // The path is printed as the platform writes it: backslashes on Windows.
+    assert.match(path, /blockers[\\/]resolve-images-by-engine-and-id.*\.md$/);
     const draft = await readFile(path, 'utf8');
     assert.match(draft, /^# BLOCKER DRAFT: DESKTOP-18833 waits on this/m);
     assert.match(draft, /- Prior work: DESKTOP-18833\/2-image-check-by-id/);
