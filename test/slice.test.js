@@ -256,6 +256,21 @@ describe('build', () => {
     assert.ok(result.problems.some((problem) => problem.check === 'exclusive-files' && problem.detail.includes(EXEC)));
   });
 
+  // DESKTOP-18833 read "nothing was stored" as an obstacle to route around.
+  // The refusal has to say where the work goes instead.
+  test('the refusal says where work that needs a file in two slices goes', () => {
+    const advice = slice.refusalAdvice([{ check: 'exclusive-files', detail: '' }, { check: 'requirements', detail: '' }]).join('\n');
+
+    assert.match(advice, /nothing was stored/);
+    assert.match(advice, /an issue of its own/);
+    assert.match(advice, /pdkit issue block/);
+    assert.match(advice, /pdkit amendment new/);
+  });
+
+  test('a refusal of another kind is told to fix what is marked', () => {
+    assert.match(slice.refusalAdvice([{ check: 'files', detail: '' }]).join('\n'), /Fix what is marked/);
+  });
+
   // The other direction of the rule lib/audit.js applies to Owns. A file in no
   // slice never reaches a pull request, and nothing downstream would notice.
   test('a changed file in no slice is refused', () => {

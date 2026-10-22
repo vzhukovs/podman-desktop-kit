@@ -9,6 +9,26 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **An issue can wait on another: `pdkit issue block`, `unblock`, `blocks` and
+  `draft-blocker`.** A reviewer asks for "a PR before this one". When that
+  earlier change touches files this issue's slices already own, one issue
+  cannot hold both, because a slice is the diff restricted to its files.
+  DESKTOP-18833 found that out after a scenario the plugin never had.
+  - `draft-blocker` writes the upstream issue draft into `blockers/`. Opening
+    it stays yours: `gh issue create` is denied at the hook.
+  - `block` records the wait in the journal, so it outlives any state, the
+    same way deferrals do.
+  - `next`, `state` and `pr list` say what the issue waits on, and how the
+    wait ends: `unblock`, then `/pd:resume`.
+  - `blocks --check` reads each blocker's state from GitHub and lifts nothing,
+    because closed is not always merged.
+- **A refused `slice set` says where to go, not only that nothing was
+  stored.** A file in two slices points to a separate issue and
+  `issue block`. A requirement no slice carries points to an amendment. Both
+  say not to edit the proposal until it passes.
+
 ### Fixed
 
 - **`pdkit amendment approve` refuses an amendment that leaves a requirement

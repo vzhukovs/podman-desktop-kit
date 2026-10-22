@@ -205,7 +205,7 @@ describe('amendment approve', () => {
 
     assert.notEqual(out.code, 0);
     assert.match(out.stderr, /after A1, R3 is satisfied by no live task, so it stays proposed/);
-    assert.match(out.stderr, /an issue of its own/);
+    assert.match(out.stderr, /an issue of its own, and this one waits for it \(`pdkit issue block`\)/);
     assert.match(await readFile(issueFile('amendments', `${id}.md`), 'utf8'), /^- Status: proposed/m);
     assert.deepEqual((await requirements()).ids, ['R1', 'R2']);
   });
