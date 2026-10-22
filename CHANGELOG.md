@@ -9,6 +9,20 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-10-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. An issue whose tasks were implemented on
+0.10.1 or earlier was implemented without `maintainer-rules.md`: roll its exec
+phase back with `pdkit rollback <n>` and run `/pd:exec` again.
+
 ### Fixed
 
 - **Agents now find `maintainer-rules.md` and the other knowledge files.** Every
@@ -2047,7 +2061,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...v0.10.0
 [0.9.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.5...v0.9.6
