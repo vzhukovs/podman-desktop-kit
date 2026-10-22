@@ -9,6 +9,23 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-22
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. `pdkit task start` now refuses to run
+anywhere but the issue's own tree. An issue in the middle of `/pd:exec` in the
+main checkout stops at its next task: create its tree with `pdkit worktree
+create --issue <n> --branch <its branch>` after switching the main checkout
+back to the base branch, or roll the phase back with `pdkit rollback <n>` and
+run `/pd:exec` again.
+
 ### Changed
 
 - **`/pd:exec` runs in the issue's own tree, and nowhere else.** It starts by
@@ -2096,7 +2113,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.9.6...v0.10.0
