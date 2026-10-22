@@ -51,7 +51,7 @@ someone else already said ends up agreeing with it, or arguing with it. Either
 way the review stops being a second opinion. The threads are not wasted: they
 go to the synthesis, after the judgement is made.
 
-Each axis reads `knowledge/maintainer-rules.md`: its calibration, and the
+Each axis reads `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`: its calibration, and the
 sections named in its own prompt. That is the rule set upstream's own review
 agent applies, so a finding grounded in it is one the maintainer would also
 raise. Every finding is one line with a Semantic Code Reviews label:

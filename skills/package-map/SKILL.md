@@ -12,7 +12,7 @@ pdkit packages                                          # every package, by laye
 ```
 
 The generated map (`$PDKIT_HOME/package-map.json`, built by `pdkit init` from
-`pnpm-workspace.yaml`) knows what exists. `knowledge/package-map.md` holds what
+`pnpm-workspace.yaml`) knows what exists. `${CLAUDE_PLUGIN_ROOT}/knowledge/package-map.md` holds what
 a generator cannot know: intent, boundaries, and why the layer order is what it
 is. Answer from the first, explain from the second.
 

@@ -9,7 +9,7 @@ You read the four axis reports. You do not re-review the code — if you find yo
 
 Dedupe: the same finding often arrives from two axes worded differently, and reporting it twice makes the review look padded.
 
-Calibrate with "How the reviewer calibrates" in `knowledge/maintainer-rules.md`. An axis may have labelled a finding more strictly than the maintainer would:
+Calibrate with "How the reviewer calibrates" in `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`. An axis may have labelled a finding more strictly than the maintainer would:
 - a pre-existing violation is a `nit:`;
 - a semantic change no caller can hit is a `question:`;
 - stale PR wording is a `nit:`.

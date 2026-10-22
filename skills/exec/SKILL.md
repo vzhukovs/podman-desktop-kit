@@ -54,9 +54,14 @@ because it looks like nothing happened.
    planning error to report, not a boundary to cross.
 4. `pdkit receipt write --issue <n> --task T1` runs the `Done when` command and
    records what it printed.
-5. Commit: conventional subject, one `Signed-off-by`. Squash with
+5. Read the worker's report before committing. A worker that says it could not
+   read a file its instructions name, `maintainer-rules.md` above all, wrote
+   the code without the rules upstream's review agent applies. That is not a
+   plan problem and not a note to pass on: do not commit, find out why the
+   file was unreadable, and run the task again with a fresh worker.
+6. Commit: conventional subject, one `Signed-off-by`. Squash with
    `git reset --soft <base> && git commit`, never `rebase -i`.
-6. `pdkit task stop`.
+7. `pdkit task stop`.
 
 Tasks that share no files may run in parallel. Tasks that do share files were
 mis-planned — say so instead of serialising around it.

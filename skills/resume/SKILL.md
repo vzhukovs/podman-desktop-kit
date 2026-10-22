@@ -91,7 +91,7 @@ instead of the requirement that was.
    - **mechanical** — imports, formatting, a moved file, a rename. Resolve it
      to exactly what both sides need and nothing more. Do not reorder or
      reformat beyond the conflict. Imports keep the `/@/` aliases and the
-     `node:` prefix (`knowledge/maintainer-rules.md` §5). A tidy-up made while
+     `node:` prefix (`${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` §5). A tidy-up made while
      resolving reaches the pull request as a change its title does not
      explain, and the maintainer rejects that (§1). Journal the resolution:
 

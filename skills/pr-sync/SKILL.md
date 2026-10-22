@@ -35,7 +35,7 @@ spent twice.
 
    **Then what no reviewer has said yet.** Upstream's review agent reads the
    whole diff of the pull request, not the last round. A violation of
-   `knowledge/maintainer-rules.md` that nobody has named will be named in the
+   `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` that nobody has named will be named in the
    next round, so find it in this one:
 
    ```

@@ -55,10 +55,10 @@ misses one gets redone rather than patched:
    without a location was not verified.
 6. **Every task declares `satisfies: [R…]`.** A requirement with no task and a
    task with no requirement are both errors.
-7. **`Upstream compliance` is filled in** from `knowledge/upstream-rules.md`:
+7. **`Upstream compliance` is filled in** from `${CLAUDE_PLUGIN_ROOT}/knowledge/upstream-rules.md`:
    SPDX on new files, schemas touched, `extension-api.d.ts` touched, commit
    scope. The plan must also not contradict section 1 of
-   `knowledge/maintainer-rules.md`:
+   `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`:
    - existing tests are not changed in the same slice as the implementation
      they test;
    - prerequisite refactors are planned as their own task, ahead of the change

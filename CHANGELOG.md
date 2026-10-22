@@ -9,6 +9,20 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Agents now find `maintainer-rules.md` and the other knowledge files.** Every
+  agent and skill named them as `knowledge/<file>.md`, a path relative to the
+  plugin, while subagents run in the podman-desktop checkout. On DESKTOP-19818
+  `pd-implementer` found nothing there and wrote two tasks without the
+  maintainer's rules; the plan critic only reached the file by searching the
+  home directory. The references are now `${CLAUDE_PLUGIN_ROOT}/knowledge/…`,
+  which Claude Code substitutes when it loads the agent, and a test fails on any
+  reference without the prefix.
+- **An implementer that cannot read the rules stops.** `pd-implementer` reports
+  the path it tried instead of carrying on, and `/pd:exec` does not commit a
+  task whose worker said it could not read a file it was told to read.
+
 ## [0.10.1] - 2026-10-22
 
 ### Upgrading

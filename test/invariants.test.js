@@ -207,6 +207,29 @@ describe('the handoff between skills', () => {
     assert.deepEqual(problems, [], `these name skills that do not exist:\n  ${problems.join('\n  ')}`);
   });
 
+  test('every knowledge file an agent or skill names is reached from the plugin root', async () => {
+    // Agents and skills run in the podman-desktop checkout, not in this one, so
+    // a bare `knowledge/maintainer-rules.md` resolves against the wrong tree.
+    // On DESKTOP-19818 the implementer looked for it there, found nothing, and
+    // wrote two tasks without the maintainer's rules. Claude Code substitutes
+    // ${CLAUDE_PLUGIN_ROOT} in agent and skill bodies; that prefix is the only
+    // spelling that reaches the file wherever the plugin is installed.
+    const agents = (await readdir(join(ROOT, 'agents'))).filter((name) => name.endsWith('.md')).map((name) => join(ROOT, 'agents', name));
+    const skills = (await skillNames()).map((name) => join(ROOT, 'skills', name, 'SKILL.md'));
+
+    const problems = [];
+    for (const file of [...agents, ...skills]) {
+      const text = await readFile(file, 'utf8');
+      for (const match of text.matchAll(/(\$\{CLAUDE_PLUGIN_ROOT\}\/)?knowledge\/([A-Za-z0-9_-]+\.md)/g)) {
+        const [whole, prefix, name] = match;
+        if (!prefix) problems.push(`${file.slice(ROOT.length)}: ${whole} has no \${CLAUDE_PLUGIN_ROOT}/ prefix`);
+        else if (!(await readdir(join(ROOT, 'knowledge'))).includes(name)) problems.push(`${file.slice(ROOT.length)}: ${whole} does not exist`);
+      }
+    }
+
+    assert.deepEqual(problems, [], `these knowledge references do not resolve from a podman-desktop checkout:\n  ${problems.join('\n  ')}`);
+  });
+
   test('every state names what to run from it, and it is a real skill', async () => {
     const { ADVANCES, TRANSITIONS, nextStep } = await import('../lib/state.js');
     const known = new Set(await skillNames());

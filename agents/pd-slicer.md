@@ -46,7 +46,7 @@ What is left for you, once the machine has refused what cannot work:
 
 ## How the maintainer wants it cut
 
-Section 1 of `knowledge/maintainer-rules.md` is mostly about cutting, and
+Section 1 of `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` is mostly about cutting, and
 upstream's review agent applies it to every slice you produce:
 
 - **One concern per PR.** An API change, an extension change, a UI change, a

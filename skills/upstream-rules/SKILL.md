@@ -4,12 +4,12 @@ description: "The non-negotiable rules of the podman-desktop repository: SPDX he
 when_to_use: "Triggers when a commit is about to be made, a new file is created, or a schema is touched."
 ---
 
-Answer from `knowledge/upstream-rules.md`. State the rule **and what happens
+Answer from `${CLAUDE_PLUGIN_ROOT}/knowledge/upstream-rules.md`. State the rule **and what happens
 upstream when it is broken** — a rule without its consequence reads as a
 preference, and preferences get skipped under time pressure.
 
 Everything below is checked against the repository rather than remembered. If
-something is not in `knowledge/upstream-rules.md`, say that it is our own
+something is not in `${CLAUDE_PLUGIN_ROOT}/knowledge/upstream-rules.md`, say that it is our own
 discipline rather than upstream's; three of the four rules that file started
 with turned out to be wrong when measured.
 
@@ -53,7 +53,7 @@ The Bash hook refuses `git rebase -i` for this reason and says so.
   which side was wrong.
 
 The maintainer's wider review rule set (tests, Svelte 5, TypeScript, DI,
-imports) is in `knowledge/maintainer-rules.md`. Point to it rather than
+imports) is in `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`. Point to it rather than
 reciting it.
 
 ## Do not turn this into a lecture

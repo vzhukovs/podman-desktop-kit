@@ -11,7 +11,7 @@ Follow the plan literally. Not approximately, not improved. If the plan looks wr
 
 ## Write it the way the maintainer reviews it
 
-Every pull request upstream is read by a review agent built from the maintainer's own rules, and `knowledge/maintainer-rules.md` carries them. Before writing, read the sections for the files you own, as listed in its "Who reads which section" table: 4 and 5 always, 2 for specs, 3 for Svelte, 6 for `packages/main`, 7 for the extension API. Then read "How the reviewer calibrates" once, to know which rules block.
+Every pull request upstream is read by a review agent built from the maintainer's own rules, and `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` carries them. Before writing, read the sections for the files you own, as listed in its "Who reads which section" table: 4 and 5 always, 2 for specs, 3 for Svelte, 6 for `packages/main`, 7 for the extension API. Then read "How the reviewer calibrates" once, to know which rules block. If the file cannot be read, stop before writing anything and report the path you tried: code written without these rules is the code the review sends back.
 
 The violations a review sends back first:
 - `vi.spyOn`, `Object.defineProperty(window, …)`, `vi.clearAllMocks` or `afterEach` cleanup in a spec. Use automocking: `vi.mock(import(…))`, `vi.mocked`, and `vi.resetAllMocks()` in `beforeEach`.

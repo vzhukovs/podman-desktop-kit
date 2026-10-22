@@ -13,6 +13,6 @@ The trap worth naming: a type can live somewhere that looks internal — `packag
 
 ## Rules and labels
 
-Read "How the reviewer calibrates" in `knowledge/maintainer-rules.md`, then sections 6 (disposal, configuration defaults) and 7. Those are the maintainer's rules for this axis, the ones upstream's review agent applies. Report one finding per line: `path:LINE — issue:|nit:|question: <what and why> (§n)`. Mark a finding from your own lens `(outside the rule set)`. Report a finding only after you have checked it in the code. If you could not check it, it is a `question:`.
+Read "How the reviewer calibrates" in `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`, then sections 6 (disposal, configuration defaults) and 7. Those are the maintainer's rules for this axis, the ones upstream's review agent applies. Report one finding per line: `path:LINE — issue:|nit:|question: <what and why> (§n)`. Mark a finding from your own lens `(outside the rule set)`. Report a finding only after you have checked it in the code. If you could not check it, it is a `question:`.
 
 You do not get the threads already on the pull request, and you do not go looking for them. Your judgement has to stand on its own. The synthesis compares it with them afterwards.
