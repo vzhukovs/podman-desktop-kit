@@ -346,6 +346,29 @@ describe('prepare', () => {
     assert.equal(await readFile(join(path, 'node_modules/left-alone/index.js'), 'utf8'), 'module.exports = 1;\n');
   });
 
+  // What a standalone verify leaves: the slice applied with `--index` on top of
+  // main. The next verify of the materialized branch checks that branch out, and
+  // once review has moved it the staged file no longer matches — a checkout
+  // ahead of the reset refused to switch and the verify went red on debris.
+  test('staged debris does not block a base that changes the same file', async () => {
+    await git(['checkout', '-q', '-b', 'DESKTOP-4242/1-moved', 'main'], repo);
+    await writeFile(join(repo, 'packages/ui/src/theme.ts'), '// SPDX-License-Identifier: Apache-2.0\nexport const theme = "dark";\n');
+    await commitAll(repo, 'refactor(ui): move the theme');
+    await git(['checkout', '-q', 'main'], repo);
+
+    await writeFile(join(path, 'packages/ui/src/theme.ts'), 'export const theme = "staged";\n');
+    await git(['add', 'packages/ui/src/theme.ts'], path);
+
+    const result = await prepare({ repoRoot: repo, name, base: 'DESKTOP-4242/1-moved', config: config(), home });
+    assert.equal(result.ok, true, result.error);
+
+    assert.equal(
+      await readFile(join(path, 'packages/ui/src/theme.ts'), 'utf8'),
+      '// SPDX-License-Identifier: Apache-2.0\nexport const theme = "dark";\n',
+    );
+    assert.equal(await git(['status', '--porcelain', '--untracked-files=no'], path), '');
+  });
+
   test('the extras clean took away are copied back', async () => {
     await access(join(path, '.env'));
   });
