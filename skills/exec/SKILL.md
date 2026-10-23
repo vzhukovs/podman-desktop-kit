@@ -100,10 +100,10 @@ because the diff no longer corresponds to anything that was agreed.
 ## When the plan is wrong: the amendment
 
 "Amend the plan" is a sequence of commands, and most of it does not happen in
-this session. On DESKTOP-18915 the amendment was written here, its two new
-tasks were typed into `tasks/` with a heredoc, and the three tasks it replaced
-stayed live in the ownership map and in the audit. Every one of those was
-mended by hand afterwards.
+this session. An amendment written here, with its new tasks typed into
+`tasks/` with a heredoc, leaves the tasks it replaced live in the ownership
+map and in the audit, and every one of those has to be mended by hand
+afterwards.
 
 Two sizes, and they need different things:
 
@@ -154,8 +154,8 @@ neither the plan checks nor `pd-plan-critic`.
    two tasks owning one file, the work does not belong to this issue: bring
    that to the person as `pdkit issue draft-blocker` and `pdkit issue block`.
    Never delete task headings, or rewrite tasks as prose, to get the check
-   out of the way. On DESKTOP-18833 that bought an approval, and the gap came
-   back as a refused `slice set` after the work was done.
+   out of the way. That buys an approval, and the gap comes back as a refused
+   `slice set` after the work is done.
    Then it applies the requirement table and materialises the tasks: it
    renders `tasks/T<k>.md`, adds the blocks to `plan.md`, marks the replaced
    tasks `withdrawn by A<k>` and re-runs `task sync`. `pdkit plan check <n>`

@@ -154,9 +154,9 @@ and the gate refuses it anyway.
 **A valid, reproducible bug whose cause is outside this repository is not
 `invalid`.** It is an ordinary route until the investigation says otherwise, and
 what changes is where it ends: the state `answered`, and a findings artefact
-instead of a diff. Do not decide this at triage — on #18284 the report reads as
-a plain bug and the version skew behind it only appeared once someone had built
-the machine and run the pull. Section 5b is where that lands.
+instead of a diff. Do not decide this at triage: a report can read as a plain
+bug while the version skew behind it only appears once someone has built the
+machine and run the pull. Section 5b is where that lands.
 
 ## 5b. When the answer turns out not to be a diff
 
@@ -183,9 +183,9 @@ Three things this route asks that are easy to skip:
    from its look-alikes. Without it, every reader with a similar symptom runs
    the workaround and half of them are fixing something else.
 3. **Answer the product question.** An environmental cause is a reason not to
-   change this repository — not a reason for the repository to say nothing. On
-   #18284 the client is 6.0.1, the machine is 5.8.2, and Podman Desktop shows
-   both without a word. Name that, and whether it should be its own issue.
+   change this repository — not a reason for the repository to say nothing. If
+   the client and the machine run different versions and Podman Desktop shows
+   both without a word, name that, and whether it should be its own issue.
 
 `answered` is **not** the end. It means the findings are out and the reporter
 has not spoken; from there the issue is `resolved` when someone confirms, back

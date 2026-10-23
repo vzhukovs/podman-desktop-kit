@@ -226,9 +226,9 @@ describe('what stops a start', () => {
   });
 
   test('an assignee is a blocker naming who', () => {
-    const candidate = facts({ assignees: ['cdrage'] });
+    const candidate = facts({ assignees: ['a-contributor'] });
 
-    assert.deepEqual(candidate.blockers, [{ kind: 'assigned', detail: 'cdrage' }]);
+    assert.deepEqual(candidate.blockers, [{ kind: 'assigned', detail: 'a-contributor' }]);
   });
 
   test('a merged pull request plus a revert is the redo route', () => {

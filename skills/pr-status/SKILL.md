@@ -58,7 +58,7 @@ Windows-only failure ordinary — so name the platform, and name what in the dif
 could plausibly be platform-specific. If nothing in it could be, say that too.
 
 Answer that from the log, not from the job's name. A job called "podman
-desktop" was red on #18590 because `apt-get` had no candidate for
+desktop" was once red because `apt-get` had no candidate for
 `qemu-user-static` — an infrastructure failure that no reading of the diff
 would have found, and that the job name reads nothing like. When the log says
 `(no ##[error] in this log — this is the end of it, not necessarily the

@@ -1,8 +1,8 @@
 # Maintainer rules — what the review agent will hold a PR to
 
 Upstream is adding a review skill, `review-podman-desktop`, built from about
-1200 review comments by maintainer Florent Benoit (benoitf). Every pull request
-we open will be read by it, and by him. This file carries its rule set, so the
+1200 review comments by one of the maintainers. Every pull request we open
+will be read by it, and by them. This file carries its rule set, so the
 code we write passes that review the first time instead of in round three.
 
 Source: podman-desktop/podman-desktop#19798, `rules.md` and `procedure.md`

@@ -129,7 +129,7 @@ describe('draft-blocker', () => {
     const out = await pdkit(
       'issue', 'draft-blocker', String(ISSUE),
       '--what', 'resolve images by engine and id for the checker API',
-      '--pr', '19375', '--raised-by', 'benoitf', '--prior', 'DESKTOP-18833/2-image-check-by-id',
+      '--pr', '19375', '--raised-by', 'a-maintainer', '--prior', 'DESKTOP-18833/2-image-check-by-id',
     );
 
     assert.equal(out.code, 0, out.stderr);
