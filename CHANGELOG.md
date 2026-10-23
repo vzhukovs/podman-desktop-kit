@@ -9,6 +9,21 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Preflight under a slice graph no longer measures whatever is checked out.
+  Standing on a branch that is none of the slices, it refuses and says so,
+  naming the replaced pull request when the branch is one. A one-slice graph is
+  inferred wherever preflight stands. After `slice join` on DESKTOP-19818, a
+  plain `pdkit preflight` reported green about the branch of one of the
+  replaced pull requests, two of the three commits.
+- `--slice <i>` on a joined slice read the branch of the replaced pull request
+  that carried the same index. A slice's branch no longer comes from a pull
+  request it `supersedes`, or from one already superseded.
+- `pdkit next` after `slices-approved` names `/pd:pr`, which materializes the
+  slice's branch and runs preflight on it, instead of `/pd:preflight`, which
+  had no branch to check yet.
+
 ## [0.11.0] - 2026-10-23
 
 ### Upgrading

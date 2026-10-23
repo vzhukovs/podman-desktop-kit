@@ -735,6 +735,12 @@ describe('the skill the next step runs', () => {
     assert.equal(nextSkill({ issue: 1, state: 'sliced', route: 'standard' }), null);
   });
 
+  // /pd:preflight here runs before any slice branch exists: /pd:pr cuts it and
+  // runs preflight as its own step.
+  test('an approved graph goes to /pd:pr, which materializes before preflight', () => {
+    assert.equal(nextSkill({ issue: 1, state: 'slices-approved', route: 'standard' }), 'pr');
+  });
+
   test('answered names none: closing waits on the reporter', () => {
     assert.equal(nextSkill({ issue: 1, state: 'answered', route: 'standard' }), null);
   });

@@ -1291,6 +1291,87 @@ describe('a sliced issue', () => {
     }
   });
 
+  // Under a graph nothing is published except a slice, so a run about none of
+  // them answers about whatever is checked out. On DESKTOP-19818, after a
+  // join, that was a replaced pull request's branch, reported green.
+  test('a branch that is none of the slices is refused rather than measured', async () => {
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/work`], sliced);
+
+    try {
+      const stray = await on();
+
+      assert.match(stray.problem ?? '', /DESKTOP-7301\/work is none of the graph's 2 slices; pass --slice/);
+      assert.deepEqual(stray.changedFiles, []);
+      assert.match((await on({ slice: 9 })).problem ?? '', /the graph has no slice #9; it has #1, #2/);
+    } finally {
+      await gitIn(['checkout', was], sliced);
+    }
+  });
+
+  describe('a slice that replaces published pull requests', () => {
+    const OLD = `DESKTOP-${ISSUE}/old-api`;
+    const path = () => join(slicedHome, 'issues', String(ISSUE), 'slices.json');
+
+    let was;
+    let original;
+
+    before(async () => {
+      was = await gitIn(['branch', '--show-current'], sliced);
+      await gitIn(['branch', OLD, 'main'], sliced);
+      // The replaced pull request carried the index the joined slice now has.
+      await pr.register({ issue: ISSUE, number: 4301, slice: 1, branch: OLD, base: 'main', home: slicedHome });
+      original = await readFile(path(), 'utf8');
+      const joined = JSON.parse(original);
+      joined.slices[0].supersedes = [4301];
+      await writeFile(path(), JSON.stringify(joined, null, 2));
+    });
+
+    after(async () => {
+      await writeFile(path(), original);
+      await gitIn(['checkout', was], sliced);
+      await gitIn(['branch', '-D', OLD], sliced);
+      await rm(join(slicedHome, 'issues', String(ISSUE), 'prs.json'), { force: true });
+    });
+
+    test('--slice reads the slice branch, not the replaced pull request', async () => {
+      const prepared = await on({ slice: 1 });
+
+      assert.equal(prepared.ref, `DESKTOP-${ISSUE}/1-api`);
+      assert.deepEqual(prepared.changedFiles, [API]);
+      assert.equal(prepared.problem, null);
+    });
+
+    test('standing on the replaced branch says whose it is', async () => {
+      await gitIn(['checkout', OLD], sliced);
+      const prepared = await on();
+
+      assert.equal(prepared.slice, undefined);
+      assert.match(prepared.problem ?? '', /it is the branch of #4301, which a joined slice replaces/);
+    });
+  });
+
+  test('a one-slice graph is about that slice wherever preflight stands', async () => {
+    const path = join(slicedHome, 'issues', String(ISSUE), 'slices.json');
+    const original = await readFile(path, 'utf8');
+    const one = JSON.parse(original);
+    one.slices = one.slices.slice(0, 1);
+    await writeFile(path, JSON.stringify(one, null, 2));
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/work`], sliced);
+
+    try {
+      const prepared = await on();
+
+      assert.equal(prepared.slice, 1);
+      assert.equal(prepared.ref, `DESKTOP-${ISSUE}/1-api`);
+      assert.deepEqual(prepared.changedFiles, [API]);
+    } finally {
+      await writeFile(path, original);
+      await gitIn(['checkout', was], sliced);
+    }
+  });
+
   test('slice-standalone passes on a fresh green verification', async () => {
     const report = await run(await on(), await loadChecks(['slice-standalone']));
 

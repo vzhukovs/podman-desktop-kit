@@ -275,7 +275,9 @@ session rather than verifying on here.
 ## Next
 
 Approval is the user's: `pdkit state <n> --to slices-approved`, and branches are
-cut from it. Then `/pd:preflight <issue>` per slice.
+cut from it. Then `/pd:pr <issue>` per slice: it materializes the slice's branch
+and runs preflight on it. `/pd:preflight` before that has no slice branch to
+look at, and refuses.
 
 **Each in a new session, and one per slice.** The approval can be given between
 sessions — the graph waits on disk. Taking slices one session at a time keeps
