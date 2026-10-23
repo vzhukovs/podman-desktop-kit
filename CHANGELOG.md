@@ -9,6 +9,8 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-23
+
 ### Fixed
 
 - Preflight under a slice graph no longer measures whatever is checked out.
@@ -2240,7 +2242,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...v0.11.0
 [0.10.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...v0.10.3
