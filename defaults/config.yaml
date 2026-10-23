@@ -121,6 +121,13 @@ preflight:
     lint: []
     typecheck: []
     schemas: []
+  # repo | packages. What `typecheck` means in preflight AND in `pdkit slice
+  # verify`. A type error lands in the package that consumes a change, not the
+  # one that makes it: on DESKTOP-19818 a preload-only slice passed
+  # `typecheck:preload` in both gates and broke the renderer's typecheck on
+  # upstream CI. `packages` brings the per-package scripts back, and reports
+  # itself as narrower when it does.
+  typecheck_scope: repo
 
 # How many failed captures of a task's `Done when` make it blocked. The key
 # exists because the behaviour does: a ceiling that only lived in configuration

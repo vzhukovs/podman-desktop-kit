@@ -14,9 +14,8 @@ spent twice.
 
 0. **Checkpoint.** `pdkit checkpoint <n> --phase pr-sync`, where `<n>` is the
    issue the pull request belongs to (`pdkit pr list` shows it). This round
-   can go somewhere it should not. On DESKTOP-18833 it built a stack the
-   plugin could not hold, and only a checkpoint makes the way back a command
-   instead of a recollection.
+   can go somewhere it should not, such as a stack the plugin cannot hold, and
+   only a checkpoint makes the way back a command instead of a recollection.
 
 1. **Read.** `pdkit pr refresh <k>` then `pdkit pr threads <k> --json`.
 
@@ -26,12 +25,12 @@ spent twice.
 
    **Do not stop at threads.** The output includes review submissions and
    top-level comments, and on a stale pull request that is usually where the
-   blocking feedback is. #17577 has two open threads, both a bot's, while the
-   reason it is stuck is a four-line `CHANGES_REQUESTED` body.
+   blocking feedback is. A pull request can have two open threads, both a
+   bot's, while the reason it is stuck is a four-line `CHANGES_REQUESTED` body.
 
    A review body is mapped too: every `path:line` it cites comes back under
-   `cites`, with its slice or **unmapped**. #19750's review was one body with
-   eight findings and no threads at all.
+   `cites`, with its slice or **unmapped**. A whole review can be one body
+   with eight findings and no threads at all.
 
    **Then what no reviewer has said yet.** Upstream's review agent reads the
    whole diff of the pull request, not the last round. A violation of
@@ -113,18 +112,38 @@ spent twice.
      model can express. It is `block`: a separate upstream issue that must merge
      first, and this pull request waits for it. Do not offer "a new slice under
      this issue" here, and do not offer stacking: neither has a command behind
-     it, and on DESKTOP-18833 both ended in refusals, after the work was done.
+     it, and both end in refusals, after the work is done.
 
    Rows that only make sense once the blocker has merged are marked
    `blocked by <row>`. Everything else in the table still moves this round.
+
+   **A seventh: the reviewer wants pull requests joined.** "These depend on each
+   other and merging one breaks main; make it one PR with N commits." That is
+   a re-cut, not an edit on any of the branches. It is
+   one row, decided with the person, and carried out through `/pd:slice`'s
+   "Joining slices that are already out": `pdkit slice join`, the graph
+   approved again, the joined slice published by `/pd:pr` as a new pull request.
+   Only then, back here, each old pull request is closed with a comment that
+   points at the new one:
+
+   ```
+   pdkit pr supersede <old> --by <new> --body <comment.md>             shown to the person
+   pdkit gate open --issue <n> --pr <old> --kind reply
+   pdkit pr supersede <old> --by <new> --body <comment.md> --confirm
+   ```
+
+   The reply to the reviewer who asked goes on the thread or review where they
+   asked, and links the new pull request. Their review threads do not move by
+   themselves, so a reviewer who has to find their own comments again reviews
+   it as new work.
 
 ### Every option has a command behind it
 
 An option in the table, or in any question to the person, names the pdkit
 command that carries it out. An option no command carries is marked **"pdkit
-does not support this"**, and it is never the recommended one. On
-DESKTOP-18833 the session offered a three-commit stack that it had made up.
-The person chose it, and the plugin refused it two phases later.
+does not support this"**, and it is never the recommended one. A session
+that offers an option it made up, such as a three-commit stack, gets it
+chosen, and the plugin refuses it two phases later.
 
 **A refusal is an answer, not an obstacle.** When `amendment approve`,
 `slice set` or `task start` refuses, stop and bring the refusal to the person
@@ -174,9 +193,9 @@ or into nothing at all.
 
    Everything else you may propose outright. The person answers in a line —
    "3b, 6 do it here" — and nothing is edited until they have. A fix the person
-   did not see decided is the failure this step exists for: on #19750 the
-   session chose the extraction on its own, and the first anyone heard of the
-   two new files was the push.
+   did not see decided is the failure this step exists for: a session that
+   chooses an extraction on its own leaves the push as the first anyone hears
+   of the new files.
 
 4b. **A `block` row, once decided.** Nothing about it is edited on this branch.
 

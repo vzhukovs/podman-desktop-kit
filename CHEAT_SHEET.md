@@ -179,6 +179,8 @@ pdkit plan check <n>                       # the mechanical half of plan review
 ```bash
 pdkit preflight <n> [--slice <i>]          # minutes: it runs the real test, lint and typecheck
 pdkit slice verify --issue <n> --all       # builds each slice alone, from main
+pdkit slice verify --issue <n> --slice <i> --commits
+                                           # each intermediate commit; information, not a gate
 pdkit validate steps --issue <n>           # what is waiting, and what is done
 pdkit validate supersede <Vk> --issue <n> --by <Vn> --reason <t>
                                            # a step that measured the environment,
@@ -191,6 +193,10 @@ pdkit audit <n> --base main                # facts, no verdict
 
 ```bash
 pdkit slice materialize --issue <n> --slice <i> --subject "fix(main): …"
+                                           # a slice with commits: no --subject, one commit each
+pdkit slice join --issue <n> --slices 1,2,3   # review wants one PR: a commit per old slice
+pdkit pr supersede <old> --by <new> --body <f> [--confirm]
+                                           # close a replaced PR upstream, with the comment
 pdkit publish --issue <n> --branch <b> --title <t> --body <file> [--slice <i>]
 pdkit publish --issue <n> --branch <b> --pr <k>   # an open PR, after a review round
 pdkit pr refresh <k>                       # read GitHub into the local record
@@ -258,6 +264,9 @@ differently.** The parser was written for that second attempt.
 | `state --to preflight-green` refused | no green preflight is recorded for this commit | run preflight — never a different way to set the state |
 | a write was blocked outside your task | the plan gave that file to another task | `pdkit task start` on the right task, or amend the plan |
 | `task is blocked` after three attempts | the third try was going to repeat the second | `pdkit task unblock --task T1 --reason "<what is different>"` |
+| `slice set`: `hypothesis` | more slices than the plan said | start from the plan's cut, or give `whyDeviates` with what the diff shows that the plan could not |
+| `slice set`: `ipc-contract` | both ends of an IPC channel must merge together | one slice; `commits` keeps the layers apart for review |
+| preflight `merge-order` | the body orders slices the graph calls independent | one slice with commits (`slice join` if already out), or a real stack |
 
 If a refusal looks genuinely wrong, `pdkit doctor --gate-selftest` answers
 whether the gate is working at all. That is a bug worth reporting; a differently
@@ -274,7 +283,7 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `working-tree` | | nothing uncommitted — the other checks are meaningless without it |
 | `tests` | | the test script of each package the diff touches |
 | `lint` | | `pnpm lint:check` |
-| `typecheck` | | scoped to the packages the diff touches |
+| `typecheck` | | the whole repository's `typecheck` — a type error lands in the package that consumes a change (`preflight.typecheck_scope: packages` to narrow it) |
 | `spdx` | | the house header on every **added** file |
 | `conventional-commits` | | a type commitlint accepts, with a package scope |
 | `signed-off-by` | | exactly one trailer per commit |
@@ -282,6 +291,7 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `extension-api` | | the obligations that come with touching the public API |
 | `api-surface` | | added exports are not accidental public surface |
 | `slice-standalone` | | the slice built alone, green, on the base it declares — and the branch still matches it |
+| `merge-order` | | every merge order the body states is a stack in the graph, not a dependency nobody verified |
 | `branch-name` | | `DESKTOP-<issue>/[<index>-]<slug>` |
 | `quickfix-size` | `warn` | the diff still fits the quickfix thresholds |
 | `pr-body-template` | | the body has every section the template declares, footer and test checkbox included |

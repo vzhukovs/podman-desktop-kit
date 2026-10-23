@@ -179,10 +179,25 @@ stack** — and the red run is the evidence for the stack, not a failure to fix.
 Independence is preferred because a stack is fragile: after #1 merges, #2 needs
 its base switched and its review threads point at lines that moved.
 
+**Every slice, merged alone, leaves main working.** Not only building: no
+feature broken, no built-in extension regressed. A body saying "merge #A → #B →
+#C" does not count, and `merge-order` in preflight fails one about slices the
+graph calls independent.
+
+**The plan's slice hypothesis is where the cut starts.** More slices than the
+plan said is refused unless the slicer gives a reason, and the reason is shown
+in `slices.md` beside `Plan said:`.
+
 What the machine refuses, so the slicer does not have to be trusted with it: two
 slices sharing a file, a changed file in no slice, a cycle between bases, a public
 API change mixed into another layer or merging after it, an R-ID that reaches no
-slice.
+slice, the two ends of an existing IPC channel in different slices, more slices
+than the plan without a reason.
+
+**One change across layers is one pull request with a commit per layer.** An IPC
+signature through main, preload and renderer has no part that works alone. The
+slice gets `commits`, `materialize` makes one commit each, and the title carries
+every scope: `refactor(main,preload,renderer): …`.
 
 What stays judgement: whether a slice justifies itself without the next one.
 Upstream does not accept dead code staged for a future PR.
@@ -582,6 +597,12 @@ right when a maintainer rejected it, wrong when a rework replaced it. With it, t
 issue settles once the replacement merges. What that rests on is the successor's
 own state, not the sentence in the reason field.
 
+`pr closed` records a close that already happened. To close it from here, with
+the comment that points at the replacement, use `pdkit pr supersede <old> --by
+<new> --body <f>`: it prints what it would post, and with `--confirm` and a
+reply token for `<old>` it closes the pull request upstream and records the same
+thing `pr closed --superseded-by` does.
+
 ## 11. Upstream asks you to split an open pull request
 
 ```
@@ -593,6 +614,30 @@ The same slicer, with a published diff substituted for the local one. The
 substitution holds through the whole chain — `suggest`, `set`, `verify` — because a
 flag that redirects the source in one command of a chain is not half a feature; it
 is a feature that does not work.
+
+## 11a. Upstream asks you to join open pull requests
+
+The other direction. DESKTOP-19818 went out as three pull requests that only
+worked merged together, and the review said: one pull request, three commits.
+
+```
+pdkit checkpoint 19818 --phase slice
+pdkit slice join --issue 19818 --slices 1,2,3     one slice, a commit per old one
+pdkit state 19818 --to sliced --reason "review asked for one PR with a commit per layer"
+pdkit slice verify --issue 19818 --all
+pdkit slice verify --issue 19818 --slice 1 --commits     each commit, for information
+pdkit slice render --issue 19818                                  [you approve]
+/pd:pr 19818                                       a new pull request    [you confirm]
+pdkit pr supersede 19829 --by <new> --body close.md      what would be posted
+pdkit gate open --issue 19818 --pr 19829 --kind reply                [you confirm]
+pdkit pr supersede 19829 --by <new> --body close.md --confirm
+```
+
+The commits keep the subjects the old pull requests were published with.
+`join` refuses a slice branch that review moved away from the working branch,
+because the join is cut from the working branch, and it prints the
+`git checkout` that brings the change back. Each old pull request is closed
+only after the new one exists, with a comment that points at it.
 
 ## 12. Work that predates the plugin
 

@@ -46,9 +46,14 @@ pdkit slice suggest --issue <n> --json
 ```
 
 Every changed file already mapped to its package, its layer, the task that owns
-it and the R-IDs that task satisfies, plus a draft grouped by layer. The draft
-is arithmetic and says so: grouping by layer is mechanical, and whether a slice
-justifies itself alone is not.
+it, the R-IDs that task satisfies and the IPC channels its changed lines touch,
+plus a draft grouped by layer. The draft is arithmetic and says so: grouping by
+layer is mechanical, and whether a slice justifies itself alone is not.
+
+`hypothesis` is the plan's cut: the slice count from its header and the
+reasoning under `## Slice hypothesis`. **It is the starting proposal.** The
+draft by layer is not: starting from it has produced three pull requests
+where the plan had said one, and upstream rejected them for the plan's reason.
 
 Do not re-derive that mapping by reading the diff. That is the set arithmetic
 this command exists to do.
@@ -65,6 +70,7 @@ Write a proposal — one JSON file, one entry per slice:
 
 ```json
 { "strategy": "prefer-independent",
+  "whyDeviates": null,
   "slices": [
     { "slug": "extension-api-run-options", "title": "add RunOptions",
       "files": ["packages/extension-api/src/extension-api.d.ts"],
@@ -73,6 +79,32 @@ Write a proposal — one JSON file, one entry per slice:
       "selfJustifying": "yes — an optional field, no dead code" }
   ] }
 ```
+
+**Every slice leaves main working on its own** — building, and with no feature
+or built-in extension broken. That is the criterion everything below serves.
+
+A change that is one concern across layers — an IPC signature through main,
+preload and renderer — is **one slice with a commit per layer**:
+
+```json
+{ "slug": "image-by-engine-id", "title": "resolve images by engine and id",
+  "files": ["packages/main/…", "packages/preload/…", "packages/renderer/…"],
+  "baseSlice": null,
+  "commits": [
+    { "subject": "refactor(main): resolve images by engine and id", "files": ["packages/main/…"] },
+    { "subject": "refactor(preload): pass engine and image ids", "files": ["packages/preload/…"] },
+    { "subject": "refactor(renderer): call checker and files by id", "files": ["packages/renderer/…"] }
+  ] }
+```
+
+The commits partition the slice's files, in order, lower layers first; each
+subject is a conventional commit. The pull request's title carries every scope
+(`refactor(main,preload,renderer): …`). commitlint accepts a comma-separated
+scope, and upstream history uses it (`chore(ci,test): …`).
+
+`whyDeviates` is required when the proposal has more slices than the plan's
+hypothesis. It names what the diff shows that the plan could not see; "the
+layers have different reviewers" is not that, because the plan knew the layers.
 
 `baseSlice` is the **index** of another slice — `1`, not its slug. `null` means
 it branches from `main`. Prefer `null`. A stack is fragile — after #1 merges,
@@ -94,8 +126,11 @@ pdkit slice set --issue <n> --from <file.json>
 This refuses, by name, anything that cannot work: two slices sharing a file, a
 changed file in no slice, a base that is not a slice or forms a cycle, a public
 API change mixed into another layer or merging after it, an R-ID that reaches
-no slice. Warnings — spanning layers, going over the size threshold — are
-conversations, not refusals.
+no slice, an existing IPC channel whose two ends are in different slices
+(`ipc-contract`), more slices than the plan said without `whyDeviates`
+(`hypothesis`), and `commits` that do not partition their slice. Warnings —
+spanning layers, going over the size threshold, a deviation from the plan with
+its reason — are conversations, not refusals.
 
 A refusal says where to go, and the proposal is not edited until it passes.
 **Two slices sharing a file** is not something re-cutting fixes when the work
@@ -116,9 +151,28 @@ pdkit slice verify --issue <n> --all
 ```
 
 File independence is mechanical and not sufficient. **Symbol** dependence —
-slice B using something slice A introduced — is invisible in a file list, and
-this is the only thing that finds it: each slice is built alone on `main`, in a
-worktree, with typecheck, lint and the scoped tests.
+slice B using something slice A introduced, or changing something A's consumers
+use — is invisible in a file list, and this is the only thing that finds it:
+each slice is built alone on `main`, in a worktree, with the repository's whole
+typecheck, lint and the scoped tests. The whole typecheck rather than the
+touched packages' own, because a type error lands in the consumer: a
+preload-only slice can pass `typecheck:preload` and still break the renderer's
+typecheck on upstream CI (`preflight.typecheck_scope`).
+
+**Contract** dependence is invisible to the build as well, and `slice set` has
+already refused the kind it can see (IPC channels). A slice that only works once
+another merges is not independent because its build is green.
+
+A slice with `commits` can also have each intermediate commit built:
+
+```
+pdkit slice verify --issue <n> --slice <i> --commits
+```
+
+That is information for the person, recorded as `commitChecks` and shown in
+`slice show`; it gates nothing. Whether upstream wants every commit of a pull
+request to build is an open question upstream, and the slice as a
+whole is what preflight holds to green.
 
 **Green standalone → the slice branches from `main`. Red → it needs a stack,
 and the red run is the evidence for the stack, not something to hide.** Move it
@@ -171,6 +225,38 @@ mapping the sync uses. Say in each new pull request body where the discussion
 came from, and reply in the original thread pointing at the new PR before the
 old one is closed. A reviewer who has to find their own comments again is a
 reviewer who reviews it as new work.
+
+## Joining slices that are already out
+
+Review can ask for pull requests that only work together to become one: one
+pull request with a commit per layer. The way there keeps the gate:
+
+```
+pdkit checkpoint <n> --phase slice
+pdkit slice join --issue <n> --slices <i,j[,k…]> [--slug <s>] [--title <t>]
+pdkit state <n> --to sliced --reason "<what review asked for>"
+pdkit slice verify --issue <n> --all
+pdkit slice verify --issue <n> --slice <joined> --commits
+pdkit slice render --issue <n> --values <rationale.json>
+```
+
+`join` makes one slice whose commits are the joined slices, under the subjects
+their branches were published with, and records the pull requests it replaces
+(`supersedes`). Slices it renumbers keep their pull request and their branch. It
+refuses a slice branch that review moved away from the change set, because
+joining from the change set would drop that work, and prints the
+`git checkout <branch> -- <file>` that brings it back to the working branch.
+
+Then, as after any cut, the graph goes to a human: `slices-approved` is theirs.
+`/pd:pr` publishes the joined slice as a new pull request. Closing the old ones
+belongs to `/pd:pr-sync`, after the new one is open. It needs one reply token
+per old pull request:
+
+```
+pdkit pr supersede <old> --by <new> --body <comment.md>             what would be posted
+pdkit gate open --issue <n> --pr <old> --kind reply                 after the person read it
+pdkit pr supersede <old> --by <new> --body <comment.md> --confirm
+```
 
 ## When the answer is "this cannot be cut"
 

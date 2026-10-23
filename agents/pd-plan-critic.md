@@ -19,7 +19,8 @@ Then the maintainer's rules a plan can break before any code exists: sections 1,
 - a drive-by rename or move riding along with the fix;
 - logic placed in a file-scope function in `packages/main`, or engine-specific code in core;
 - a new dependency, or a public API change with no issue behind it;
-- a new pattern where a sibling already shows the house one.
+- a new pattern where a sibling already shows the house one;
+- a slice hypothesis whose slices do not each leave main working on their own: a contract change (an IPC channel's arguments, a signature its consumers read) split across slices. It is one slice with a commit per layer, or an expand/contract sequence the tasks actually plan. A "merge in this order" note is not a substitute, because main is broken between the merges.
 
 Cite the rule by section. Do not raise the code-level rules (mocks, casts, runes): they belong to implementation, and the implementer reads them.
 

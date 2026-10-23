@@ -44,6 +44,7 @@ import {
   revertOf,
   peerCheckFailures,
   pullRequest,
+  closeSuperseded,
   replyToThread,
   reviewThreads,
   upstreamBranchExists,
@@ -793,5 +794,31 @@ describe('replying to a review thread', () => {
     }
 
     assert.equal(calls.length, 3);
+  });
+});
+
+// DESKTOP-19818: three pull requests replaced by one. Closing them is speaking
+// on them, so it takes the same per-pull-request token a reply does, and the
+// comment that says where the work went travels in the same call.
+describe('closing a superseded pull request', () => {
+  test('without a reply token for it nothing is sent', async () => {
+    await assert.rejects(
+      () => closeSuperseded({ pr: 19829, body: 'Replaced by #19900.', config: CONFIG, home, exec: fakeGh('') }),
+      /refusing to close #19829.*no consent token/s,
+    );
+    assert.equal(calls.length, 0);
+  });
+
+  test('with one, it closes upstream with the comment, in one call', async () => {
+    await gate.open({ issue: 6001, pr: 19829, kind: 'reply', home });
+    await closeSuperseded({ pr: 19829, body: 'Replaced by #19900.', config: CONFIG, home, exec: fakeGh('') });
+
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].args, ['pr', 'close', '19829', '-R', 'podman-desktop/podman-desktop', '--comment', 'Replaced by #19900.']);
+  });
+
+  test('a token for another pull request does not close this one', async () => {
+    await gate.open({ issue: 6001, pr: 19830, kind: 'reply', home });
+    await assert.rejects(() => closeSuperseded({ pr: 19831, body: 'x', config: CONFIG, home, exec: fakeGh('') }), /no consent token/);
   });
 });

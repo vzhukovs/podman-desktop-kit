@@ -2,6 +2,7 @@
 
 - Strategy: {{strategy}}
 - Source: {{source}}
+- Plan said: {{hypothesis}}
 - Verified: {{verifiedAt}}
   <!-- This table is rendered from slices.json by `pdkit slice render`. The
        Standalone and Patch-comes-off columns come from runs pdkit performed

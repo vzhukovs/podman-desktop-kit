@@ -25,6 +25,19 @@ applies the slice and makes the single commit — no squash needed, and the
 working branch is left where it was. Steps 3 and 5 take `--slice <i>`, or infer
 it from the branch you are standing on.
 
+**A slice with `commits`** (`pdkit slice show` lists them) is materialized
+without `--subject`: it makes one commit per group, in order, under the
+subjects the graph holds. Skip step 2 — squashing would undo the one thing the
+commits are for, which is that a reviewer reads main, preload and renderer
+apart. The pull request's title takes every scope the commits have, in their
+order: `refactor(main,preload,renderer): <description>`. commitlint accepts the
+comma-separated scope.
+
+**A slice that `supersedes` pull requests** (made by `pdkit slice join`) opens a
+new one. Its body says in `What does this PR do?`, in one sentence, which pull
+requests it replaces and why: "Replaces #A, #B and #C, which only worked
+merged together." Closing those is `/pd:pr-sync`'s job, after this one is open.
+
 **Without one**, it runs once, as below.
 
 ## Steps
@@ -54,9 +67,9 @@ it from the branch you are standing on.
    **The body is for the reviewer; the record is for us.** Anything needed only
    to service this pull request — R-IDs, the requirement trace, the review
    history, the reasoning that produced the change — lives in the plan and in
-   `$PDKIT_HOME/issues/<n>/prs/<k>.md`, and is not published. A reviewer on
-   #19317 asked for exactly this and named the part to drop: "the changes per
-   file is not needed".
+   `$PDKIT_HOME/issues/<n>/prs/<k>.md`, and is not published. Reviewers have
+   asked for exactly this, and named the part to drop: the list of changes
+   per file.
 
    Budgets, in characters, which `pr-body-size` measures and does not enforce:
 
@@ -77,6 +90,11 @@ it from the branch you are standing on.
    - `Not in this PR`: on a sliced issue, name the slices the rest went to, by
      branch — that is what stops a reviewer looking for the other half. On a
      single pull request, one clause saying there is no other half.
+   - **No merge order between slices the graph calls independent.** "Merge #A →
+     #B → #C" is a dependency the graph does not have, and main is broken
+     between those merges; `merge-order` fails the body that says it. If the
+     order is real, the cut is wrong: go back to `/pd:slice`. A stacked slice
+     names the slice it stands on, and that is the only order a body states.
    - `Steps to check`: at least three numbered steps, each with an expected
      result. Preflight enforces this, including on quickfix. **This is the
      section to be generous with**: commands to paste, fixtures to create,

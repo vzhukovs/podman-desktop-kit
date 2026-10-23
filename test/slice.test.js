@@ -139,7 +139,7 @@ describe('facts', () => {
   test('maps every changed file to its package, layer, tasks and R-IDs', () => {
     const byPath = new Map(collected.files.map((file) => [file.path, file]));
 
-    assert.deepEqual(byPath.get(API), { path: API, status: 'M', package: '@fixture/api', layer: 'extension-api', tasks: ['T1'], requirements: ['R1'] });
+    assert.deepEqual(byPath.get(API), { path: API, status: 'M', package: '@fixture/api', layer: 'extension-api', tasks: ['T1'], requirements: ['R1'], channels: [] });
     assert.deepEqual(byPath.get(SPEC).requirements, ['R3', 'R4']);
     assert.equal(byPath.get(SPEC).layer, 'tests');
     assert.equal(byPath.get(SPEC).status, 'A');
@@ -224,6 +224,92 @@ describe('draft', () => {
       drafted.slices.map((entry) => entry.files),
       [[API], [EXEC], [THEME], [SPEC]],
     );
+  });
+});
+
+// DESKTOP-19818: the plan said one slice, because a signature change across
+// main, preload and renderer has no subset that stands alone. The plan critic
+// agreed. The slicer never read the plan and cut three pull requests by layer,
+// and upstream rejected them for the reason the plan had given.
+describe('the plan slice hypothesis', () => {
+  const ONE = { count: 1, text: 'One slice, one PR: the signature change crosses main and ui, so no subset typechecks alone.' };
+  const facts = (hypothesis) => ({ ...collected, hypothesis });
+
+  test('facts read it from the plan, count and reasoning both', async () => {
+    const other = ISSUE + 7;
+    await state.transition(other, 'triaged', { home });
+    await mkdir(issueDir(home, other), { recursive: true });
+    await writeFile(
+      join(issueDir(home, other), 'plan.md'),
+      `# PLAN: DESKTOP-${other}\n\n- Requirements: R1 (frozen on approval)\n- Slice hypothesis: 1 slices\n\n## Slice hypothesis\n${ONE.text}\n`,
+    );
+
+    const read = await slice.facts({ issue: other, repoRoot: repo, home, config: CONFIG, packageMap: packageMap(repo) });
+    assert.deepEqual(read.hypothesis, ONE);
+  });
+
+  test('an issue with no plan has no hypothesis, and nothing is held to one', () => {
+    assert.equal(collected.hypothesis, null);
+    assert.equal(build({ proposal: proposal(GOOD) }).ok, true);
+  });
+
+  test('more slices than the plan said is refused without a reason, and the refusal quotes the plan', () => {
+    const result = slice.build({ issue: ISSUE, facts: facts(ONE), config: CONFIG, proposal: proposal(GOOD) });
+
+    assert.equal(result.ok, false);
+    const refusal = result.problems.find((problem) => problem.check === 'hypothesis');
+    assert.match(refusal.detail, /hypothesis is 1 slice and this proposal has 3/);
+    assert.match(refusal.detail, /no subset typechecks alone/);
+    assert.match(refusal.detail, /whyDeviates/);
+  });
+
+  test('with a reason it is stored, warned about, and reaches slices.md', () => {
+    const result = slice.build({
+      issue: ISSUE,
+      facts: facts(ONE),
+      config: CONFIG,
+      proposal: proposal(GOOD, { whyDeviates: 'the ui half turned out not to touch the API' }),
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+    assert.match(result.warnings.find((warning) => warning.check === 'hypothesis').detail, /3 slices where the plan said 1 slice/);
+    assert.deepEqual(result.graph.hypothesis, { count: 1, deviation: 'the ui half turned out not to touch the API' });
+    assert.match(slice.renderValues(result.graph).hypothesis, /1 slice — the graph has 3, because: the ui half/);
+  });
+
+  test('fewer slices than planned is a warning, not a refusal', () => {
+    const result = slice.build({
+      issue: ISSUE,
+      facts: facts({ count: 4, text: '' }),
+      config: CONFIG,
+      proposal: proposal(GOOD),
+    });
+
+    assert.equal(result.ok, true);
+    assert.ok(result.warnings.some((warning) => warning.check === 'hypothesis'));
+  });
+
+  test('a graph that matches the plan says so', () => {
+    const result = slice.build({ issue: ISSUE, facts: facts({ count: 3, text: '' }), config: CONFIG, proposal: proposal(GOOD) });
+
+    assert.equal(result.ok, true, JSON.stringify(result.problems));
+    assert.equal(slice.hypothesisText(result.graph), '3 slices — the graph matches');
+  });
+});
+
+// The same issue, other half: "merge #19829 → #19830 → #19831" went into three
+// PR bodies about slices the graph called independent. The arrow came from
+// here, which printed index order as though it were a merge order.
+describe('mergeOrderText', () => {
+  test('independent slices have no order, and the text says so', () => {
+    const graph = build({ proposal: proposal(GOOD.map((entry) => ({ ...entry, baseSlice: null }))) }).graph;
+    assert.match(slice.mergeOrderText(graph), /^any order — no slice is based on another/);
+    assert.doesNotMatch(slice.mergeOrderText(graph), /→/);
+  });
+
+  test('a stack is an order, and is printed as one', () => {
+    const graph = build({ proposal: proposal(GOOD) }).graph;
+    assert.equal(slice.mergeOrderText(graph), '#1 → #2 → #3');
   });
 });
 

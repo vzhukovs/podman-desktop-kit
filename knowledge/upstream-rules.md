@@ -78,6 +78,14 @@ scope anyway — it tells a reviewer which area they are being asked about — b
 do not treat a missing scope as a defect in someone else's PR, and do not let
 preflight block on it.
 
+**A change across packages takes every scope, comma-separated:**
+`refactor(main,preload,renderer): …`. commitlint splits a scope on `,`, `/`
+and `\` (`scope-delimiter-style`), and config-conventional constrains no scope
+values, so each part passes. Upstream uses the comma form without spaces
+(`chore(ci,test): …`, `chore(tests,ui): …`) and the slash form for a
+sub-area (`fix(extension/podman): …`). A pull request made of one commit per
+layer has a scoped subject on each commit and every scope on its title.
+
 ### Formatting and linting
 
 Run before pushing; CI runs all of them:

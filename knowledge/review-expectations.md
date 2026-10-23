@@ -12,8 +12,18 @@ this plugin applies to other people's PRs.
 
 - **Steps to check that actually work.** A reviewer who has to guess how to
   verify a change reviews it slowly or not at all.
-- **One layer per PR.** Mixing a public API change with UI work means waiting
-  for two sets of reviewers.
+- **One layer per PR, unless it is one change.** Mixing a public API change
+  with UI work means waiting for two sets of reviewers. One concern that
+  crosses layers is the exception: one pull request with a commit per layer
+  (below).
+- **Every pull request leaves main working on its own.** Three pull requests
+  cut by layer from one IPC signature change were rejected in review (October
+  2026): each depended on the others, so merging any one of them alone would
+  have broken a feature on main while it waited for the rest, and code that
+  breaks a feature does not go into main. The reviewer asked for one pull
+  request with a commit per layer instead. A "merge #A → #B → #C" line in the
+  body was there and did not count. Whether each commit of such a pull request
+  has to build on its own was asked upstream and has no answer yet.
 - **Tests for the behaviour claimed.** Not coverage for its own sake — coverage
   of what the PR says it does.
 - **A reason, when the approach is not obvious.** Two sentences in the PR body

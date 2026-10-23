@@ -45,7 +45,7 @@ import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
 import { staleCopyright } from '../lib/preflight/checks/maintainer-rules.js';
-import { candidatesFor, runScript, scopedScripts } from '../lib/preflight/scope.js';
+import { candidatesFor, runScript, scopedScripts, typecheckScripts } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
 const execFileAsync = promisify(execFile);
@@ -280,6 +280,53 @@ describe('script scoping', () => {
     assert.deepEqual(scope.unresolved, ['@podman-desktop/main']);
     assert.equal(scope.usedFallback, true);
     assert.deepEqual(scope.scripts, ['typecheck']);
+  });
+
+  // DESKTOP-19818: a preload-only slice ran typecheck:preload in slice verify
+  // and in preflight, passed both, and broke the renderer's typecheck on
+  // upstream CI. A type error lands in the consumer of a change, so the whole
+  // typecheck is the default even where the package has a script of its own.
+  test('typecheck is the whole repository, even when the package has its own script', async () => {
+    const prepared = await context();
+    const scope = await typecheckScripts({ ...prepared, scripts: { ...prepared.scripts, 'typecheck:main': 'x', typecheck: 'y' } });
+
+    assert.deepEqual(scope.scripts, ['typecheck']);
+    assert.equal(scope.whole, true);
+    assert.deepEqual(scope.packages, ['@podman-desktop/main']);
+  });
+
+  test('typecheck_scope: packages brings the per-package scripts back', async () => {
+    const prepared = await context();
+    const scope = await typecheckScripts({
+      ...prepared,
+      scripts: { ...prepared.scripts, 'typecheck:main': 'x', typecheck: 'y' },
+      config: { ...prepared.config, preflight: { ...prepared.config.preflight, typecheck_scope: 'packages' } },
+    });
+
+    assert.deepEqual(scope.scripts, ['typecheck:main']);
+    assert.equal(scope.whole, false);
+  });
+
+  test('a repository with no whole typecheck falls back to the scoped answer, and says so', async () => {
+    const prepared = await context();
+    const { typecheck: _whole, ...rest } = prepared.scripts;
+    const scope = await typecheckScripts({ ...prepared, scripts: { ...rest, 'typecheck:main': 'x' } });
+
+    assert.deepEqual(scope.scripts, ['typecheck:main']);
+    assert.equal(scope.whole, false);
+  });
+
+  test('the typecheck check says when it was narrower than the repository', async () => {
+    const prepared = await context();
+    const checks = await loadChecks(['typecheck']);
+    const narrowed = await run(
+      { ...prepared, config: { ...prepared.config, preflight: { ...prepared.config.preflight, typecheck_scope: 'packages' } } },
+      checks,
+    );
+    const whole = await run(prepared, checks);
+
+    assert.match(whole.results[0].summary, /whole repository/);
+    assert.doesNotMatch(narrowed.results[0].summary, /whole repository/);
   });
 
   test('runScript uses the configured package manager', async () => {
@@ -1293,6 +1340,61 @@ describe('a sliced issue', () => {
     assert.match(report.results[0].summary, /did not pass its standalone build/);
 
     await writeFile(path, original);
+  });
+});
+
+// DESKTOP-19818's three bodies each said "merge #19829 → #19830 → #19831",
+// and the graph called the first two independent. The order was real; the
+// dependency behind it was a runtime contract nothing had verified.
+describe('merge-order', () => {
+  const graph = {
+    issue: 9100,
+    source: { base: 'main' },
+    slices: [
+      { index: 1, baseSlice: null, pr: 19829, files: [] },
+      { index: 2, baseSlice: null, pr: 19830, files: [] },
+      { index: 3, baseSlice: 2, pr: 19831, files: [] },
+    ],
+  };
+  const check = async (prBody, sliceRecord = graph.slices[0]) => {
+    const prepared = await context();
+    return (await run({ ...prepared, sliceGraph: graph, sliceRecord, prBody }, await loadChecks(['merge-order']))).results[0];
+  };
+
+  test('the 19818 body is refused: it orders two slices the graph calls independent', async () => {
+    const body =
+      'merge https://github.com/example/repo/pull/19829 → ' +
+      'https://github.com/example/repo/pull/19830 → https://github.com/example/repo/pull/19831.';
+    const result = await check(body);
+
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /#19829 \(slice #1\) before #19830 \(slice #2\)/);
+    // #19830 → #19831 is a stack, and is not what is wrong.
+    assert.doesNotMatch(result.summary, /before #19831/);
+  });
+
+  test('an order that is a stack in the graph passes', async () => {
+    assert.equal((await check('Stacked: #19830 -> #19831', graph.slices[2])).status, 'pass');
+    assert.equal((await check('Depends on #19830, which merges first.', graph.slices[2])).status, 'pass');
+  });
+
+  test('prose that puts an independent slice first is the same claim', async () => {
+    const result = await check('This only works after #19829 merges.', graph.slices[1]);
+    assert.equal(result.status, 'fail');
+    assert.match(result.summary, /before this one/);
+  });
+
+  test('pull requests that are not slices of this issue are not its business', async () => {
+    assert.equal((await check('Follow-up to #17000 → #19375.')).status, 'pass');
+  });
+
+  test('a body with no order passes, and one pull request has nothing to order', async () => {
+    assert.equal((await check('Part of #19818')).status, 'pass');
+
+    const prepared = await context();
+    const single = { ...graph, slices: [graph.slices[0]] };
+    const result = (await run({ ...prepared, sliceGraph: single, prBody: '#1 → #2' }, await loadChecks(['merge-order']))).results[0];
+    assert.equal(result.status, 'skip');
   });
 });
 

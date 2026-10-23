@@ -73,6 +73,20 @@ misses one gets redone rather than patched:
    ordered so cutting is possible later. Planning without it produces an
    interleaved diff that cannot be split without redoing the work.
 
+   The slicer is held to it: `pdkit slice set` refuses more slices than the
+   header's count unless the slicer says why. So the count in the header is a
+   number, and the reasoning under the heading is written for somebody who will
+   see only the diff.
+
+   **Every slice leaves main working on its own.** A contract change, such as
+   an IPC signature through main, preload and renderer or a type every consumer
+   reads, has no subset that does. It is one slice, with a commit per layer if
+   the reviewer should read the layers apart. If it should be several pull
+   requests, plan expand/contract: add the new path beside the old one, move the
+   callers, remove the old one. Each step then leaves main working, and that
+   split has to be in the tasks, because no slicer can cut it out of a diff that
+   replaced the old path.
+
 ## Then
 
 `pdkit render plan --issue <n> --values <f> --path plan.md`, one

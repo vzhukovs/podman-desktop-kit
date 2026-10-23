@@ -91,6 +91,11 @@ new
                                          ▼
                                      merged | abandoned
 
+     slices-approved ─┐
+     preflight-green ─┤
+     pr-open ─────────┼─► sliced   (re-cut: `slice join`, with --reason)
+     review-in-progress ┘
+
      triaged ─┐
      planned ─┴─► answered ──► resolved | planned | abandoned
                 (the answer is published; we are waiting on the reporter)
@@ -137,6 +142,15 @@ The edge leads to `triaged` rather than `planned` on purpose: the route is
 chosen again, and planning starts from the issue rather than from the rejected
 diff — the same ordering `escalate` imposes, for the same reason. The pull
 request stays open, the branch stays put, and `--reason` is required.
+
+### The `re-cut` edge
+
+From `slices-approved`, `preflight-green`, `pr-open` and `review-in-progress`
+there is an edge back to `sliced`. An approved graph can turn out to be the
+wrong one after its pull requests are open: on DESKTOP-19818 review asked for
+three of them to become one. `pdkit slice join` re-cuts the graph, and the edge
+puts it in front of a human again before anything is cut from it. `--reason` is
+required, for the same reason it is on `rework`.
 
 ### There is no edge into `new`, and starting over does not add one
 
@@ -265,7 +279,8 @@ podman-desktop-kit/                  # repository root = plugin root
 | `backlog.js` | facts about a set of candidate issues; produces an order, not a choice |
 | `repo.js` | package map from `pnpm-workspace.yaml`, git primitives |
 | `stats.js` | measures the population the thresholds are about; recommends nothing |
-| `slice.js` | the slice graph, topological sort, standalone verification, materialisation, cascade; owns `slices.json` |
+| `slice.js` | the slice graph, topological sort, standalone verification, materialisation, cascade, joining; owns `slices.json` |
+| `contracts.js` | which IPC channels a file's changed lines belong to; facts for `slice set`, no verdict |
 | `worktree.js` | creates, lists, removes trees and prepares the verification tree |
 | `pr.js` | pull requests as entities; CI verdicts; the merge rollup; owns `prs.json` |
 | `threads.js` | facts about review threads: bot or human, thread → file → slice → task → R-ID; no verdict |
@@ -861,17 +876,40 @@ inside `Owns` that the task did not ask for. None of the three is greppable.
 Works from a **finished diff**, in fresh context (`pd-slicer`). Input:
 `git diff main...HEAD --stat`, `plan.md`, `package-map.json`.
 
-Two different graphs, not to be confused:
+**The requirement every cut serves: each slice, merged alone, leaves `main`
+building and working.** A body that says "merge #A → #B → #C" is not a
+substitute, because main is broken between those merges (podman-desktop#19831,
+where upstream rejected three pull requests on exactly that).
+
+**The plan's cut comes first.** `slice suggest` carries the plan's slice
+hypothesis, count and reasoning, and `slice set` refuses more slices than it
+names unless the proposal says why (`whyDeviates`). The reason is rendered into
+`slices.md`. On DESKTOP-19818 the plan said one slice, the slicer never read it,
+and the draft by layer became three pull requests.
+
+Three different graphs, not to be confused:
 
 - **file independence** — slices do not share files. Checked mechanically.
-- **symbol dependence** — slice B references a symbol slice A introduced. Not
-  visible in the file lists at all.
+- **symbol dependence** — slice B references a symbol slice A introduced, or
+  changes one A's consumers read. Not visible in the file lists at all.
+- **contract dependence** — the two ends of a contract no compiler sees across.
+  An IPC channel is a string: the handler in main and the call in preload
+  compile whatever the other side does. `lib/contracts.js` reads which channels
+  a file's changed lines belong to, and `slice set` refuses an existing channel
+  split across slices (`ipc-contract`). A new channel split across a stack is a
+  warning; split across independent slices it is refused.
 
 A criterion, not an opinion: `pdkit slice verify` raises a worktree from `main`,
-applies **only this slice**, and runs the repository's own typecheck, lint and
-scoped tests there. **Green standalone → the slice is independent and branches
-from `main`. Red → it needs a stack, and `base` is the preceding slice.**
-Independence is preferred; a stack is the exception.
+applies **only this slice**, and runs the repository's **whole** typecheck, lint
+and scoped tests there. **Green standalone → the slice is independent and
+branches from `main`. Red → it needs a stack, and `base` is the preceding
+slice.** Independence is preferred; a stack is the exception.
+
+The typecheck is the whole repository's because a type error lands in the
+package that consumes a change. Scoped to the touched packages, it cleared a
+preload-only slice on DESKTOP-19818 that upstream CI's typecheck then failed in
+the renderer, and preflight cleared it the same way. `preflight.typecheck_scope:
+packages` narrows both again, and says so in the result.
 
 **There is a third verdict, and leaving it unsaid cost a run.** A red slice has
 two possible causes and they are not the same finding: the slice broke something,
@@ -902,8 +940,17 @@ consumes `packages/api/dist`, and `build:ui` because `typecheck:renderer` consum
 missing turns **every slice of every issue** red for a reason that has nothing to
 do with slicing.
 
-**A slice is a base plus a set of files, not a set of commits.** The form it is
-verified and materialised through is one and the same:
+**A slice is a base plus a set of files, not a set of commits** — but it can be
+*published* as several. One concern across layers is one slice, and `commits`
+partitions its files into an ordered list of `{subject, files}`: one pull
+request, a commit per layer, so main never sees half of it and a reviewer still
+reads each layer apart. `materialize` commits the groups in order;
+`slice verify --commits` builds each intermediate commit and records it as
+`commitChecks`, which gate nothing. Whether upstream wants every commit to build
+is an open question (podman-desktop#19798), and the slice as a whole is what
+preflight holds to green.
+
+The form a slice is verified and materialised through is one and the same:
 
 ```
 git diff --binary --find-renames <base>...<ref> -- <the slice's files>
@@ -947,8 +994,25 @@ branch's diff must match, byte for byte, what was verified.
 | `extension-api` files are in one slice, first, with no other layer | |
 | a slice's R-IDs are derived from the tasks owning its files, plus the requirements of every task that owns no files at all; the union covers the frozen set | |
 | `max_files_per_slice`, and a slice spanning layers — a warning, not a refusal | |
+| an existing IPC channel's two ends are in one slice | contracts no detector reads: events sent by name, config keys |
+| no more slices than the plan's hypothesis without `whyDeviates` | whether the deviation is a reason or a preference |
+| `commits` partition their slice; every subject is a conventional commit | the order of the commits and what each is called |
 
-`slices.md` is **rendered from `slices.json`**, never printed by an agent.
+`slices.md` is **rendered from `slices.json`**, never printed by an agent. Its
+merge order says "any order" for slices no stack connects, rather than listing
+their indexes with arrows; that list went into three PR bodies on DESKTOP-19818
+as an order nobody had verified. `merge-order` in preflight fails a body that
+states an order the graph does not have.
+
+**Joining slices that are already out.** `pdkit slice join` merges slices into
+one whose commits are the joined slices, under the subjects their branches were
+published with, and records the pull requests it replaces (`supersedes`). It
+goes through `build()`, so every rule above holds for the result. Slices it
+renumbers are matched by slug, and a published one keeps its pull request and
+its branch. It refuses a branch review moved away from the change set: joining
+from the change set would drop that work. The issue goes back to `sliced` with
+a reason, the graph is approved again, and `pdkit pr supersede` closes each old
+pull request with a reply token for it, after the new one is open.
 
 ### `/pd:pr` — the only place that writes to GitHub
 
@@ -1562,7 +1626,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 | **quickfix size** | diff lines counted separately for code and tests, against `quickfix.max_changed_lines` and `max_files`. Only on the `quickfix` route | ⚠️ never blocks |
 | tests | `pnpm test:<project>` per affected package, falling back to `pnpm test:unit` | ✅ |
 | lint | `pnpm lint:check` | ✅ |
-| typecheck | `pnpm typecheck:<package>` for affected packages, falling back to `pnpm typecheck` | ✅ |
+| typecheck | `pnpm typecheck`, the whole repository — a type error lands in the consumer of a change. `preflight.typecheck_scope: packages` narrows it to `pnpm typecheck:<package>` and says so | ✅ |
 | SPDX | every added file carries the header in the repository's house format — the Apache block with the copyright line, the identifier inside it | ✅ |
 | conventional commits | every commit on the branch: a type from the list in `CONTRIBUTING.md`. **Scope is not required by upstream** — its absence is ⚠️, not ❌ | ✅ on type, ⚠️ on scope |
 | Signed-off-by | exactly one per commit | ✅ |
@@ -1570,6 +1634,7 @@ proving a failure would return us to receipts it is profitable not to attach.
 | extension-api | if `extension-api.d.ts` is touched, the body must carry a backwards-compatibility and disposal section | ✅ |
 | **API-surface grep** | every new or changed exported type is grepped in `extension-api.d.ts`; found means it is public API, not an internal utility | ✅ |
 | slice standalone | the `pdkit slice verify` result from `slices.json` plus a digest comparison. A stale result is `fail`, not `pass`; a red run against a red baseline is `warn`, marked inconclusive | ✅ for slices with `base: main` |
+| **merge order** | every merge order the body states — `#A → #B`, "depends on #A", "after #A merges" — between this issue's slices is a stack in the graph. An order between independent slices is a dependency nobody verified, and main is broken between those merges | ✅ |
 | branch name | matches `DESKTOP-<n>/[<i>-]<slug>` | ✅ |
 | **PR body from the template** | every section, fixed line and footer `templates/pr-body.md` declares is in the body. Six checks read the body and each reads a part of it; this one asks whether it is the shape upstream's template wants at all | ✅ |
 | steps-to-check | ≥ 3 steps, each with an expected result. Applies on `quickfix` too | ✅ |
@@ -1823,6 +1888,7 @@ config uses them as enum members next to `auto`.
 | `validation.app.debug_port` | where CDP listens. `validate launch` refuses a port something else already answers on rather than fighting it |
 | `validation.app.startup_timeout` | how long to wait for `/json/version` |
 | `preflight.scripts.*` | overrides for script-name resolution. **Empty by default**: names resolve from the repository's own `package.json`, and that is the right source. Filling one in is worth doing exactly when the resolver got it wrong — which is a reason to fix the resolver |
+| `preflight.typecheck_scope` | `repo` (default) or `packages` — what `typecheck` means in preflight and in `slice verify`. The whole one, because a type error lands in the consumer of a change |
 | `exec.max_attempts` | how many failed captures block a task; zero switches blocking off |
 | `review.bots_collapsed`, `review.bot_escalate` | which accounts collapse, and which words expand one back |
 

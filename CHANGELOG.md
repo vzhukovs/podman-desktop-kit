@@ -9,6 +9,76 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+DESKTOP-19818 went out as three pull requests cut by layer from one IPC
+signature change. Each one built and verified green on its own. Merged alone,
+any of them broke the image checker, and review rejected all three: main must
+never carry a broken feature, so the change had to be one pull request with a
+commit per layer. The plan had said one slice. Every change below closes one of the
+ways that got through.
+
+### Changed
+
+- **`typecheck` is the whole repository's, in `slice verify` and in
+  preflight.** Both ran only the touched packages' scripts. A type error lands
+  in the package that consumes a change, so slice #2 (preload) passed
+  `typecheck:preload` in both gates, and upstream CI's typecheck failed it in
+  the renderer. `pnpm typecheck` on that branch fails the same way, and on the
+  base it is green in 36 s. `preflight.typecheck_scope: packages` restores the
+  old behaviour, and the result then says it was narrowed.
+- **The plan's slice hypothesis binds the slicer.** `slice suggest` carries it,
+  with the count and the reasoning, and `slice set` refuses more slices than
+  the plan named unless the proposal gives `whyDeviates`. The reason is
+  rendered into `slices.md` as `Plan said:`. Fewer slices than planned is a
+  warning.
+- **`pd-slicer` cuts by concern, not by layer.** Every slice must leave main
+  working on its own. A contract change and all of its consumers are one
+  slice; one concern across layers is one pull request with a commit per
+  layer. The agent's restatement of maintainer rule 1 had dropped "(or at
+  least per commit)".
+- **Merge order is honest.** `slices.md` and `slice show` say "any order" for
+  slices no stack connects, instead of printing their indexes with arrows.
+  That line had gone into three PR bodies as "merge #19829 → #19830 → #19831".
+- **`/pd:plan` and `pd-plan-critic` hold the same line.** A slice hypothesis
+  that splits a contract change is a plan for a rejected PR. Splitting it
+  takes expand/contract in the tasks, because no slicer can cut that out of a
+  diff that replaced the old path.
+
+### Added
+
+- **`slice set` refuses an IPC channel split across slices** (`ipc-contract`).
+  `lib/contracts.js` reads which channels a file's changed lines belong to,
+  from `ipcHandle(` or `exposeInMainWorld(` to the parenthesis that closes it.
+  This is the one dependency no build sees, because the channel is a string. On
+  the real 19818 diff it finds `image-checker:check` and
+  `image-files:getFilesystemLayers` in both main and preload, and nothing in
+  the other files.
+- **Multi-commit slices.** A slice's `commits` partition its files into an
+  ordered list of `{subject, files}`. `slice materialize` makes one signed-off
+  commit per group, and takes no `--subject`. `slice verify --slice <i>
+  --commits` builds each intermediate commit and records it as `commitChecks`.
+  That is information, not a gate, until upstream answers whether every commit
+  has to build (podman-desktop#19798).
+- **`pdkit slice join --issue <n> --slices <i,j,…>`.** Joins published slices
+  into one, a commit per slice under the subject it was published with, and
+  records which pull requests it replaces. A slice the join renumbers keeps its
+  pull request and its branch: slices are now carried across a re-set by slug
+  before index. Refuses a slice branch that review moved away from the working
+  branch, and prints the `git checkout` that brings the change back.
+- **A re-cut edge back to `sliced`** from `slices-approved`, `preflight-green`,
+  `pr-open` and `review-in-progress`, with `--reason` required.
+- **`pdkit pr supersede <old> --by <new> --body <f> [--confirm]`.** Closes a
+  replaced pull request upstream with the comment that points at its successor,
+  and records it. Without `--confirm` it prints what it would post. With
+  `--confirm` it needs a reply token for the pull request being closed, which
+  it verifies itself.
+- **Preflight `merge-order`.** Fails a body that orders this issue's slices
+  where the graph has no stack between them: `#A → #B`, "depends on #A",
+  "after #A merges".
+- **Multi-scope titles documented.** commitlint accepts
+  `refactor(main,preload,renderer): …`, as upstream's own `chore(ci,test): …`
+  shows. `knowledge/upstream-rules.md` says so, and `/pd:pr` uses it for a
+  pull request with a commit per layer.
+
 ## [0.10.4] - 2026-10-22
 
 ### Upgrading
@@ -213,7 +283,7 @@ refused, and every changing phase gained a first step.
   say not to edit the proposal until it passes.
 - **`knowledge/maintainer-rules.md`: the rules upstream's review agent applies
   to every pull request.** podman-desktop/podman-desktop#19798 adds a
-  `review-podman-desktop` skill built from about 1200 of benoitf's review
+  `review-podman-desktop` skill built from about 1200 of a maintainer's review
   comments. Its rule set (tests, Svelte 5, TypeScript, DI, imports, PR hygiene)
   and its calibration of what actually blocks are copied verbatim, pinned to
   `43ab21a3`. That pull request was still open at the time.
