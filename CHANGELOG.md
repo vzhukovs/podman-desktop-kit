@@ -9,6 +9,30 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-23
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing to change in your config.
+- `typecheck` in preflight and in `slice verify` now runs the repository's
+  whole `pnpm typecheck`. `preflight.typecheck_scope: packages` restores the
+  old per-package scripts.
+- `slice set` can refuse a graph it used to store: more slices than the plan's
+  hypothesis without `whyDeviates`, or an existing IPC channel split across
+  slices.
+- A new blocking preflight check, `merge-order`.
+- Graphs already stored keep working. They have no `hypothesis` field, so
+  `slices.md` shows "no plan, or no hypothesis in it" until the next `slice set`.
+
+MINOR rather than PATCH because a cut and a body that used to pass can now be
+refused.
+
 DESKTOP-19818 went out as three pull requests cut by layer from one IPC
 signature change. Each one built and verified green on its own. Merged alone,
 any of them broke the image checker, and review rejected all three: main must
@@ -2201,7 +2225,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...v0.11.0
 [0.10.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.1...v0.10.2
