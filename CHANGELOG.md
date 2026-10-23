@@ -9,6 +9,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-10-23
+
+### Fixed
+
+- `slice verify` no longer goes red on what the previous run left in the verify
+  worktree. A standalone verify leaves its slice staged on top of main; once the
+  slice's branch existed and review had changed the same files, the next verify
+  could not check the branch out, and the tree had to be cleaned by hand. On
+  DESKTOP-19818 this blocked the push after a rebase.
+
 ## [0.11.1] - 2026-10-23
 
 ### Fixed
@@ -2242,7 +2252,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...v0.11.0
 [0.10.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.3...v0.10.4
