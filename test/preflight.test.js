@@ -392,6 +392,10 @@ describe('the checks that run commands', () => {
     assert.equal(unrunnable(at(127, 'sh: pnpm: command not found'), context), 'pnpm is not on PATH');
     assert.equal(unrunnable(at(127, 'sh: 1: vitest: not found'), context), '`vitest` is not on PATH (exit 127)');
     assert.equal(unrunnable(at(127, ''), context), 'a command it calls is not on PATH (exit 127)');
+    // cmd.exe exits 1 for a command it cannot find; the sentence is the signal.
+    const windows = "'pnpm' is not recognized as an internal or external command,\r\noperable program or batch file.";
+    assert.equal(unrunnable(at(1, windows), context), 'pnpm is not on PATH');
+    assert.equal(unrunnable(at(1, "'vitest' is not recognized as an internal or external command,"), context), '`vitest` is not on PATH (exit 1)');
   });
 
   test('schemas: skipped when the diff cannot have changed them', async () => {
