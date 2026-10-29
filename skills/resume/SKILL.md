@@ -56,9 +56,11 @@ instead of the requirement that was.
    - checked out nowhere: `git fetch . upstream/main:main`, which refuses
      anything but a fast-forward;
    - checked out in a tree: `git -C <that tree> merge --ff-only upstream/main`,
-     and only if `git -C <that tree> status --porcelain` is empty.
+     and only if `git -C <that tree> status --porcelain --untracked-files=no`
+     is empty. Untracked files do not stop it: a fast-forward that would
+     overwrite one refuses on its own, and one it does not touch is not at risk.
 
-   Skip it and say why when that tree is dirty, or when
+   Skip it and say why when that tree has tracked changes, or when
    `git rev-list --count upstream/main..main` is not 0. A `main` ahead of
    upstream carries a commit somebody made on the base branch, and the person
    decides what happens to it. Nothing else is touched in that tree.
