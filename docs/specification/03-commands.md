@@ -16,13 +16,13 @@ its own.
 | `/pd:plan-review <issue>` | issue | `plan-review.md` | — | opus, fresh | — |
 | `/pd:exec <issue> [T*]` | issue/task | code, commits, `receipts/*` | `implemented` | sonnet workers | — |
 | `/pd:validate <issue>` | issue | `validation.md` + artefacts | `validated` | sonnet | — |
-| `/pd:audit <issue>` | issue | `audit.md` | `audited` | opus, fresh | — |
-| `/pd:slice <issue>` | issue | `slices.md` — the PR graph | `sliced` | opus, fresh | human: approval |
+| `/pd:audit <issue>` | issue | `audit.md` | `audited` | sonnet + opus auditor, fresh | — |
+| `/pd:slice <issue>` | issue | `slices.md` — the PR graph | `sliced` | sonnet + sonnet slicer, fresh | human: approval |
 | `/pd:preflight <issue\|slice>` | issue/slice | pass/fail + output | `preflight-green` | sonnet | — |
-| `/pd:pr <issue> [slice]` | issue | branches, PR bodies, open PRs | `pr-open` | opus | **push gate** |
+| `/pd:pr <issue> [slice]` | issue | branches, PR bodies, open PRs | `pr-open` | sonnet | **push gate** |
 | `/pd:pr-status` | — | dashboard across open PRs | — | sonnet | — |
 | `/pd:pr-sync <pr#>` | PR | decision table → plan amendment → fixes → `pr diff` → replies | — | opus + sonnet resolvers | human: the decisions, the amendment; **push gate** after the diff; replies |
-| `/pd:resume <issue>` | issue | drift analysis, rebase, amendment | — | opus | — |
+| `/pd:resume <issue>` | issue | drift analysis, rebase, amendment | — | sonnet + opus conflict analyst | — |
 | `/pd:review-pr <pr#>` | PR | `reviews/<pr>.md` | — | opus + 4 sonnet axes | — |
 | `/pd:quickfix <issue>` | issue | fix + PR | `pr-open` | sonnet | **push gate** |
 | `/pd:close <issue>` | issue | knowledge harvest, worktree cleanup | `merged` | sonnet | — |

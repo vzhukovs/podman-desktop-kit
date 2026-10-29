@@ -39,7 +39,7 @@ the previous and next section, and, where they exist, to the matching part of
 | 8 | [MCP servers: what actually makes a difference](08-mcp-servers.md) | which servers to take and which not, why no `.mcp.json` ships; 8.1 e2e tests as an output; 8.2 how Playwright reaches the Electron application |
 | 9 | [Configuration](09-configuration.md) | the three layers and how they merge, the YAML subset, what each key decides, the package map |
 | 10 | [Scenario coverage](10-scenarios.md) | the route for each of the brief's scenarios, and scenarios 6–15 the brief did not name |
-| 11 | [Known weaknesses of this design](11-known-weaknesses.md) | ten places the design is known to be weak, stated rather than discovered later |
+| 11 | [Known weaknesses of this design](11-known-weaknesses.md) | twelve places the design is known to be weak, stated rather than discovered later |
 | 12 | [Delivery order](12-delivery-order.md) | stages 0–5, what each gives and its readiness signal; skills rather than commands |
 | 13 | [Status: what has been verified, and what has not](13-status.md) | what has run against live upstream and its evidence, what has never been executed, and the lessons and measurements behind both |
 

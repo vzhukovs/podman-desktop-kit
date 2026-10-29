@@ -77,6 +77,26 @@ Stated here rather than discovered later.
     slice hypothesis that claims additivity without the closure is the specific
     error that has now been made once and caught once.
 
+11. **The tree guard covers some commands, not all.** `preflight`, `audit`,
+    `validate`, `e2e stability`, `task start` and the `slice` commands that read
+    the tree (`suggest`, `set`, `join`, `materialize`, `cascade`) refuse to run in
+    another issue's tree and print the line that would run them in the right
+    one. `publish`, `pr reply`, `defer` and `amendment` do not check: for them
+    the `UserPromptSubmit` hook, which tells the session to move before the
+    skill starts, is the only guard — and a hook that instructs is a prompt,
+    not a gate. The way it would show is a reply or a deferral sent for the
+    right issue from the wrong tree.
+
+12. **Materializing a slice moves the tree the session stands in.**
+    `slice materialize` checks the slice's branch out in the issue's tree, and
+    `slice cascade` does the same for each dependent it rebases, so
+    after `/pd:pr` on a graph of several slices that tree stands on the branch
+    of the last one published, not on the working branch. With one slice that is
+    exactly what the review round needs. With several, the next phase starts
+    on a slice branch it may not expect. Building
+    slice branches in `verify-DESKTOP-<n>`, which already exists for
+    verification, would leave the issue's tree alone.
+
 ---
 
 **In brief** — [`architecture/`](../architecture/README.md): [7 · Known weaknesses](../architecture/07-known-weaknesses.md)
