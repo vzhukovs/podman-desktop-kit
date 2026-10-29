@@ -9,6 +9,47 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-10-29
+
+### Added
+
+- `pdkit preflight --body-from-pr <k>` reads the body of a pull request that is
+  already open, for pass two after a rebase or a review round. Sessions on
+  DESKTOP-19818 and DESKTOP-19901 had each improvised `gh pr view --json body`
+  to feed `--body`. The hint after pass one names it when the pull request is
+  open.
+
+### Changed
+
+- Preflight no longer runs typecheck, lint and tests again on a commit that
+  `slice verify` has just passed. It reuses the run when the receipt validates,
+  exited 0, names this exact commit, and the tree has no tracked change. On
+  DESKTOP-19818, verify and preflight together outlived a 600-second timeout.
+- `pr list` writes threads as `4 open of 5`. `4/5` was read as four of five
+  resolved, when four were still open.
+
+### Fixed
+
+- `pr threads` keeps the replies in a thread, not only the first comment, and
+  names who spoke last (`replies`, `lastAuthor`, `lastAt`). Seeing only the
+  first comment, a sync drafted an answer the author had already posted, and
+  missed that a reviewer had made the same request in a reply.
+- `pr refresh` right after a push no longer reports `ci pass` from the few
+  quick checks that have started. A job that ran on the previous head and has
+  not reported on this one counts as pending.
+- `pr list` shows a replaced pull request as `superseded by #k`. It writes
+  `unread` instead of registration defaults for a record never read. It puts
+  the `←` marker only on open pull requests.
+- Preflight reports a script that could not start (exit 127, for example
+  `pnpm` not on PATH) as the environment, not as failing tests. It still
+  blocks.
+- The note after preflight pass one counts the body-dependent checks that
+  actually lacked the body. It used to say all eight judged nothing, while five
+  had answered from the diff alone.
+- Skills: `close` leaves the worktree before `--finish` removes it. `resume`
+  fast-forwards `main` past untracked files. `pr-sync` reads a thread down to
+  its last reply.
+
 ## [0.11.2] - 2026-10-23
 
 ### Fixed
@@ -2252,7 +2293,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.10.4...v0.11.0
