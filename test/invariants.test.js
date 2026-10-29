@@ -192,10 +192,9 @@ describe('the handoff between skills', () => {
     // mistakes verbatim, including the names of commands that never existed.
     const files = [
       ...(await skillNames()).map((name) => join(ROOT, 'skills', name, 'SKILL.md')),
-      join(ROOT, 'docs', 'configuration.md'),
       ...(
         await Promise.all(
-          ['architecture', 'specification', 'workflows'].map(async (dir) =>
+          ['architecture', 'configuration', 'specification', 'workflows'].map(async (dir) =>
             (await readdir(join(ROOT, 'docs', dir), { recursive: true }))
               .filter((name) => name.endsWith('.md'))
               .map((name) => join(ROOT, 'docs', dir, name)),

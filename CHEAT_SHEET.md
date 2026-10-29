@@ -7,7 +7,7 @@ it will run, and what to do when something refuses you.
 |---|---|
 | every scenario, in full | [`docs/workflows/`](docs/workflows/README.md) |
 | what a step guarantees, and why it stops there | [`docs/specification/`](docs/specification/README.md) |
-| config keys and what each decides | [`docs/configuration.md`](docs/configuration.md) |
+| config keys and what each decides | [`docs/configuration/`](docs/configuration/README.md) |
 | installing, and what is proven against a live repository | [`README.md`](README.md) |
 
 ---

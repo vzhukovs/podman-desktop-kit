@@ -71,6 +71,6 @@ file.
 
 ---
 
-**Every key in full** — [`configuration.md`](../configuration.md): the three config layers and what every key decides.
+**Every key in full** — [`configuration/`](../configuration/README.md): the three config layers, and every key in [part 3](../configuration/03-keys.md).
 
 ← [8 · MCP servers](08-mcp-servers.md) · [Contents](README.md) · [10 · Scenario coverage](10-scenarios.md) →

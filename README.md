@@ -198,7 +198,7 @@ absent:
 
 The plugin ships no `.mcp.json` on purpose: a plugin-level MCP declaration would
 load for everyone, and these are meant to be optional. Configure them yourself;
-see [`docs/configuration.md`](docs/configuration.md).
+see [`docs/configuration/`](docs/configuration/README.md).
 
 Playwright is the one with a setup detail worth stating here. `pdkit validate
 launch` starts the application with remote debugging on and prints the endpoint;
@@ -221,7 +221,7 @@ it found, not merely that a server exists.
 | [`docs/workflows/`](docs/workflows/README.md) | every use case, with the commands and the decision points |
 | [`docs/specification/`](docs/specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
 | [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, one part per file |
-| [`docs/configuration.md`](docs/configuration.md) | the three config layers and what every key decides |
+| [`docs/configuration/`](docs/configuration/README.md) | the three config layers and what every key decides |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to add a command, a skill, an agent or a check — and how to test it |
 | [`RELEASING.md`](RELEASING.md) | versioning, the release runbook, and how users get updates |
 | [`CHANGELOG.md`](CHANGELOG.md) | what each release contains |

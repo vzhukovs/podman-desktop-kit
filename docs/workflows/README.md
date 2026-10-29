@@ -144,4 +144,4 @@ its session, model, effort and subagents:
 |---|---|
 | [`specification/`](../specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
 | [`architecture/`](../architecture/README.md) | the same design in five minutes, one part per file |
-| [`configuration.md`](../configuration.md) | the three config layers and what every key decides |
+| [`configuration/`](../configuration/README.md) | the three config layers and what every key decides |

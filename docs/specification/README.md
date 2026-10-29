@@ -110,4 +110,4 @@ last: they say where the rest is weaker than it sounds.
 |---|---|
 | [`architecture/`](../architecture/README.md) | the same design in five minutes, one part per file |
 | [`workflows/`](../workflows/README.md) | every use case, with the commands and the decision points |
-| [`configuration.md`](../configuration.md) | the three config layers and what every key decides |
+| [`configuration/`](../configuration/README.md) | the three config layers and what every key decides |
