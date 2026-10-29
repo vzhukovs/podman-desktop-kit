@@ -40,12 +40,12 @@ import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
 import * as validation from '../lib/validation.js';
-import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run } from '../lib/preflight/index.js';
+import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run, waitingForBody } from '../lib/preflight/index.js';
 import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
 import { staleCopyright } from '../lib/preflight/checks/maintainer-rules.js';
-import { candidatesFor, runScript, scopedScripts, typecheckScripts } from '../lib/preflight/scope.js';
+import { candidatesFor, runScript, scopedScripts, typecheckScripts, unrunnable } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
 const execFileAsync = promisify(execFile);
@@ -368,11 +368,51 @@ describe('the checks that run commands', () => {
     assert.equal(report.ok, false);
   });
 
+  // DESKTOP-19901: a node upgrade left the package manager off PATH, and three
+  // checks said "failing" with the remedy for broken tests.
+  test('a package manager that is not on PATH is the environment, not the code', async () => {
+    const prepared = await context();
+    const manager = 'pdkit-no-such-manager';
+    const report = await run({ ...prepared, config: { ...prepared.config, repo: { ...prepared.config?.repo, package_manager: manager } } });
+
+    for (const id of ['tests', 'lint', 'typecheck']) {
+      const result = report.results.find((entry) => entry.id === id);
+      assert.equal(result.status, 'fail', `${id}: nothing was measured, so it cannot pass`);
+      assert.match(result.summary, new RegExp(`could not run: ${manager} is not on PATH — the environment, not the code`), id);
+      assert.doesNotMatch(result.remedy ?? '', /fix the tests/, id);
+    }
+    assert.equal(report.ok, false);
+  });
+
+  test('unrunnable: only a command-not-found exit counts, and it names what was missing', () => {
+    const context = { config: {} };
+    const at = (exitCode, stderr) => ({ exitCode, stderr, stdout: '' });
+
+    assert.equal(unrunnable(at(1, 'sh: pnpm: command not found'), context), null, 'exit 1 is a script that ran and failed');
+    assert.equal(unrunnable(at(127, 'sh: pnpm: command not found'), context), 'pnpm is not on PATH');
+    assert.equal(unrunnable(at(127, 'sh: 1: vitest: not found'), context), '`vitest` is not on PATH (exit 127)');
+    assert.equal(unrunnable(at(127, ''), context), 'a command it calls is not on PATH (exit 127)');
+  });
+
   test('schemas: skipped when the diff cannot have changed them', async () => {
     const report = await run(await context());
     const result = report.results.find((entry) => entry.id === 'schemas');
 
     assert.equal(result.status, 'skip');
+  });
+
+  // DESKTOP-19818: "8 checks read the pull request body and had none, so they
+  // judged nothing yet" above five of those eight printing a verdict.
+  test('only the checks that skipped for want of the body are counted as waiting for it', async () => {
+    const report = await run({ ...(await context()), prBody: null });
+    const waiting = waitingForBody(report.results);
+
+    for (const id of waiting) assert.ok(BODY_DEPENDENT.includes(id), id);
+    for (const result of report.results.filter((entry) => BODY_DEPENDENT.includes(entry.id))) {
+      assert.equal(waiting.includes(result.id), /the PR body is not drafted yet/.test(result.summary), `${result.id}: ${result.summary}`);
+    }
+    assert.ok(waiting.includes('pr-body-template'), 'the template check always needs the body');
+    assert.ok(waiting.length < BODY_DEPENDENT.length, 'on this diff some body-dependent checks answer from the diff alone');
   });
 
   test('a missing script is a skip that says so, never a silent pass', async () => {
@@ -1392,6 +1432,34 @@ describe('a sliced issue', () => {
     assert.match(report.results[0].remedy, /slice verify/);
 
     await gitIn(['reset', '--hard', 'HEAD~1'], sliced);
+  });
+
+  // DESKTOP-19818: `slice verify` and the preflight after it ran the same
+  // typecheck, lint and tests on the same commit, and together outlived a
+  // 600-second tool timeout.
+  test('scripts the verification already ran on this very commit are not run again', async () => {
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/1-api`], sliced);
+    await slice.verifyAll({ issue: ISSUE, repoRoot: sliced, home: slicedHome, config: config(), packageMap: packageMap(sliced) });
+    const receipt = await readFile(join(slicedHome, 'issues', String(ISSUE), 'verify', 'S1.md'), 'utf8');
+    const head = (await gitIn(['rev-parse', 'HEAD'], sliced)).trim();
+    assert.ok(receipt.includes(`- Commit: ${head}`), 'the fixture has to verify the branch commit itself');
+
+    const report = await run(await on(), await loadChecks(['tests', 'lint', 'typecheck']));
+    for (const result of report.results) {
+      assert.equal(result.status, 'pass', `${result.id}: ${result.summary}`);
+      assert.match(result.summary, new RegExp(`passed in slice verify on ${head.slice(0, 11)}`), result.id);
+    }
+
+    // A tracked change is code that commit does not hold: run them.
+    const path = join(sliced, API);
+    const original = await readFile(path, 'utf8');
+    await writeFile(path, `${original}// edited\n`);
+    try {
+      const dirty = await run(await on(), await loadChecks(['lint']));
+      assert.doesNotMatch(dirty.results[0].summary, /passed in slice verify/);
+    } finally {
+      await writeFile(path, original);
+    }
   });
 
   test('and fails when the attached run has been edited', async () => {

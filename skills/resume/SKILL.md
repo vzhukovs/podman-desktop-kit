@@ -118,7 +118,8 @@ instead of the requirement that was.
    depended on, treat it as semantic even when nothing complained.
 
 4. **Re-verify from scratch.** `pdkit slice verify --issue <n> --all
-   --standalone`, then `pdkit preflight <n> --slice <i>`. A previous green
+   --standalone`, then `pdkit preflight <n> --slice <i>`, and pass two with
+   `--body-only --body-from-pr <k>` when the pull request is open. A previous green
    describes a diff that no longer exists — and the digest check will say so
    before you do.
 

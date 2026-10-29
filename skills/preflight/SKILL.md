@@ -14,8 +14,9 @@ reports and, where a failure is unambiguous, offers to fix it.
 
 1. `pdkit preflight <issue>` — the full set. It runs the repository's real
    test, lint and typecheck scripts, so it takes minutes on podman-desktop.
-2. Once a PR body exists: `pdkit preflight <issue> --body-only --body <file>`.
-   Four checks read the body, and re-running the whole suite to re-read a
+2. Once a PR body exists: `pdkit preflight <issue> --body-only --body <file>`,
+   or `--body-from-pr <k>` when the pull request is already open and its body
+   on GitHub is the one to judge. Eight checks read the body, and re-running the whole suite to re-read a
    paragraph is minutes of nothing.
 3. Present the report as it came. Show the `remedy` line for every failure —
    it is where the check says what to do.

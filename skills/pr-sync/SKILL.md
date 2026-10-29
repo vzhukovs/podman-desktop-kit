@@ -269,7 +269,9 @@ or into nothing at all.
    than rebasing it into a lie.
 
 8. **Preflight.** `pdkit preflight <n> --slice <i>`, both passes, as in
-   `/pd:pr`. A previous green means nothing now.
+   `/pd:pr`. A previous green means nothing now. Pass two reads the body that
+   is on the pull request: `--body-only --body-from-pr <k>`, unless this round
+   changes the body, in which case `--body <file>` with the new one.
 
    `maintainer-rules` is advisory, but a hit that was **not** a row in step 4
    is something a fix in this round introduced. Go back to step 4 with it.
