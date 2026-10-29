@@ -38,7 +38,8 @@ the two disagree.
 
 ## First publication
 
-The repository has not been pushed anywhere yet. Once:
+Done once, for 0.1.0, and kept as the record of how. Every version since is a
+GitHub release on `vzhukovs/podman-desktop-kit`; `gh release list` shows them.
 
 ```bash
 gh repo create vzhukovs/podman-desktop-kit --public --source . --remote origin
@@ -70,9 +71,13 @@ git pull --ff-only
 #    .claude-plugin/plugin.json  ->  "version": "0.2.0"
 #    package.json                ->  "version": "0.2.0"
 
-# 3. Move [Unreleased] into a dated release heading, and add the link
-#    definition at the bottom of CHANGELOG.md.
+# 3. Move what is under [Unreleased] into a dated release heading, and add the
+#    link definition at the bottom of CHANGELOG.md. Leave the empty
+#    ## [Unreleased] heading in place: test/release.test.js requires it.
 #    ## [0.2.0] - YYYY-MM-DD
+#    A release a user must do anything for opens with ### Upgrading: the three
+#    update commands, the gate self-test, and what to change — and, for a
+#    MINOR, the one sentence on why it is not a PATCH.
 
 # 4. The suite, including the version-sync guard.
 npm test
@@ -115,9 +120,12 @@ If step 9 is red, fix it on `main`, push, and wait for green again. Do not
 move the release commit to the fix: the version bump and the fix are two
 commits, and the tag goes on whichever is newest once CI passes.
 
-Step 7 is not ceremony. Of the twenty-one skills this plugin ships, twenty have
-never been invoked through a Claude Code session, and every check above passes
-whether or not the manifest loads.
+Step 7 is not ceremony. Of the twenty-four skills this plugin ships, ten have
+never been invoked through a Claude Code session — see
+[Status and limitations](README.md#status-and-limitations) — and every check
+above passes whether or not the manifest loads. CI's own manifest job runs
+`claude plugin validate` without blocking, so step 5 is still the one that
+counts.
 
 ## How a user receives an update
 

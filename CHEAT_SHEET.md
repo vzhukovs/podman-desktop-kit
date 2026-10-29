@@ -5,8 +5,10 @@ it will run, and what to do when something refuses you.
 
 | For the long answer | Read |
 |---|---|
-| every scenario, in full | [`docs/workflows/`](docs/workflows/README.md) |
+| every scenario, in full, one file each | [`docs/workflows/`](docs/workflows/README.md) |
+| sessions, models, thresholds, the push gate — the reference half of the manual | [`docs/workflows/reference/`](docs/workflows/reference/README.md) |
 | what a step guarantees, and why it stops there | [`docs/specification/`](docs/specification/README.md) |
+| the same design in five minutes | [`docs/architecture/`](docs/architecture/README.md) |
 | config keys and what each decides | [`docs/configuration/`](docs/configuration/README.md) |
 | installing, and what is proven against a live repository | [`README.md`](README.md) |
 
@@ -118,7 +120,7 @@ the reporter still has to confirm.
 | `/pd:validate <n>` | the code is written | `implemented` | evidence from the running app → `validated` |
 | `/pd:audit <n>` | validation is done | `validated` | the diff against the plan, in fresh context → `audited` |
 | `/pd:slice <n>` | the audit is clean | `audited` | a verified slice graph → `sliced` → **you approve** → `slices-approved` |
-| `/pd:preflight <n>` | before every push | the slice branch cut | twenty-one checks, in two passes → `preflight-green` |
+| `/pd:preflight <n>` | before every push | the slice branch cut | twenty-three checks, in two passes → `preflight-green` |
 | `/pd:pr <n> [slice]` | preflight is green | `preflight-green` and a body | push and pull request → `pr-open`. **You confirm, per branch** |
 | `/pd:pr-status` | any time | — | CI, threads and idleness across open PRs. Read-only |
 | `/pd:pr-sync <pr>` | a reviewer answered | an open pull request | thread triage, the fixes, draft replies |
@@ -172,6 +174,10 @@ pdkit receipt write --issue <n> --task T1  # runs "Done when" and records what i
 pdkit task attempts --issue <n>            # failed captures; three blocks the task
 pdkit task stop
 pdkit plan check <n>                       # the mechanical half of plan review
+pdkit checkpoint <n> --phase exec          # before a phase that changes things;
+                                           # exec, slice, pr-sync or resume
+pdkit rollback <n>                         # what that phase would give back
+pdkit rollback <n> --confirm               # ... and give it back
 ```
 
 **Verify**
@@ -199,8 +205,10 @@ pdkit pr supersede <old> --by <new> --body <f> [--confirm]
                                            # close a replaced PR upstream, with the comment
 pdkit publish --issue <n> --branch <b> --title <t> --body <file> [--slice <i>]
 pdkit publish --issue <n> --branch <b> --pr <k>   # an open PR, after a review round
+pdkit pr diff <k> --stat                   # what a push would change on an open PR
 pdkit pr refresh <k>                       # read GitHub into the local record
 pdkit pr ci <k>                            # the CI verdict, measured against other open PRs
+pdkit pr threads <k>                       # every thread to its last reply, mapped to slices
 ```
 
 **Wrap up**
@@ -276,7 +284,7 @@ spelled command is not a fix.
 
 ## What preflight will ask of you
 
-Twenty-one checks. Every one blocks except the two marked `warn`.
+Twenty-three checks. Every one blocks except the four marked `warn`.
 
 | Check | | What satisfies it |
 |---|---|---|
@@ -285,7 +293,7 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `lint` | | `pnpm lint:check` |
 | `typecheck` | | the whole repository's `typecheck` — a type error lands in the package that consumes a change (`preflight.typecheck_scope: packages` to narrow it) |
 | `spdx` | | the house header on every **added** file |
-| `conventional-commits` | | a type commitlint accepts, with a package scope |
+| `conventional-commits` | | a type commitlint accepts. A missing package scope is a note, not a failure — but the maintainer's review asks for one |
 | `signed-off-by` | | exactly one trailer per commit |
 | `schemas` | | `pnpm generate:schemas` produces no diff |
 | `extension-api` | | the obligations that come with touching the public API |
@@ -301,21 +309,27 @@ Twenty-one checks. Every one blocks except the two marked `warn`.
 | `e2e-environment` | | Notes for reviewers says what the test needs and where it will not run |
 | `validation-evidence` | | every validation step has an artefact, or the body explains |
 | `debug-leftovers` | `warn` | no `console.log`, `.only`, `.skip`, `@ts-ignore`, bare `any` in added lines |
+| `maintainer-rules` | `warn` | added lines clear of what upstream's reviewers flag: `vi.spyOn` in a new test, `as unknown as`, `../` imports, `export function` in `packages/main`, a hardcoded product name or colour — see `knowledge/maintainer-rules.md` |
 | `ci-blind-spots` | | build, packaging or platform behaviour CI cannot judge is named in the body |
 
-**It runs twice, and the second pass is not ceremony.** Four checks read the pull
-request body, so on the first pass they judge nothing. Draft the body, then:
+**It runs twice, and the second pass is not ceremony.** Eight checks read the
+pull request body, so on the first pass the ones that need it judge nothing.
+Draft the body, then:
 
 ```bash
 pdkit preflight <n> --body-only --body <file>
+pdkit preflight <n> --body-only --body-from-pr <k>   # after a rebase or a review round:
+                                                     # the body the open PR already has
 ```
 
 Until they have actually seen a body, `pdkit state <n> --to preflight-green` will
 refuse.
 
 Two things to expect: preflight takes minutes, because it runs the repository's
-real scripts. And a slice needs its branch cut first — `pdkit slice materialize`
-comes before `pdkit preflight --slice <i>`.
+real scripts — unless `slice verify` has just passed on this exact commit with a
+clean tree, in which case it reuses that run for tests, lint and typecheck. And
+a slice needs its branch cut first — `pdkit slice materialize` comes before
+`pdkit preflight --slice <i>`.
 
 ---
 
@@ -325,24 +339,35 @@ Everything lives outside the repository, so service files can never reach a diff
 `$PDKIT_HOME` defaults to `~/.pdkit/podman-desktop`.
 
 ```text
-config.yaml         your layer: fork slug, thresholds, script names
-journal             append-only, every issue, every event, every agent run
-package-map.json    which package and layer owns which path
-gates/              live consent tokens
-reviews/<k>.md      reviews of other people's pull requests
+config.yaml           your layer: fork slug, thresholds, script names, editor.path
+journal/YYYY-MM.md    append-only, every issue, every event, every agent run
+package-map.json      which package and layer owns which path
+gates/                live consent tokens
+active/               which task each working tree is executing
+checkpoints/<n>/      what pdkit rollback goes back to
+archive/<n>/          what pdkit reset moved out of the way
+cost/YYYY-MM-DD.json  pdkit cost --snapshot, the baseline a later run compares to
+reviews/<k>.md        reviews of other people's pull requests
 issues/<n>/
-  issue.md          triage: the issue as read, what you knew going in, the R-set
-  research.md       what the scouts found
-  plan.md           the plan, its file-ownership map and done-criteria
-  tasks/T1.md       one per task: what it owns, and when it is done
-  receipts/T1.md    what the "Done when" command actually printed
-  validation/       captures: runs, screenshots, the e2e series
-  verify/S1.md      each slice built alone, and what came back
-  slices.md         the graph, merge order, and what each PR body must carry
-  amendments/A1.md  a change to an approved plan, and who approved it
-  deferrals/D1.md   set aside, with a draft of the issue that would settle it
-  pr-bodies/        what was published, as published
-  audit.md          the diff against the plan
+  state.json          the machine: state, route, who approved what. Only pdkit writes it
+  issue.md            triage: the issue as read, what you knew going in, the R-set
+  archaeology.json    redo only: the previous attempt, what reverted it
+  research.md         what the scouts found
+  plan.md             the plan, its file-ownership map and done-criteria
+  plan-review.md      what the critic found
+  tasks/T1.md         one per task: what it owns, and when it is done
+  receipts/T1.md      what the "Done when" command actually printed
+  validation.json/.md the steps and their evidence; .md is rendered
+  validation/         captures: runs, screenshots, the e2e series
+  audit.md            the diff against the plan
+  slices.json/.md     the graph, merge order, and what each PR body must carry
+  verify/S1.md        each slice built alone, and what came back
+  preflight.json      every run, both passes — what preflight-green is earned from
+  prs.json, prs/<k>.md  the pull requests: CI, threads, merged or superseded
+  amendments/A1.md    a change to an approved plan, and who approved it
+  deferrals/D1.md     set aside, with a draft of the issue that would settle it
+  blockers/           drafts of upstream issues this one waits on
+  findings.md         answered only: the reproduction and the comment draft
 ```
 
 Read the journal rather than guessing what happened: `pdkit journal --issue <n>`
@@ -352,10 +377,12 @@ for one issue, `--event denied` for everything the gate refused.
 
 ## Rules that never bend
 
-These are upstream's, not the plugin's. Preflight checks all five.
+These are upstream's, not the plugin's. Preflight checks all five; only the
+scope is a note rather than a failure, because commitlint does not require it.
 
 - **SPDX header** on every added file, in the repository's house format
-- **Conventional commit with a package scope** — `fix(main): …`, not `fix: …`
+- **Conventional commit with a package scope** — `fix(main): …`, not `fix: …`.
+  Reviewers ask for the scope even where the tooling does not
 - **Exactly one `Signed-off-by`** per commit; the Husky hook adds it
 - **`pnpm generate:schemas`** whenever a configuration or preference schema moves
 - **Squash with `git reset --soft <base> && git commit`** — never `rebase -i`,
@@ -375,6 +402,9 @@ These are upstream's, not the plugin's. Preflight checks all five.
 | something must be set aside | `pdkit defer new --issue <n> --what "<it>"` — drafts the follow-up issue |
 | an approved plan has to change | `pdkit amendment new --issue <n> --values <f>` (requirement changes as `rows`), then `approve` — applies them to the R-IDs and plan.md |
 | an approved amendment did not reach the record, plan.md or tasks/ | `pdkit amendment sync <A> --issue <n>` — writes missing task files, withdraws replaced ones |
+| a phase went wrong and should be undone, not restarted | `pdkit rollback <n>` to see what comes back, then `--confirm`. Published work and the journal stay |
+| review wants another change landed before this one | `pdkit issue draft-blocker <n> --what "<it>"`, publish it yourself, then `pdkit issue block <n> --by <issue> --reason "<why>"` |
+| review wants the slices as one pull request | `pdkit slice join --issue <n> --slices 1,2,3`, then `pdkit pr supersede <old> --by <new> --body <f>` for each one it replaces |
 | a token was issued and should not have been | `pdkit gate revoke` |
 | upstream moved under an open branch | `/pd:resume <n>` — drift, rebase, amendment |
 | a worktree is in the way | `pdkit worktree remove --issue <n>` |

@@ -8,15 +8,18 @@ carry those pull requests through review.
 It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
-> **Status: 0.6.0, pre-1.0.** Used on eleven podman-desktop issues: ten pull
-> requests published upstream, five of them merged — four on the
-> `standard` route, one on `quickfix` — and one issue carried as a two-slice
-> graph into two pull requests. Thirteen of the twenty-four skills have run as
-> `/pd:*` in a session; `editor`, `knowledge`, `open`, `pr-status`, `quickfix`, `reset`,
-> `resume` and `review-pr` have not, nor have the three that trigger by meaning. Pre-1.0,
-> a minor release may still change a command or the state machine — see
-> [RELEASING.md](RELEASING.md). [Status and limitations](#status-and-limitations)
-> has the full accounting, with evidence per line.
+> **Status: 0.11.3, pre-1.0.** Used on thirteen podman-desktop issues: fifteen
+> pull requests published upstream, seven of them merged, and six issues carried
+> all the way to `merged` — four on the `standard` route, two on `quickfix`. One
+> issue went out as a two-slice graph into two pull requests; another as three
+> slices that review asked to be one, rejoined by `slice join` into a single
+> pull request that superseded the three. Fourteen of the twenty-four skills have
+> run as `/pd:*` in a session; `editor`, `knowledge`, `open`, `pr-status`,
+> `reset`, `resume` and `review-pr` have not, nor have the three that trigger by
+> meaning. Pre-1.0, a minor release may still change a command or the state
+> machine — see [RELEASING.md](RELEASING.md).
+> [Status and limitations](#status-and-limitations) has the full accounting,
+> with evidence per line.
 
 ## Why it exists
 
@@ -160,9 +163,12 @@ puts one there — a journal entry, or an artefact you can point at.
 | The gate firing as a hook rather than as a function | a `denied` journal entry from a handler the host launched |
 | Slicing from a published pull request, and the archaeology behind `redo` | dry runs against upstream PRs, no writes |
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
-| `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal |
+| `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal. Six issues closed this way: 18248, 18832, 18834, 18835, 17221 and 19901, and on 18832, 18834 and 18835 the worktrees of a squash-merged pull request removed in the same run |
+| Three slices joined into one pull request after review | issue #19818: [#19829](https://github.com/podman-desktop/podman-desktop/pull/19829), [#19830](https://github.com/podman-desktop/podman-desktop/pull/19830) and [#19831](https://github.com/podman-desktop/podman-desktop/pull/19831) cut by layer, rejected as three, rejoined as [PR #19849](https://github.com/podman-desktop/podman-desktop/pull/19849) with a commit per old slice; the three journalled as `pr-closed … superseded by #19849` |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
-| Thirteen skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889; `/pd:validate` and `/pd:pr` on 18833, 18835 and 18915; `/pd:close` on 18835 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
+| The SessionStart summary fired by the host | sixteen `SessionStart` attachments in session transcripts whose command is `pdkit hook session-start` and whose content is the summary |
+| Windows | ubuntu, macOS and Windows all run the suite in CI, and all three block. Windows has been blocking and green since 2026-08-31, after the two defects that kept it from testing anything were fixed |
+| Fourteen skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889; `/pd:validate` and `/pd:pr` on 18833, 18835 and 18915; `/pd:close` on 18835; `/pd:quickfix` on 19901 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
 | Review sending a plan back | `plan check` green, `pd-plan-critic` returning three must-change findings anyway, and the issue going `planned` → `triaged` → replanned |
 | The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journalled as `denied` |
 
@@ -170,9 +176,8 @@ puts one there — a journal entry, or an artefact you can point at.
 
 | What | Why it matters |
 |---|---|
-| **Eleven of the twenty-four skills** — `editor`, `open`, `knowledge`, `pr-status`, `quickfix`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, the `quickfix` route, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
-| **Windows.** ubuntu and macOS are green; the Windows job runs, reports, and does not block | It tested nothing at all until 2026-08-31 — the test glob reached node with its quotes still attached under cmd.exe, matched no files and exited 0. Fixing that showed `pdkit` had never started on Windows either: the entry point imported by filesystem path, which ESM refuses there. So the gate had never guarded a Windows session. Both fixed; 96 assertions remain, all path separators and CRLF in captured output |
-| **Three of the seven hook events** | `pre-bash` has two genuine firings, `subagent-stop` has host firings as `agent-done` in the journal (watched by `pdkit doctor`), and `pre-write` is exercised through the manifest. `post-write`, `session-start`, `pre-compact` and `prompt-submit` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
+| **Ten of the twenty-four skills** — `editor`, `open`, `knowledge`, `pr-status`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
+| **Three of the seven hook events** | `pre-bash` has genuine firings, `subagent-stop` has host firings as `agent-done` in the journal (watched by `pdkit doctor`), `session-start` has host firings in session transcripts, and `pre-write` is exercised through the manifest. `post-write`, `pre-compact` and `prompt-submit` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
 | **`cascade`, and rebasing dependents** | Cutting, verifying, materialising and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
 | **`replyToThread`, both GraphQL mutations** | `pr-sync` itself has now run against real threads on #18889 — read, classified, two of them fixed, two turned into approved amendments. Only the reply was posted by hand, by choice. That last step writes into somebody else's pull request, which is why it will not be closed with synthetic material |
 | **`pd-conflict-analyst`** | The conflicts it exists to classify have now happened and are journalled, so this stops waiting for material. What is unknown is the agent: the session classified them itself, and whether a fresh-context read reaches the same verdict is a different question |
@@ -220,8 +225,9 @@ it found, not merely that a server exists.
 |---|---|
 | [`docs/workflows/`](docs/workflows/README.md) | every use case, with the commands and the decision points |
 | [`docs/specification/`](docs/specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
-| [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, one part per file |
+| [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, in seven parts of a file each |
 | [`docs/configuration/`](docs/configuration/README.md) | the three config layers and what every key decides |
+| [`CHEAT_SHEET.md`](CHEAT_SHEET.md) | the cycle on one page: what to run, what it needs first, what a refusal means |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to add a command, a skill, an agent or a check — and how to test it |
 | [`RELEASING.md`](RELEASING.md) | versioning, the release runbook, and how users get updates |
 | [`CHANGELOG.md`](CHANGELOG.md) | what each release contains |
@@ -236,9 +242,11 @@ skills/            24 skills — the workflow surface
 agents/            14 agents — scouts, implementers, auditors, reviewers
 hooks/hooks.json   seven entries; the rules live in lib/hooks/
 knowledge/         upstream constitution, maintainer review rules, package map, known traps
-templates/         plan, task, receipt, validation, slices, PR body, review report
+templates/         issue, plan, task, receipt, validation, slices, PR body, amendment,
+                   deferral, blocker, findings, archaeology, review report
 test/              node --test, zero dependencies
-docs/              the documents above
+docs/              workflows/, specification/, architecture/, configuration/ —
+                   one file per scenario, section or part
 ```
 
 ## Licence

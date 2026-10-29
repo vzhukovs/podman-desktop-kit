@@ -5,7 +5,16 @@ design follows from that. Before changing anything, it is worth reading
 [`docs/specification/`](docs/specification/README.md) — at least
 [section 2.2](docs/specification/02-plugin-structure.md#22-state-outside-the-repository), which
 lists the five invariants a change must not break, and [section 6](docs/specification/06-hooks.md), which explains
-why some rules are hooks rather than instructions.
+why some rules are hooks rather than instructions. For the short version,
+[`docs/architecture/`](docs/architecture/README.md) covers the same ground in
+seven parts.
+
+Every document under `docs/` is split one file per section, part or scenario,
+and section numbers are stable: a comment in `lib/` that cites "section 7" means
+[`docs/specification/07-preflight.md`](docs/specification/07-preflight.md). Keep
+it that way — a new section is a new numbered file, linked from its directory's
+`README.md` and from the previous and next files' footers, not a heading
+appended to a neighbour.
 
 ## Environment
 
@@ -44,14 +53,15 @@ a `recommendation` field, that is the boundary being crossed.
 
 | You want to change | Touch | Test |
 |---|---|---|
-| a `pdkit` command | `lib/cli.js` (dispatch + usage) and the module that does the work | the module's own `test/<module>.test.js` |
+| a `pdkit` command | `lib/cli.js` (dispatch, usage and the flag table) and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
 | a deterministic rule | the owning module in `lib/` | same |
-| a hook's behaviour | `lib/hooks/<handler>.js`; the deny rules are data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
-| a preflight check | one file under `lib/preflight/checks/`, registered in `lib/preflight/index.js` | `test/preflight.test.js` |
-| an artefact's shape | `templates/*.md`, registered in `lib/render.js` | `test/render.test.js` |
-| what a skill does | `skills/<name>/SKILL.md` | `test/invariants.test.js` checks every `pdkit` command a skill names exists |
-| what an agent does | `agents/pd-<name>.md` | — |
+| a hook's behaviour | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
+| a preflight check | one file under `lib/preflight/checks/`, its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
+| an artefact's shape | `templates/*.md`, registered in `TEMPLATES` in `lib/render.js` | `test/render.test.js` |
+| what a skill does | `skills/<name>/SKILL.md` | `test/invariants.test.js` checks every `pdkit` command and every `/pd:*` a skill names exists, and that plugin files are reached through `${CLAUDE_PLUGIN_ROOT}/` |
+| what an agent does | `agents/pd-<name>.md` | the same `${CLAUDE_PLUGIN_ROOT}/` check |
 | the shipped knowledge base | `knowledge/*.md` | `pdkit knowledge check` |
+| the documentation | `docs/<area>/`, one file per section, part or scenario; the four root files | `test/invariants.test.js` checks every `/pd:*` named in `docs/` and `README.md` |
 
 ### Adding a `pdkit` command
 
@@ -60,12 +70,22 @@ a `recommendation` field, that is the boundary being crossed.
 2. Add it to `COMMANDS` and to the `switch` in `lib/cli.js`, and write the usage
    line. `test/invariants.test.js` asserts the dispatcher and the exported list
    agree, in both directions.
-3. Document the flags in the usage text. A flag that exists in code and not in
+3. Give it a row in `COMMAND_FLAGS`. Every command refuses a flag it does not
+   declare, and the invariants test fails on a flag a handler reads that no row
+   declares, and on a row that declares one nothing reads.
+4. Document the flags in the usage text. A flag that exists in code and not in
    `--help` is a flag nobody uses — that happened to `close --confirmed`.
+5. If a person would type it, add it to [`CHEAT_SHEET.md`](CHEAT_SHEET.md). That
+   file says the CLI is right when the two disagree, so a missing line there is
+   only a gap, but it is the page people read.
 
 ### Adding a preflight check
 
-A check returns `pass`, `skip` or `fail` with a summary and a remedy.
+A check exports `id`, `blocking` and `run`, and returns `pass`, `skip`, `warn`
+or `fail` with a summary and a remedy. Whether it blocks is the check's own
+export, not the caller's choice. Add a row to the table in
+[section 7](docs/specification/07-preflight.md) and to the preflight table in
+[`CHEAT_SHEET.md`](CHEAT_SHEET.md), and correct the count in both.
 
 - **A skip is never a pass.** If the check could not run, say so and say why. A
   check reporting success where it checked nothing devalues the whole gate.
@@ -174,7 +194,13 @@ file the kernel will not execute.
   repository are long because the reasoning is the part that does not survive in
   code, and the same applies to a pull request body.
 - **Update `CHANGELOG.md`** under `## [Unreleased]` when the change is something a
-  user would notice. `test/release.test.js` keeps that section present.
+  user would notice. `test/release.test.js` keeps that section present. If the
+  user has to do anything about it, say what under `### Upgrading` — see
+  [RELEASING.md](RELEASING.md).
+- **Keep the status honest.** A change that makes something run for the first
+  time against live upstream moves a row in
+  [section 13](docs/specification/13-status.md), with the journal entry or
+  artefact that proves it, and the summary in the README with it.
 - Run `npm test` and, for anything touching hooks, the gate self-test. Say in the
   pull request what you ran.
 
