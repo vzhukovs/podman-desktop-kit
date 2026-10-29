@@ -96,8 +96,8 @@ reasoning, and neither blocks: the degradation is already described.
 
 **In brief** — [`architecture/`](../architecture/README.md): [5 · Validation](../architecture/05-validation.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [§4 — Validating against the running application](../workflows.md#4-validating-against-the-running-application)
+- [§4 — Validating against the running application](../workflows/04-validating.md)
 
 ← [7 · Preflight](07-preflight.md) · [Contents](README.md) · [9 · Configuration](09-configuration.md) →

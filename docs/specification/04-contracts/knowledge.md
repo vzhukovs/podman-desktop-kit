@@ -30,8 +30,8 @@ otherwise two sources of truth diverge and `knowledge/` stops being portable.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [Revising what the plugin thinks it knows](../../workflows.md#revising-what-the-plugin-thinks-it-knows)
+- [Revising what the plugin thinks it knows](../../workflows/reference/knowledge.md)
 
 ← [`/pd:review-pr`](review-pr.md) · [Contents](../README.md) · [5 · Agents and model routing](../05-agents.md) →

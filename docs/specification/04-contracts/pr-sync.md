@@ -72,9 +72,9 @@ reply`, eligible from `pr-open` and `review-in-progress`.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§7 — A pull request that has gone stale](../../workflows.md#7-a-pull-request-that-has-gone-stale)
-- [§7a — Feedback that arrives after the merge](../../workflows.md#7a-feedback-that-arrives-after-the-merge)
+- [§7 — A pull request that has gone stale](../../workflows/07-stale-pr.md)
+- [§7a — Feedback that arrives after the merge](../../workflows/07a-feedback-after-merge.md)
 
 ← [`/pd:pr-status`](pr-status.md) · [Contents](../README.md) · [`/pd:resume`](resume.md) →

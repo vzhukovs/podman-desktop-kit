@@ -24,8 +24,8 @@ means the plan is rewritten, not that approval is refused, and the human decides
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§1 — A bug fix](../../workflows.md#1-a-bug-fix)
+- [§1 — A bug fix](../../workflows/01-bug-fix.md)
 
 ← [`/pd:plan`](plan.md) · [Contents](../README.md) · [`/pd:validate`](validate.md) →

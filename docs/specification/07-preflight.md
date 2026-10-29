@@ -125,8 +125,8 @@ never raised in a review of somebody else's PR.
 
 **In brief** — [`architecture/`](../architecture/README.md): [4 · The slicer](../architecture/04-slicer.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [What preflight actually runs](../workflows.md#what-preflight-actually-runs)
+- [What preflight actually runs](../workflows/reference/preflight.md)
 
 ← [6 · Hooks](06-hooks.md) · [Contents](README.md) · [8 · MCP servers](08-mcp-servers.md) →

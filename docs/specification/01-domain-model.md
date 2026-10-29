@@ -206,11 +206,11 @@ that command exists not to do.
 
 **In brief** — [`architecture/`](../architecture/README.md): [3 · The lifecycle](../architecture/03-lifecycle.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [§6 — An issue that ends in an answer](../workflows.md#6-an-issue-that-ends-in-an-answer)
-- [§9 — The reviewer rejected the approach, not the diff](../workflows.md#9-the-reviewer-rejected-the-approach-not-the-diff)
-- [§11a — Upstream asks you to join open pull requests](../workflows.md#11a-upstream-asks-you-to-join-open-pull-requests)
-- [§16 — Starting one issue over](../workflows.md#16-starting-one-issue-over)
+- [§6 — An issue that ends in an answer](../workflows/06-ends-in-an-answer.md)
+- [§9 — The reviewer rejected the approach, not the diff](../workflows/09-approach-rejected.md)
+- [§11a — Upstream asks you to join open pull requests](../workflows/11a-join-open-prs.md)
+- [§16 — Starting one issue over](../workflows/16-starting-over.md)
 
 ← [0 · References taken and rejected](00-references.md) · [Contents](README.md) · [2 · Plugin structure](02-plugin-structure.md) →

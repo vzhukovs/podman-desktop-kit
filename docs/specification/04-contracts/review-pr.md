@@ -45,8 +45,8 @@ account.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§13 — Reviewing someone else's pull request](../../workflows.md#13-reviewing-someone-elses-pull-request)
+- [§13 — Reviewing someone else's pull request](../../workflows/13-reviewing-others-pr.md)
 
 ← [`/pd:reset`](reset.md) · [Contents](../README.md) · [`/pd:knowledge`](knowledge.md) →

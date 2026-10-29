@@ -42,9 +42,9 @@ one history that cannot be rebuilt.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§8 — Coming back after a break](../../workflows.md#8-coming-back-after-a-break)
-- [§12 — Work that predates the plugin](../../workflows.md#12-work-that-predates-the-plugin)
+- [§8 — Coming back after a break](../../workflows/08-coming-back.md)
+- [§12 — Work that predates the plugin](../../workflows/12-predates-the-plugin.md)
 
 ← [`/pd:pr-sync`](pr-sync.md) · [Contents](../README.md) · [`/pd:close`](close.md) →

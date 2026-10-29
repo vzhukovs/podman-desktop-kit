@@ -129,14 +129,15 @@ stats` checks the guessed config thresholds against what upstream merges.
 `pdkit cost` measures the tokens each issue cost, from Claude Code's transcripts,
 split by phase and normalised per task, slice, requirement and changed line. It
 can snapshot a baseline and compare later issues to it. See
-[docs/workflows.md](docs/workflows.md#measuring-what-a-cycle-costs).
+[docs/workflows/reference/cost.md](docs/workflows/reference/cost.md).
 
 The cycle is walked one session per phase, not in one sitting. Context is re-read
 whole on every call, so one session carried from triage to merge pays for the
 triage again on every turn of the review; each phase's artefacts are on disk, and
 a new session opens on a summary of where the issue stands. `pdkit next <n>`
-prints the one command to run. See
-[docs/workflows.md](docs/workflows.md#one-session-per-phase).
+prints the one command to run, and
+[docs/workflows/reference/sessions.md](docs/workflows/reference/sessions.md)
+says which session and which model each command runs in.
 
 ## Status and limitations
 
@@ -217,7 +218,7 @@ it found, not merely that a server exists.
 
 | Document | What it answers |
 |---|---|
-| [`docs/workflows.md`](docs/workflows.md) | every use case, with the commands and the decision points |
+| [`docs/workflows/`](docs/workflows/README.md) | every use case, with the commands and the decision points |
 | [`docs/specification/`](docs/specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
 | [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, one part per file |
 | [`docs/configuration.md`](docs/configuration.md) | the three config layers and what every key decides |

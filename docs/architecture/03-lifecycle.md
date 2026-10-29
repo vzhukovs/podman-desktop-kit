@@ -46,10 +46,10 @@ indistinguishable from one nobody ever worked on.
 - [§1 — The `rework` edge](../specification/01-domain-model.md#the-rework-edge)
 - [§1 — There is no edge into `new`](../specification/01-domain-model.md#there-is-no-edge-into-new-and-starting-over-does-not-add-one)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [§6 — An issue that ends in an answer](../workflows.md#6-an-issue-that-ends-in-an-answer)
-- [§9 — The reviewer rejected the approach, not the diff](../workflows.md#9-the-reviewer-rejected-the-approach-not-the-diff)
-- [§16 — Starting one issue over](../workflows.md#16-starting-one-issue-over)
+- [§6 — An issue that ends in an answer](../workflows/06-ends-in-an-answer.md)
+- [§9 — The reviewer rejected the approach, not the diff](../workflows/09-approach-rejected.md)
+- [§16 — Starting one issue over](../workflows/16-starting-over.md)
 
 ← [The pieces](02-pieces.md) · [Contents](README.md) · [The slicer](04-slicer.md) →

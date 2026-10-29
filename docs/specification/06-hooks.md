@@ -181,11 +181,11 @@ proving a failure would return us to receipts it is profitable not to attach.
 
 **In brief** — [`architecture/`](../architecture/README.md): [6 · Hooks](../architecture/06-hooks.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [The push gate](../workflows.md#the-push-gate)
-- [The ownership hook](../workflows.md#the-ownership-hook)
-- [Receipts](../workflows.md#receipts)
-- [§15 — A task that has failed three times](../workflows.md#15-a-task-that-has-failed-three-times)
+- [The push gate](../workflows/reference/push-gate.md)
+- [The ownership hook](../workflows/reference/ownership.md)
+- [Receipts](../workflows/reference/receipts.md)
+- [§15 — A task that has failed three times](../workflows/15-task-failed-three-times.md)
 
 ← [5 · Agents and model routing](05-agents.md) · [Contents](README.md) · [7 · Preflight](07-preflight.md) →

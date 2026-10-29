@@ -312,8 +312,8 @@ six months later only from here.
 
 **In brief** — [`architecture/`](../architecture/README.md): [1 · The constraint](../architecture/01-constraint.md) · [2 · The pieces](../architecture/02-pieces.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [Where the state lives](../workflows.md#where-the-state-lives)
+- [Where the state lives](../workflows/reference/state.md)
 
 ← [1 · Domain model](01-domain-model.md) · [Contents](README.md) · [3 · Commands](03-commands.md) →

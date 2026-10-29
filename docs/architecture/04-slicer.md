@@ -18,9 +18,9 @@ verified. Nothing in that sentence has a parameter an agent could supply.
 - [§4 — `/pd:slice`](../specification/04-contracts/slice.md)
 - [§7 — Preflight](../specification/07-preflight.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [§3 — A feature, cut into several pull requests](../workflows.md#3-a-feature-cut-into-several-pull-requests)
-- [What preflight actually runs](../workflows.md#what-preflight-actually-runs)
+- [§3 — A feature, cut into several pull requests](../workflows/03-feature-in-several-prs.md)
+- [What preflight actually runs](../workflows/reference/preflight.md)
 
 ← [The lifecycle](03-lifecycle.md) · [Contents](README.md) · [Validation](05-validation.md) →

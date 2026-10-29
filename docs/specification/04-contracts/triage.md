@@ -129,10 +129,10 @@ part of the scenario.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§0 — Picking what to work on](../../workflows.md#0-picking-what-to-work-on)
-- [§2 — A one-line fix](../../workflows.md#2-a-one-line-fix)
-- [§5 — Work that was already tried and reverted](../../workflows.md#5-work-that-was-already-tried-and-reverted)
+- [§0 — Picking what to work on](../../workflows/00-picking-what-to-work-on.md)
+- [§2 — A one-line fix](../../workflows/02-one-line-fix.md)
+- [§5 — Work that was already tried and reverted](../../workflows/05-tried-and-reverted.md)
 
 ← [4 · Contracts of the key commands](README.md) · [Contents](../README.md) · [`/pd:plan`](plan.md) →

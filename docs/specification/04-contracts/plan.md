@@ -34,8 +34,8 @@ afterwards is impossible without rewriting the work.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§1 — A bug fix](../../workflows.md#1-a-bug-fix)
+- [§1 — A bug fix](../../workflows/01-bug-fix.md)
 
 ← [`/pd:triage`](triage.md) · [Contents](../README.md) · [`/pd:plan-review`](plan-review.md) →

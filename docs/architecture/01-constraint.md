@@ -19,9 +19,9 @@ workflow tools take for granted:
 - [§0 — the one structural divergence from the references](../specification/00-references.md)
 - [§2.2 — State, outside the repository](../specification/02-plugin-structure.md#22-state-outside-the-repository)
 
-**In practice** — [`configuration.md`](../configuration.md), [`workflows.md`](../workflows.md):
+**In practice** — [`configuration.md`](../configuration.md), [`workflows/`](../workflows/README.md):
 
-- [Where the state lives](../workflows.md#where-the-state-lives)
+- [Where the state lives](../workflows/reference/state.md)
 - [`$PDKIT_HOME`](../configuration.md#pdkit_home)
 
 [Contents](README.md) · [The pieces](02-pieces.md) →

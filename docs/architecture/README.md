@@ -49,5 +49,5 @@ read last.
 | Document | What it answers |
 |---|---|
 | [`specification/`](../specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
-| [`workflows.md`](../workflows.md) | every use case, with the commands and the decision points |
+| [`workflows/`](../workflows/README.md) | every use case, with the commands and the decision points |
 | [`configuration.md`](../configuration.md) | the three config layers and what every key decides |

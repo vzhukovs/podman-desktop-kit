@@ -73,9 +73,9 @@ left out rather than rendered empty.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§3 — A feature, cut into several pull requests](../../workflows.md#3-a-feature-cut-into-several-pull-requests)
-- [The push gate](../../workflows.md#the-push-gate)
+- [§3 — A feature, cut into several pull requests](../../workflows/03-feature-in-several-prs.md)
+- [The push gate](../../workflows/reference/push-gate.md)
 
 ← [`/pd:slice`](slice.md) · [Contents](../README.md) · [`/pd:pr-status`](pr-status.md) →

@@ -29,8 +29,8 @@ body that does not name it.
 - [§4 — `/pd:validate`](../specification/04-contracts/validate.md)
 - [§8.2 — How Playwright reaches an Electron application](../specification/08-mcp-servers.md#82-how-playwright-reaches-an-electron-application)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [§4 — Validating against the running application](../workflows.md#4-validating-against-the-running-application)
+- [§4 — Validating against the running application](../workflows/04-validating.md)
 
 ← [The slicer](04-slicer.md) · [Contents](README.md) · [Hooks](06-hooks.md) →

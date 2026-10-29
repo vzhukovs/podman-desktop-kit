@@ -174,9 +174,9 @@ nothing; it prints the unattributed share and its caveats every time.
 
 **In brief** — [`architecture/`](../architecture/README.md): [7 · Known weaknesses](../architecture/07-known-weaknesses.md)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [Calibrating the thresholds](../workflows.md#calibrating-the-thresholds)
-- [Measuring what a cycle costs](../workflows.md#measuring-what-a-cycle-costs)
+- [Calibrating the thresholds](../workflows/reference/thresholds.md)
+- [Measuring what a cycle costs](../workflows/reference/cost.md)
 
 ← [12 · Delivery order](12-delivery-order.md) · [Contents](README.md)

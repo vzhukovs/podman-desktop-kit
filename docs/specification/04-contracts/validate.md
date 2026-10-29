@@ -71,8 +71,8 @@ would eat the build validation exists to look at.
 
 **In brief** — [`architecture/`](../../architecture/README.md): [5 · Validation](../../architecture/05-validation.md)
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§4 — Validating against the running application](../../workflows.md#4-validating-against-the-running-application)
+- [§4 — Validating against the running application](../../workflows/04-validating.md)
 
 ← [`/pd:plan-review`](plan-review.md) · [Contents](../README.md) · [`/pd:audit`](audit.md) →

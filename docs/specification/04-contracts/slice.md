@@ -147,10 +147,10 @@ pull request with a reply token for it, after the new one is open.
 
 **In brief** — [`architecture/`](../../architecture/README.md): [4 · The slicer](../../architecture/04-slicer.md)
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§3 — A feature, cut into several pull requests](../../workflows.md#3-a-feature-cut-into-several-pull-requests)
-- [§11 — Upstream asks you to split an open pull request](../../workflows.md#11-upstream-asks-you-to-split-an-open-pull-request)
-- [§11a — Upstream asks you to join open pull requests](../../workflows.md#11a-upstream-asks-you-to-join-open-pull-requests)
+- [§3 — A feature, cut into several pull requests](../../workflows/03-feature-in-several-prs.md)
+- [§11 — Upstream asks you to split an open pull request](../../workflows/11-split-open-pr.md)
+- [§11a — Upstream asks you to join open pull requests](../../workflows/11a-join-open-prs.md)
 
 ← [`/pd:audit`](audit.md) · [Contents](../README.md) · [`/pd:pr`](pr.md) →

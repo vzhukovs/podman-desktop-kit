@@ -2,7 +2,7 @@
 
 The design behind the plugin: what it is for, what each piece guarantees, and
 why the guarantees are drawn where they are. It is a design document rather
-than a manual — [`workflows.md`](../workflows.md) is the manual — and it is written
+than a manual — [`workflows/`](../workflows/README.md) is the manual — and it is written
 for someone deciding whether to trust a step, extend it, or argue with it.
 
 Two conventions matter for reading it:
@@ -22,7 +22,7 @@ section number in its name and its title, so "section 7" in a comment is
 Section 4 is a directory with one file per command. Every file ends with links to
 the previous and next section, and, where they exist, to the matching part of
 [`architecture/`](../architecture/README.md) and of
-[`workflows.md`](../workflows.md).
+[`workflows/`](../workflows/README.md).
 
 ## Contents
 
@@ -109,5 +109,5 @@ last: they say where the rest is weaker than it sounds.
 | Document | What it answers |
 |---|---|
 | [`architecture/`](../architecture/README.md) | the same design in five minutes, one part per file |
-| [`workflows.md`](../workflows.md) | every use case, with the commands and the decision points |
+| [`workflows/`](../workflows/README.md) | every use case, with the commands and the decision points |
 | [`configuration.md`](../configuration.md) | the three config layers and what every key decides |

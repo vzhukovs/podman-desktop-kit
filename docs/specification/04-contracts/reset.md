@@ -46,8 +46,8 @@ one.
 
 **In brief** — [`architecture/`](../../architecture/README.md): [3 · The lifecycle](../../architecture/03-lifecycle.md)
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§16 — Starting one issue over](../../workflows.md#16-starting-one-issue-over)
+- [§16 — Starting one issue over](../../workflows/16-starting-over.md)
 
 ← [`/pd:close`](close.md) · [Contents](../README.md) · [`/pd:review-pr`](review-pr.md) →

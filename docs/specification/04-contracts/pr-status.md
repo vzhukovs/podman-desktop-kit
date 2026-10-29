@@ -65,8 +65,8 @@ digest rather than by keeping more.
 
 ---
 
-**In practice** — [`workflows.md`](../../workflows.md):
+**In practice** — [`workflows/`](../../workflows/README.md):
 
-- [§7 — A pull request that has gone stale](../../workflows.md#7-a-pull-request-that-has-gone-stale)
+- [§7 — A pull request that has gone stale](../../workflows/07-stale-pr.md)
 
 ← [`/pd:pr`](pr.md) · [Contents](../README.md) · [`/pd:pr-sync`](pr-sync.md) →

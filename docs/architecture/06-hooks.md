@@ -50,11 +50,11 @@ without this project being told.
 - [§6 — Two kinds of token](../specification/06-hooks.md#two-kinds-of-token)
 - [§6 — Receipts, and why the ceiling holds](../specification/06-hooks.md#receipts-and-why-the-ceiling-holds)
 
-**In practice** — [`workflows.md`](../workflows.md):
+**In practice** — [`workflows/`](../workflows/README.md):
 
-- [The push gate](../workflows.md#the-push-gate)
-- [The ownership hook](../workflows.md#the-ownership-hook)
-- [Receipts](../workflows.md#receipts)
-- [One session per phase](../workflows.md#one-session-per-phase)
+- [The push gate](../workflows/reference/push-gate.md)
+- [The ownership hook](../workflows/reference/ownership.md)
+- [Receipts](../workflows/reference/receipts.md)
+- [One session per phase](../workflows/reference/sessions.md)
 
 ← [Validation](05-validation.md) · [Contents](README.md) · [Known weaknesses](07-known-weaknesses.md) →

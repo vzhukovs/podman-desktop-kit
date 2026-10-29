@@ -36,6 +36,6 @@ chain is not half a feature; it is a feature that does not work.
 
 ---
 
-**Every scenario in full** — [`workflows.md`](../workflows.md): the commands and the decision points of each use case.
+**Every scenario in full** — [`workflows/`](../workflows/README.md): the commands and the decision points of each use case.
 
 ← [9 · Configuration](09-configuration.md) · [Contents](README.md) · [11 · Known weaknesses](11-known-weaknesses.md) →
