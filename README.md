@@ -219,7 +219,7 @@ it found, not merely that a server exists.
 |---|---|
 | [`docs/workflows.md`](docs/workflows.md) | every use case, with the commands and the decision points |
 | [`docs/specification.md`](docs/specification.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
-| [`docs/architecture.md`](docs/architecture.md) | the same in five minutes |
+| [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, one part per file |
 | [`docs/configuration.md`](docs/configuration.md) | the three config layers and what every key decides |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to add a command, a skill, an agent or a check — and how to test it |
 | [`RELEASING.md`](RELEASING.md) | versioning, the release runbook, and how users get updates |
