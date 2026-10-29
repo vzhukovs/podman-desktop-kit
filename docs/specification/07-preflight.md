@@ -2,7 +2,8 @@
 
 [Specification](README.md) › Section 7
 
-`pdkit preflight [--slice N]` returns a machine-readable report. Twenty-two checks:
+`pdkit preflight [--slice N]` returns a machine-readable report. Twenty-three checks,
+in the order `CHECK_IDS` in `lib/preflight/index.js` runs them:
 
 | Check | How | Blocking |
 |---|---|---|
@@ -12,7 +13,7 @@
 | lint | `pnpm lint:check` | ✅ |
 | typecheck | `pnpm typecheck`, the whole repository — a type error lands in the consumer of a change. `preflight.typecheck_scope: packages` narrows it to `pnpm typecheck:<package>` and says so | ✅ |
 | SPDX | every added file carries the header in the repository's house format — the Apache block with the copyright line, the identifier inside it | ✅ |
-| conventional commits | every commit on the branch: a type from the list in `CONTRIBUTING.md`. **Scope is not required by upstream** — its absence is ⚠️, not ❌ | ✅ on type, ⚠️ on scope |
+| conventional commits | every commit on the branch: a type from the list in `CONTRIBUTING.md`. **Scope is not required by upstream** — its absence is a note on a passing check, not a failure | ✅ on type, a note on scope |
 | Signed-off-by | exactly one per commit | ✅ |
 | schemas | `pnpm generate:schemas` produces no diff | ✅ |
 | extension-api | if `extension-api.d.ts` is touched, the body must carry a backwards-compatibility and disposal section | ✅ |
@@ -20,9 +21,9 @@
 | slice standalone | the `pdkit slice verify` result from `slices.json` plus a digest comparison. A stale result is `fail`, not `pass`; a red run against a red baseline is `warn`, marked inconclusive | ✅ for slices with `base: main` |
 | **merge order** | every merge order the body states — `#A → #B`, "depends on #A", "after #A merges" — between this issue's slices is a stack in the graph. An order between independent slices is a dependency nobody verified, and main is broken between those merges | ✅ |
 | branch name | matches `DESKTOP-<n>/[<i>-]<slug>` | ✅ |
-| **PR body from the template** | every section, fixed line and footer `templates/pr-body.md` declares is in the body. Six checks read the body and each reads a part of it; this one asks whether it is the shape upstream's template wants at all | ✅ |
+| **PR body from the template** | every section, fixed line and footer `templates/pr-body.md` declares is in the body. Eight checks read the body and each reads a part of it; this one asks whether it is the shape upstream's template wants at all | ✅ |
+| **PR body size** | each section of the body against its budget in characters, and the total. `How to test this PR?` is bounded by its heading and not counted: it is the one section a reviewer executes rather than reads | ⚠️ never blocks |
 | steps-to-check | ≥ 3 steps, each with an expected result. Applies on `quickfix` too | ✅ |
-| R-ID coverage | every R-ID closed by a task and named in the body. On a sliced issue, **this slice's** R-IDs, not the whole frozen set. **Skipped on `quickfix`** | ✅ (except quickfix) |
 | e2e stability | a new `tests/playwright` test passed `validation.e2e_stability_runs` times in a row; the series is tied to a digest of the spec, and a stale one is `fail` | ✅ if e2e was added |
 | e2e environment | a test needing an environment CI does not have requires a `Notes for reviewers` entry | ✅ |
 | **validation evidence** | a validation step with no attached artefact is named in `Notes for reviewers`. Skipped on `quickfix` and when `validation.require_evidence: false` | ✅ |
@@ -30,9 +31,18 @@
 | maintainer rules | the greppable part of `knowledge/maintainer-rules.md` in the added lines, each pattern scoped to the files its rule covers: `vi.spyOn`, `Object.defineProperty(window)`, `clearAllMocks`, `afterEach` in unit specs; `as unknown as`, `eslint-disable`, `*Sync(`, `../` imports, built-ins without `node:`; `export function` in `packages/main`; `<style>` and `$:` in Svelte; a hardcoded "Podman Desktop", a hex colour in the colour registry; a copyright year other than this one | ⚠️ warn, with the rule's section |
 | CI blind spots | the diff touches build, packaging, platform-specific behaviour or the **dependency graph** — CI will not check it; a `Notes for reviewers` entry is required, worded per the area that fired | ✅ |
 
-Three results, and the difference between them matters: **pass** (the check ran
-and was satisfied), **skip** (it did not run, and the summary says why), **fail**
-(blocking, unless the check is advisory). A skip is never a pass.
+Four results, and the difference between them matters: **pass** (the check ran
+and was satisfied), **skip** (it did not run, and the summary says why), **warn**
+(an advisory check found something), **fail** (blocking, unless the check is
+advisory). A skip is never a pass. Whether a check is advisory is its own
+`blocking` export — four are: `quickfix-size`, `pr-body-size`, `debug-leftovers`,
+`maintainer-rules`.
+
+**There is no R-ID coverage check any more.** `r-coverage` required every R-ID to
+appear in the published body, and was removed: `requirementProblems()` in
+`lib/slice.js` already refuses to store a graph in which a frozen requirement
+reaches no slice, so the check added no guarantee — only a demand on the shape
+of the body. See the `Removed` entry in `CHANGELOG.md`.
 
 **API-surface grep** is a direct codification of the `RunOptions` trap: the type
 lives in `packages/main/src/plugin/util/exec.ts` and looks like an internal
@@ -61,10 +71,17 @@ argument is the same: in both cases something exists that the gate did not check
 and silence about it reads as checked.
 
 Both of those read the PR body, and both must be listed in `BODY_DEPENDENT` —
-`extension-api`, `pr-body-template`, `pr-body-size`, `steps-to-check`,
-`ci-blind-spots`, `e2e-environment`, `validation-evidence`. A check that depends
-on the body without declaring it stays forever at its first-pass result, `skip` —
-the worst possible outcome, because it looks like a check that ran.
+all eight: `extension-api`, `merge-order`, `pr-body-template`, `pr-body-size`,
+`steps-to-check`, `ci-blind-spots`, `e2e-environment`, `validation-evidence`. A
+check that depends on the body without declaring it stays forever at its
+first-pass result, `skip` — the worst possible outcome, because it looks like a
+check that ran. Not every one of the eight needs the body on every diff, so the
+note after pass one counts only those that actually skipped for lack of it, and
+names them.
+
+Pass two reads the body from `--body <file>`, or, for a pull request that is
+already open, from `--body-from-pr <k>` — after a rebase or a review round, where
+the body that matters is the one upstream has.
 
 **working tree** was not added out of tidiness. The checks in this table read two
 different states: file checks (`spdx`, `api-surface`, `debug-leftovers`) look at
@@ -101,6 +118,19 @@ a branch with nothing on it.
 `api-surface`, `debug-leftovers` and `conventional-commits` start reporting on
 somebody else's work — confidently, with no sign they are reading the wrong
 thing.
+
+**A run `slice verify` has just made is not made again.** `tests`, `lint` and
+`typecheck` reuse the slice verification's run when its receipt validates,
+exited 0, names this exact commit, covers every script the check would run, and
+the tree has no tracked change. The commit says what was verified while the
+scripts run the working tree, which is why a tracked change disqualifies it.
+Verify and preflight back to back had outlived a 600-second timeout, running the
+same scripts on the same commit twice.
+
+**The environment is not the code.** A script that could not start — exit 127,
+or 9009 on Windows, `pnpm` not on `PATH` — is reported as `could not run: … —
+the environment, not the code`, not as failing tests with a remedy for broken
+tests. It still blocks: nothing was measured.
 
 **Script names are not hard-coded.** The "How" column above shows a shape, not a
 constant: preflight resolves the name from the repository's own `package.json`,

@@ -45,7 +45,7 @@ files, +130/−2 — and opened against `main` at four files, +435/−10, with a
 that said it changed no product code. Every check had judged a different diff
 from the one the reviewer got.
 
-**Why two passes.** Six checks read the PR body, and the body depends on
+**Why two passes.** Eight checks read the PR body, and the body depends on
 preflight — `Notes for reviewers` is mandatory exactly when preflight flagged
 something CI cannot judge. One pass cannot close that loop. The break is in the
 ordering: pass 1 does not see the body and honestly returns `skip` with a reason

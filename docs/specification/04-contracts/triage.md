@@ -42,7 +42,9 @@ uniformity. Three consequences follow, and all three are implemented:
 
 - the PR body carries `Fixes #12345` instead of a coverage table, and
   `Steps to check` stays mandatory regardless of diff size;
-- preflight skips the R-ID coverage check and **nothing else**;
+- in preflight, the one check that skips because of the route is
+  `validation-evidence`, since the route does not validate, and `quickfix-size`
+  runs on this route only;
 - **escalation.** If the fix outgrows the thresholds, the route is raised to
   `standard` and **R-IDs are allocated at that moment** — from requirements
   recovered out of the issue, not out of the code already written. The ordering

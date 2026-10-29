@@ -35,7 +35,7 @@ the previous and next section, and, where they exist, to the matching part of
 | 4 | [Contracts of the key commands](04-contracts/README.md) | what each command does step by step, what the machine decides and what is left to the model — one file per command, [listed below](#section-4-contracts-of-the-key-commands) |
 | 5 | [Agents and model routing](05-agents.md) | every agent with its model and tools, why `tools:` is the only lever, where models are set, token economics |
 | 6 | [Hooks — where a prompt does not guarantee](06-hooks.md) | the hook table and every rule the handlers apply, command recognition, where the gate stands aside, the two kinds of token, one consent for two writes, receipts |
-| 7 | [Preflight — the deterministic gates](07-preflight.md) | the twenty-two checks, pass / skip / fail, and how the base, the ref and the script names are resolved |
+| 7 | [Preflight — the deterministic gates](07-preflight.md) | the twenty-three checks, pass / skip / warn / fail, and how the base, the ref and the script names are resolved |
 | 8 | [MCP servers: what actually makes a difference](08-mcp-servers.md) | which servers to take and which not, why no `.mcp.json` ships; 8.1 e2e tests as an output; 8.2 how Playwright reaches the Electron application |
 | 9 | [Configuration](09-configuration.md) | the three layers and how they merge, the YAML subset, what each key decides, the package map |
 | 10 | [Scenario coverage](10-scenarios.md) | the route for each of the brief's scenarios, and scenarios 6–15 the brief did not name |
