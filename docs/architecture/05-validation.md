@@ -24,10 +24,10 @@ body that does not name it.
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§4 — `/pd:validate`](../specification.md#pdvalidate-issue--evidence-instead-of-claims)
-- [§8.2 — How Playwright reaches an Electron application](../specification.md#82-how-playwright-reaches-an-electron-application)
+- [§4 — `/pd:validate`](../specification/04-contracts/validate.md)
+- [§8.2 — How Playwright reaches an Electron application](../specification/08-mcp-servers.md#82-how-playwright-reaches-an-electron-application)
 
 **In practice** — [`workflows.md`](../workflows.md):
 

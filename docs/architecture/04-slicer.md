@@ -13,10 +13,10 @@ verified. Nothing in that sentence has a parameter an agent could supply.
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§4 — `/pd:slice`](../specification.md#pdslice-issue--the-part-no-reference-has)
-- [§7 — Preflight](../specification.md#7-preflight--the-deterministic-gates)
+- [§4 — `/pd:slice`](../specification/04-contracts/slice.md)
+- [§7 — Preflight](../specification/07-preflight.md)
 
 **In practice** — [`workflows.md`](../workflows.md):
 

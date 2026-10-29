@@ -141,7 +141,7 @@ prints the one command to run. See
 ## Status and limitations
 
 Stated in full, because "the plugin is tested" should not be read more widely
-than it is. [`docs/specification.md`](docs/specification.md) section 13 keeps this
+than it is. [section 13 of `docs/specification/`](docs/specification/13-status.md) keeps this
 list, and it has a rule: a line leaves the second table by the same thing that
 puts one there — a journal entry, or an artefact you can point at.
 
@@ -218,7 +218,7 @@ it found, not merely that a server exists.
 | Document | What it answers |
 |---|---|
 | [`docs/workflows.md`](docs/workflows.md) | every use case, with the commands and the decision points |
-| [`docs/specification.md`](docs/specification.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
+| [`docs/specification/`](docs/specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
 | [`docs/architecture/`](docs/architecture/README.md) | the same in five minutes, one part per file |
 | [`docs/configuration.md`](docs/configuration.md) | the three config layers and what every key decides |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to add a command, a skill, an agent or a check — and how to test it |

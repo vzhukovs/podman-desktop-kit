@@ -18,9 +18,9 @@ of the time.
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§2 — Plugin structure](../specification.md#2-plugin-structure)
-- [§5 — Agents and model routing](../specification.md#5-agents-and-model-routing)
+- [§2 — Plugin structure](../specification/02-plugin-structure.md)
+- [§5 — Agents and model routing](../specification/05-agents.md)
 
 ← [The constraint](01-constraint.md) · [Contents](README.md) · [The lifecycle](03-lifecycle.md) →

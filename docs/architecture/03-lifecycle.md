@@ -39,12 +39,12 @@ indistinguishable from one nobody ever worked on.
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§1 — The state machine](../specification.md#the-state-machine)
-- [§1 — The `answered` branch](../specification.md#the-answered-branch--an-issue-whose-deliverable-is-not-a-diff)
-- [§1 — The `rework` edge](../specification.md#the-rework-edge)
-- [§1 — There is no edge into `new`](../specification.md#there-is-no-edge-into-new-and-starting-over-does-not-add-one)
+- [§1 — The state machine](../specification/01-domain-model.md#the-state-machine)
+- [§1 — The `answered` branch](../specification/01-domain-model.md#the-answered-branch--an-issue-whose-deliverable-is-not-a-diff)
+- [§1 — The `rework` edge](../specification/01-domain-model.md#the-rework-edge)
+- [§1 — There is no edge into `new`](../specification/01-domain-model.md#there-is-no-edge-into-new-and-starting-over-does-not-add-one)
 
 **In practice** — [`workflows.md`](../workflows.md):
 

@@ -37,8 +37,8 @@ names the commands and the decision points that stay yours.
 
 **What works today:** every scenario below has machinery behind it and is covered
 by tests. **What has been proven against a live repository is narrower**, and the
-difference is worth knowing before trusting a step — section 13 of
-[`specification.md`](specification.md) keeps the full accounting, with evidence
+difference is worth knowing before trusting a step — [section 13 of
+`specification/`](specification/13-status.md) keeps the full accounting, with evidence
 per row. In short: the `quickfix` and `standard` routes have each gone end to end
 to a published upstream pull request, once as a two-slice graph into two of them,
 and one issue has been through the whole machine to `merged` with a reviewer and

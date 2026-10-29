@@ -44,11 +44,11 @@ without this project being told.
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§6 — Hooks](../specification.md#6-hooks--where-a-prompt-does-not-guarantee)
-- [§6 — Two kinds of token](../specification.md#two-kinds-of-token)
-- [§6 — Receipts, and why the ceiling holds](../specification.md#receipts-and-why-the-ceiling-holds)
+- [§6 — Hooks](../specification/06-hooks.md)
+- [§6 — Two kinds of token](../specification/06-hooks.md#two-kinds-of-token)
+- [§6 — Receipts, and why the ceiling holds](../specification/06-hooks.md#receipts-and-why-the-ceiling-holds)
 
 **In practice** — [`workflows.md`](../workflows.md):
 

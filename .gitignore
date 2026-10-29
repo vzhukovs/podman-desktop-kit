@@ -4,7 +4,7 @@ node_modules/
 *.tgz
 
 # Design notes kept outside the published repository. They are the working
-# record behind docs/specification.md, in a different language and with local
+# record behind docs/specification/, in a different language and with local
 # absolute paths in them; the specification is the version meant to be read.
 specs/
 

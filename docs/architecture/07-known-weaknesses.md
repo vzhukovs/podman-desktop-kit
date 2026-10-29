@@ -24,9 +24,9 @@ Stated rather than discovered later:
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§11 — Known weaknesses of this design](../specification.md#11-known-weaknesses-of-this-design)
-- [§13 — Status: what has been verified, and what has not](../specification.md#13-status-what-has-been-verified-and-what-has-not)
+- [§11 — Known weaknesses of this design](../specification/11-known-weaknesses.md)
+- [§13 — Status: what has been verified, and what has not](../specification/13-status.md)
 
 ← [Hooks](06-hooks.md) · [Contents](README.md)

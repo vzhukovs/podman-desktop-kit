@@ -1,7 +1,7 @@
 # Architecture
 
 The short version. The full design — the reasoning, the measurements and the
-rejected alternatives — is in [`specification.md`](../specification.md).
+rejected alternatives — is in [`specification/`](../specification/README.md).
 
 Each part below stands on its own and can be opened directly. Every part ends
 with links into the specification for the full reasoning and, where one
@@ -48,6 +48,6 @@ read last.
 
 | Document | What it answers |
 |---|---|
-| [`specification.md`](../specification.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
+| [`specification/`](../specification/README.md) | the design: what each piece guarantees, and why the guarantees stop where they do |
 | [`workflows.md`](../workflows.md) | every use case, with the commands and the decision points |
 | [`configuration.md`](../configuration.md) | the three config layers and what every key decides |

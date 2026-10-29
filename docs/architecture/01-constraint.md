@@ -14,10 +14,10 @@ workflow tools take for granted:
 
 ---
 
-**In depth** — [`specification.md`](../specification.md):
+**In depth** — [`specification/`](../specification/README.md):
 
-- [§0 — the one structural divergence from the references](../specification.md#0-what-is-taken-from-the-references-and-what-is-rejected)
-- [§2.2 — State, outside the repository](../specification.md#22-state-outside-the-repository)
+- [§0 — the one structural divergence from the references](../specification/00-references.md)
+- [§2.2 — State, outside the repository](../specification/02-plugin-structure.md#22-state-outside-the-repository)
 
 **In practice** — [`configuration.md`](../configuration.md), [`workflows.md`](../workflows.md):
 

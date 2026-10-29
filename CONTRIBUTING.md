@@ -2,8 +2,9 @@
 
 This is a plugin for working on **somebody else's** repository, and most of its
 design follows from that. Before changing anything, it is worth reading
-[`docs/specification.md`](docs/specification.md) — at least section 2.2, which
-lists the five invariants a change must not break, and section 6, which explains
+[`docs/specification/`](docs/specification/README.md) — at least
+[section 2.2](docs/specification/02-plugin-structure.md#22-state-outside-the-repository), which
+lists the five invariants a change must not break, and [section 6](docs/specification/06-hooks.md), which explains
 why some rules are hooks rather than instructions.
 
 ## Environment

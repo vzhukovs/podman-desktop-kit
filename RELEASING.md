@@ -15,7 +15,7 @@ Semantic versioning, and pre-1.0 the slots mean:
 `1.0.0` means the state machine, the `pdkit` command surface and the artefact
 formats are stable enough that changing them would be a breaking change worth
 announcing. Nothing about the current status justifies claiming that yet — see
-section 13 of [`docs/specification.md`](docs/specification.md).
+[section 13 of `docs/specification/`](docs/specification/13-status.md).
 
 ### The version lives in one place, and it decides everything
 
