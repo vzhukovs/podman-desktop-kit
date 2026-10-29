@@ -381,6 +381,37 @@ describe('judging a red job', () => {
     assert.equal(pr.rollupOf([{ verdict: 'awaiting-review' }, { verdict: 'fail' }]), 'fail');
   });
 
+  // #19849: `ci pass` seven seconds after a force-push, from the quick checks
+  // that had started, with thirty jobs of the previous head not yet queued.
+  test('right after a push, a job the previous head ran and this one has not reported is pending', () => {
+    const job = (name, verdict = 'pass') => ({ name, workflow: null, conclusion: 'SUCCESS', verdict, peers: [], url: null });
+    const previous = { head: 'old', expected: [], jobs: [job('DCO'), job('linter'), job('unit tests')] };
+
+    const pushed = pr.awaitedJobs([job('DCO')], 'new', previous);
+    assert.deepEqual(pushed.expected, ['DCO', 'linter', 'unit tests']);
+    assert.deepEqual(pushed.jobs.filter((entry) => entry.notReported).map((entry) => entry.name), ['linter', 'unit tests']);
+    assert.equal(pr.rollupOf(pushed.jobs), 'pending', 'one green quick check is not a green run');
+
+    // A second refresh on the same head remembers what it was waiting for.
+    const again = pr.awaitedJobs([job('DCO'), job('linter')], 'new', { head: 'new', ...pushed });
+    assert.deepEqual(again.jobs.filter((entry) => entry.notReported).map((entry) => entry.name), ['unit tests']);
+
+    const done = pr.awaitedJobs([job('DCO'), job('linter'), job('unit tests')], 'new', { head: 'new', ...again });
+    assert.equal(pr.rollupOf(done.jobs), 'pass');
+  });
+
+  test('a job removed upstream is waited for on one head only', () => {
+    const job = (name) => ({ name, workflow: null, conclusion: 'SUCCESS', verdict: 'pass', peers: [], url: null });
+    const first = pr.awaitedJobs([job('DCO')], 'b', { head: 'a', jobs: [job('DCO'), job('retired')] });
+    assert.equal(pr.rollupOf(first.jobs), 'pending');
+
+    // The next push takes its expectations from real jobs only, not from the
+    // placeholders, so the retired workflow stops being waited for.
+    const next = pr.awaitedJobs([job('DCO')], 'c', { head: 'b', ...first });
+    assert.deepEqual(next.expected, ['DCO']);
+    assert.equal(pr.rollupOf(next.jobs), 'pass');
+  });
+
   test('the rollup of a freshly opened pull request is pending, not fail', () => {
     const jobs = [
       { name: 'CodeRabbit', verdict: 'pending' },

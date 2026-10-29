@@ -23,6 +23,12 @@ spent twice.
    slice each thread belongs to, which task owns that file, which requirement
    that task satisfies. None of it is classified — that part is yours.
 
+   **Read a thread to its last reply.** `body` is the ask; `replies` is the
+   conversation since, and `lastAuthor`/`lastAt` say who spoke last. A thread
+   whose last word is the PR author's is already answered — drafting a reply to
+   it repeats one, and filtering "new since" on `at` misses a reply that came
+   after the ask. Filter on `lastAt`.
+
    **Do not stop at threads.** The output includes review submissions and
    top-level comments, and on a stale pull request that is usually where the
    blocking feedback is. A pull request can have two open threads, both a

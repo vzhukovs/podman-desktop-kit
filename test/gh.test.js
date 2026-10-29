@@ -614,6 +614,11 @@ describe('reading a pull request', () => {
     assert.equal(threads[0].isResolved, true);
     assert.equal(threads[0].replies, 1);
     assert.equal(threads[0].body, 'ask', 'the first comment is the ask; later ones are the conversation');
+    assert.deepEqual(
+      threads[0].conversation.map((reply) => [reply.author, reply.body, reply.createdAt]),
+      [['vzhukovs', 'answer', '2026-06-03T09:06:38Z']],
+      'a count alone cannot say the author already answered',
+    );
   });
 });
 

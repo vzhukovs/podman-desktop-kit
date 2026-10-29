@@ -314,6 +314,91 @@ describe('files a review body cites', () => {
   });
 });
 
+describe('a thread\'s conversation', () => {
+  // Found on #19849: the author had answered a thread with a link to the
+  // follow-up PR, the sync saw only the ask, and drafted the same answer again.
+  test('replies are carried, and the last speaker is named', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19849,
+      config: CONFIG,
+      home,
+      threads: [
+        {
+          id: 't1',
+          author: 'reviewer2',
+          body: 'could this be a prior PR?',
+          path: MAIN,
+          line: 34,
+          isResolved: false,
+          createdAt: '2026-10-23T16:00:00Z',
+          url: 'https://example/t1',
+          conversation: [
+            { author: 'reviewer3', isBotAccount: false, body: 'I would rather have it in a dedicated PR', createdAt: '2026-10-26T16:36:21Z' },
+            { author: 'vzhukovs', isBotAccount: false, body: 'Follow-up PR: #19902', createdAt: '2026-10-27T09:31:16Z' },
+          ],
+        },
+      ],
+      discussion: { reviews: [], comments: [] },
+    });
+
+    const [item] = facts.items;
+    assert.equal(item.body, 'could this be a prior PR?', 'the ask stays the ask');
+    assert.equal(item.replies.length, 2);
+    assert.equal(item.replies[0].author, 'reviewer3', 'a reviewer who spoke only in a reply has still spoken');
+    assert.equal(item.lastAuthor, 'vzhukovs');
+    assert.equal(item.lastAt, '2026-10-27T09:31:16Z', 'a "new since" filter on `at` would miss this reply');
+
+    const text = threads.format(facts);
+    assert.match(text, /open, last: \*\*vzhukovs\*\* 2026-10-27T09:31:16Z/);
+    assert.match(text, /↳ \*\*reviewer3\*\*/);
+    assert.match(text, /> > Follow-up PR: #19902/);
+  });
+
+  test('a thread nobody answered names its author as the last speaker, and says nothing about it', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19849,
+      config: CONFIG,
+      home,
+      threads: [{ id: 't1', author: 'reviewer2', body: 'ask', path: MAIN, line: 1, isResolved: false, createdAt: '2026-10-23T16:00:00Z' }],
+      discussion: { reviews: [], comments: [] },
+    });
+
+    assert.deepEqual(facts.items[0].replies, []);
+    assert.equal(facts.items[0].lastAuthor, 'reviewer2');
+    assert.equal(facts.items[0].lastAt, '2026-10-23T16:00:00Z');
+    assert.equal(threads.format(facts).includes('last:'), false);
+  });
+
+  test('a bot reply is one line, as a bot thread is', async () => {
+    const facts = await threads.collect({
+      issue: ISSUE,
+      pr: 19849,
+      config: CONFIG,
+      home,
+      threads: [
+        {
+          id: 't1',
+          author: 'reviewer2',
+          body: 'ask',
+          path: MAIN,
+          line: 1,
+          isResolved: false,
+          createdAt: '2026-10-23T16:00:00Z',
+          conversation: [{ author: 'coderabbitai', isBotAccount: false, body: `first line\n${'x'.repeat(2000)}`, createdAt: '2026-10-24T00:00:00Z' }],
+        },
+      ],
+      discussion: { reviews: [], comments: [] },
+    });
+
+    assert.equal(facts.items[0].replies[0].isBot, true, 'the config list applies to replies too');
+    const text = threads.format(facts);
+    assert.match(text, /↳ 🤖 \*\*coderabbitai\*\*/);
+    assert.equal(text.includes('x'.repeat(200)), false);
+  });
+});
+
 describe('formatting', () => {
   test('a collapsed bot keeps its link', () => {
     const text = threads.format({
