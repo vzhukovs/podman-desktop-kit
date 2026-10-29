@@ -9,8 +9,8 @@ It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
 > **Status: 0.11.3, pre-1.0.** Used on thirteen podman-desktop issues: fifteen
-> pull requests published upstream, seven of them merged, and six issues carried
-> all the way to `merged` — four on the `standard` route, two on `quickfix`. One
+> pull requests published upstream, seven of them merged, and seven issues carried
+> all the way to `merged` — four on the `standard` route, three on `quickfix`. One
 > issue went out as a two-slice graph into two pull requests; another as three
 > slices that review asked to be one, rejoined by `slice join` into a single
 > pull request that superseded the three. Fourteen of the twenty-four skills have
@@ -163,7 +163,7 @@ puts one there — a journal entry, or an artefact you can point at.
 | The gate firing as a hook rather than as a function | a `denied` journal entry from a handler the host launched |
 | Slicing from a published pull request, and the archaeology behind `redo` | dry runs against upstream PRs, no writes |
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
-| `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal. Six issues closed this way: 18248, 18832, 18834, 18835, 17221 and 19901, and on 18832, 18834 and 18835 the worktrees of a squash-merged pull request removed in the same run |
+| `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal. Seven issues closed this way: 18248, 18832, 18834, 18835, 17221, 19901 and 18778, and on 18832, 18834 and 18835 the worktrees of a squash-merged pull request removed in the same run |
 | Three slices joined into one pull request after review | issue #19818: [#19829](https://github.com/podman-desktop/podman-desktop/pull/19829), [#19830](https://github.com/podman-desktop/podman-desktop/pull/19830) and [#19831](https://github.com/podman-desktop/podman-desktop/pull/19831) cut by layer, rejected as three, rejoined as [PR #19849](https://github.com/podman-desktop/podman-desktop/pull/19849) with a commit per old slice; the three journalled as `pr-closed … superseded by #19849` |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
 | The SessionStart summary fired by the host | sixteen `SessionStart` attachments in session transcripts whose command is `pdkit hook session-start` and whose content is the summary |
