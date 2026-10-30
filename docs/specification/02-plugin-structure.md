@@ -47,7 +47,8 @@ podman-desktop-kit/                  # repository root = plugin root
 | `worktree.js` | creates, lists, removes trees and prepares the verification tree |
 | `pr.js` | pull requests as entities; CI verdicts; the merge rollup; owns `prs.json` |
 | `threads.js` | facts about review threads: bot or human, thread → file → slice → task → R-ID; no verdict |
-| `validation.js` | validation steps and their evidence, launching the app under CDP, the e2e run series; owns `validation.json` |
+| `validation.js` | validation steps and their evidence: read and save, attaching, codifying, recording a run, superseding, the derived status and outcome, finishing; owns `validation.json`, and is the facade that re-exports `validation/` under the names callers know |
+| `validation/` | `app.js` (launching and stopping the app under CDP), `e2e.js` (what is waiting to be validated, the single-spec command, the run series), `format.js` (validation.md and the terminal); none names `validation.json` — reading and saving the record and the verdicts are handed over by `validation.js` |
 | `review.js` | facts about somebody else's pull request; no verdict |
 | `knowledge.js` | revision of `knowledge/`: dead links, drift from the package map, entry shape |
 | `drift.js` | composition: a slice's branch point, upstream commits after it, overlap with lines the plan cites |
