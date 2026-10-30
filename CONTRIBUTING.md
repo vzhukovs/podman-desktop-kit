@@ -53,7 +53,7 @@ a `recommendation` field, that is the boundary being crossed.
 
 | You want to change | Touch | Test |
 |---|---|---|
-| a `pdkit` command | `lib/cli.js` (its `REGISTRY` row and the usage text) and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
+| a `pdkit` command | `lib/commands/<command>.js` (its handler and the flags it reads), its `REGISTRY` row and usage text in `lib/cli.js`, and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
 | a deterministic rule | the owning module in `lib/` | same |
 | a hook's behaviour | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
 | a preflight check | one file under `lib/preflight/checks/`, its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
@@ -67,17 +67,21 @@ a `recommendation` field, that is the boundary being crossed.
 
 1. Implement it in the module that owns the data. If no module owns it, that is
    the finding — see below.
-2. Add a row to `REGISTRY` in `lib/cli.js` — its `flags` and the `run` that
-   handles it — and write the usage line. `COMMANDS` and `COMMAND_FLAGS` are
-   read off the registry, and `main` dispatches through it, so there is no
-   second list to keep in step.
-3. Declare every flag it reads in the row's `flags`. Every command refuses a
+2. Write its handler as `lib/commands/<command>.js`, exporting `flags` and
+   `run(args, flags)`. What two commands need goes in `lib/commands/support.js`,
+   never in `lib/cli.js`: a command module does not import the dispatcher.
+3. Add a row to `REGISTRY` in `lib/cli.js` — the module itself — and write the
+   usage line. `COMMANDS` and `COMMAND_FLAGS` are read off the registry, and
+   `main` dispatches through it, so there is no second list to keep in step.
+   `lib/cli.js` keeps only argv parsing, the registry, `pdkit hook` and exit
+   codes.
+4. Declare every flag it reads in the module's `flags`. Every command refuses a
    flag it does not declare, and `test/invariants.test.js` fails on a flag a
-   handler reads that no row declares, and on a row that declares one nothing
-   reads.
-4. Document the flags in the usage text. A flag that exists in code and not in
+   handler reads that no row declares, on a row that declares one nothing
+   reads, and on a command module reading a flag it does not declare itself.
+5. Document the flags in the usage text. A flag that exists in code and not in
    `--help` is a flag nobody uses — that happened to `close --confirmed`.
-5. If a person would type it, add it to [`CHEAT_SHEET.md`](CHEAT_SHEET.md). That
+6. If a person would type it, add it to [`CHEAT_SHEET.md`](CHEAT_SHEET.md). That
    file says the CLI is right when the two disagree, so a missing line there is
    only a gap, but it is the page people read.
 

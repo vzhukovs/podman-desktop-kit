@@ -23,8 +23,8 @@ podman-desktop-kit/                  # repository root = plugin root
 
 | Module | Responsibility |
 |---|---|
-| `cli.js` | argv parsing, exit codes, `--json` |
-| `commands/` | `support.js`: what more than one command handler needs — exit codes, `--json` output, the repository a command works on, the refusal that holds a command to its issue's tree |
+| `cli.js` | argv parsing, the command registry, `pdkit hook`, exit codes |
+| `commands/` | `<command>.js`: one command's handler and the flags it reads, registered in `cli.js`; `support.js`: what more than one command handler needs — exit codes, `--json` output, the repository a command works on, the refusal that holds a command to its issue's tree |
 | `doctor.js` | environment checks; separate from `cli.js` so two hundred lines of probes do not live in a command dispatcher |
 | `config.js` | three layers: `defaults/config.yaml` ← `$PDKIT_HOME/config.yaml` ← `<repo>/.pdkit.yaml` |
 | `yaml.js` | a reader for a deliberate subset of YAML (see [section 9](09-configuration.md#the-yaml-subset)) |
