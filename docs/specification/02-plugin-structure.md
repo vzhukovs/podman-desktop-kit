@@ -41,7 +41,8 @@ podman-desktop-kit/                  # repository root = plugin root
 | `repo.js` | package map from `pnpm-workspace.yaml`, git primitives |
 | `scripts.js` | which of the repository's scripts a diff needs (scoped tests, the whole typecheck) and the command that runs one; shared by `slice verify`, validation and preflight |
 | `stats.js` | measures the population the thresholds are about; recommends nothing |
-| `slice.js` | the slice graph, topological sort, standalone verification, materialisation, cascade, joining; owns `slices.json` |
+| `slice.js` | the slice graph and its model: read and save, topological sort, chains and dependents, recording a proposal and a pull request; owns `slices.json`, and is the facade that re-exports `slice/` under the names callers know |
+| `slice/` | `draft.js` (facts for a proposal, the draft, the rules a proposal is held to), `verify.js` (standalone verification in a scratch worktree), `materialize.js` (branches from slices, cascade, joining), `format.js` (rendering); none names `slices.json` — reading and saving the graph are handed over by `slice.js` |
 | `contracts.js` | which IPC channels a file's changed lines belong to; facts for `slice set`, no verdict |
 | `worktree.js` | creates, lists, removes trees and prepares the verification tree |
 | `pr.js` | pull requests as entities; CI verdicts; the merge rollup; owns `prs.json` |
