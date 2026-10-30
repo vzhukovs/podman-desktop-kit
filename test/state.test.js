@@ -34,6 +34,8 @@ import {
   ADVANCES,
   TRANSITIONS,
   GATE_ELIGIBLE,
+  JOIN_ELIGIBLE,
+  MATERIALIZE_ELIGIBLE,
   adopt,
   allocateCounter,
   allocateRequirement,
@@ -99,6 +101,15 @@ describe('transition table integrity', () => {
       assert.ok(states.length > 0, `${kind} can never be issued`);
       for (const state of states) {
         assert.ok(state in TRANSITIONS, `${state} is gate-eligible for ${kind} but not a state`);
+      }
+    }
+  });
+
+  test('join- and materialize-eligible states exist in the table', () => {
+    for (const [name, states] of Object.entries({ JOIN_ELIGIBLE, MATERIALIZE_ELIGIBLE })) {
+      assert.ok(states.length > 0, `${name} is empty`);
+      for (const state of states) {
+        assert.ok(state in TRANSITIONS, `${state} is in ${name} but not a state`);
       }
     }
   });
