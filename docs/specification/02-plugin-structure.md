@@ -39,6 +39,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `audit.js` | facts for `pd-auditor`, including every file changed outside every `Owns`; no verdict |
 | `backlog.js` | facts about a set of candidate issues; produces an order, not a choice |
 | `repo.js` | package map from `pnpm-workspace.yaml`, git primitives |
+| `scripts.js` | which of the repository's scripts a diff needs (scoped tests, the whole typecheck) and the command that runs one; shared by `slice verify`, validation and preflight |
 | `stats.js` | measures the population the thresholds are about; recommends nothing |
 | `slice.js` | the slice graph, topological sort, standalone verification, materialisation, cascade, joining; owns `slices.json` |
 | `contracts.js` | which IPC channels a file's changed lines belong to; facts for `slice set`, no verdict |
@@ -52,12 +53,13 @@ podman-desktop-kit/                  # repository root = plugin root
 | `gh.js` | `gh` wrappers (REST + GraphQL), read-only by default |
 | `git.js` | the one way git is run: `options.exec` for tests, one function per result shape the callers rely on |
 | `gate.js` | issues, verifies and revokes consent tokens; TTL; token kind |
+| `duration.js` | `10m`, `30s`, `1h` from the config; shared by `gate.js` and validation |
 | `journal.js` | append-only, sliced by month |
 | `render.js` | `templates/*.md` → text |
 | `upstream.js` | shared primitives for upstream rules: SPDX, conventional commits, `Signed-off-by`. Used by **both** hooks and preflight so a rule lives in one place |
 | `evidence.js` | raw capture of command output for receipts |
 | `hooks/` | `events.js` (event → handler table), `rules.js` (deny rules as data), `dispatch.js`, `command-parse.js`, `owns.js`, `post-write.js`, `session-start.js`, `task-completed.js` |
-| `preflight/` | `index.js` runner plus one file per check under `checks/` |
+| `preflight/` | `index.js` runner plus one file per check under `checks/`; `scope.js` is what the script checks share — an unrunnable script, the slice verification's run — and re-exports `scripts.js` |
 
 ## What is deliberately absent from the tree
 
