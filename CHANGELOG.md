@@ -17,6 +17,10 @@ fixes — see [RELEASING.md](RELEASING.md).
 - For contributors: a preflight check that reads the PR body says so with its
   own `needsBody` export; a test holds `BODY_DEPENDENT` and `CHECK_IDS` equal
   to what `lib/preflight/checks/` contains.
+- For contributors: a check that skips for want of the PR body returns
+  `skipForBody`, and the note after pass one counts its `waitingFor: 'body'`
+  field rather than matching the wording of its summary. Summaries and `--json`
+  output are unchanged.
 
 ## [0.11.3] - 2026-10-29
 

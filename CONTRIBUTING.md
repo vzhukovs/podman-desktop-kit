@@ -99,7 +99,10 @@ export, not the caller's choice. Add a row to the table in
 - **If it reads the PR body, export `needsBody = true`** and add its id to
   `BODY_DEPENDENT`, which `test/preflight.test.js` holds equal to the checks
   that export it. Otherwise it stays forever at its first-pass result, which is
-  `skip` — and that looks like a check that ran.
+  `skip` — and that looks like a check that ran. When the body is what it
+  lacks, return `skipForBody` from `lib/preflight/index.js` rather than writing
+  the skip by hand: its `waitingFor: 'body'` is what the note after pass one
+  counts, and the summary's wording is not.
 - **The message must not be wider than the measurement.** Three separate defects
   in this repository were the same shape: a failure that asserted more about the
   input than the check had looked at. Say what you measured.

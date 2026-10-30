@@ -101,6 +101,18 @@ describe('preflight --body-from-pr', () => {
     assert.doesNotMatch(template.summary, /not drafted yet/, 'the body was read, so the check had something to judge');
   });
 
+  // The marker is for waitingForBody; --json printed results without it before
+  // it existed, and still does.
+  test('--json keeps the waiting-for-body marker out of the results', POSIX, async () => {
+    const result = await pdkit('preflight', String(ISSUE), '--json');
+    const report = JSON.parse(result.stdout);
+
+    assert.equal(report.body, false, result.stderr);
+    const template = report.results.find((entry) => entry.id === 'pr-body-template');
+    assert.match(template.summary, /not drafted yet/);
+    for (const entry of report.results) assert.equal('waitingFor' in entry, false, entry.id);
+  });
+
   test('--body and --body-from-pr together are refused', POSIX, async () => {
     await writeFile(join(home, 'body.md'), 'x\n');
     const result = await pdkit('preflight', String(ISSUE), '--body-only', '--body', join(home, 'body.md'), '--body-from-pr', '90001');

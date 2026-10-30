@@ -40,7 +40,7 @@ import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
 import * as ids from '../lib/ids.js';
 import * as validation from '../lib/validation.js';
-import { BODY_DEPENDENT, CHECK_IDS, format, loadChecks, prepare, run, waitingForBody } from '../lib/preflight/index.js';
+import { BODY_DEPENDENT, BODY_NOT_DRAFTED, CHECK_IDS, format, loadChecks, prepare, run, skipForBody, waitingForBody } from '../lib/preflight/index.js';
 import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
@@ -431,10 +431,29 @@ describe('the checks that run commands', () => {
 
     for (const id of waiting) assert.ok(BODY_DEPENDENT.includes(id), id);
     for (const result of report.results.filter((entry) => BODY_DEPENDENT.includes(entry.id))) {
-      assert.equal(waiting.includes(result.id), /the PR body is not drafted yet/.test(result.summary), `${result.id}: ${result.summary}`);
+      assert.equal(waiting.includes(result.id), result.waitingFor === 'body', `${result.id}: ${result.summary}`);
+      assert.equal(result.waitingFor === 'body', result.summary.endsWith(BODY_NOT_DRAFTED), `${result.id}: ${result.summary}`);
     }
     assert.ok(waiting.includes('pr-body-template'), 'the template check always needs the body');
     assert.ok(waiting.length < BODY_DEPENDENT.length, 'on this diff some body-dependent checks answer from the diff alone');
+  });
+
+  // The marker is what counts, not the words: a summary reworded tomorrow must
+  // not drop a check out of the count, and the phrase alone must not add one.
+  test('waitingForBody reads the marker, not the summary', () => {
+    const marked = skipForBody({ id: 'extension-api', blocking: true, lead: 'the public API is touched; ', remedy: 'draft it' });
+    assert.equal(marked.summary, 'the public API is touched; the PR body is not drafted yet');
+    assert.deepEqual(Object.keys(marked), ['id', 'status', 'blocking', 'summary', 'remedy', 'waitingFor']);
+
+    const results = [
+      marked,
+      { id: 'pr-body-template', status: 'skip', blocking: true, summary: 'reworded, no body yet', waitingFor: 'body' },
+      { id: 'pr-body-size', status: 'skip', blocking: false, summary: BODY_NOT_DRAFTED },
+      { id: 'steps-to-check', status: 'pass', blocking: true, summary: 'fine', waitingFor: 'body' },
+      { id: 'working-tree', status: 'skip', blocking: true, summary: 'n/a', waitingFor: 'body' },
+    ];
+
+    assert.deepEqual(waitingForBody(results), ['extension-api', 'pr-body-template']);
   });
 
   test('a missing script is a skip that says so, never a silent pass', async () => {

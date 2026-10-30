@@ -78,7 +78,9 @@ check that depends on the body without declaring it stays forever at its
 first-pass result, `skip` — the worst possible outcome, because it looks like a
 check that ran. Not every one of the eight needs the body on every diff, so the
 note after pass one counts only those that actually skipped for lack of it, and
-names them.
+names them. It knows them by the field `waitingFor: 'body'` on the result — not
+by the summary's wording, which each check is free to change — and the field
+stays out of `--json`.
 
 Pass two reads the body from `--body <file>`, or, for a pull request that is
 already open, from `--body-from-pr <k>` — after a rebase or a review round, where
