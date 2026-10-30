@@ -14,6 +14,9 @@ fixes — see [RELEASING.md](RELEASING.md).
 - For contributors: a `pdkit` command is registered by one row in `REGISTRY` in
   `lib/cli.js`, its flags and its handler together. `COMMANDS` and
   `COMMAND_FLAGS` are derived from it, and the dispatcher's `switch` is gone.
+- For contributors: a preflight check that reads the PR body says so with its
+  own `needsBody` export; a test holds `BODY_DEPENDENT` and `CHECK_IDS` equal
+  to what `lib/preflight/checks/` contains.
 
 ## [0.11.3] - 2026-10-29
 

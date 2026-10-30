@@ -56,7 +56,7 @@ a `recommendation` field, that is the boundary being crossed.
 | a `pdkit` command | `lib/commands/<command>.js` (its handler and the flags it reads), its `REGISTRY` row and usage text in `lib/cli.js`, and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
 | a deterministic rule | the owning module in `lib/` | same |
 | a hook's behaviour | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
-| a preflight check | one file under `lib/preflight/checks/`, its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
+| a preflight check | one file under `lib/preflight/checks/` (exporting `needsBody` if it reads the body), its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
 | an artefact's shape | `templates/*.md`, registered in `TEMPLATES` in `lib/render.js` | `test/render.test.js` |
 | what a skill does | `skills/<name>/SKILL.md` | `test/invariants.test.js` checks every `pdkit` command and every `/pd:*` a skill names exists, and that plugin files are reached through `${CLAUDE_PLUGIN_ROOT}/` |
 | what an agent does | `agents/pd-<name>.md` | the same `${CLAUDE_PLUGIN_ROOT}/` check |
@@ -87,7 +87,8 @@ a `recommendation` field, that is the boundary being crossed.
 
 ### Adding a preflight check
 
-A check exports `id`, `blocking` and `run`, and returns `pass`, `skip`, `warn`
+A check exports `id`, `blocking` and `run` (and `needsBody` if it reads the PR
+body), and returns `pass`, `skip`, `warn`
 or `fail` with a summary and a remedy. Whether it blocks is the check's own
 export, not the caller's choice. Add a row to the table in
 [section 7](docs/specification/07-preflight.md) and to the preflight table in
@@ -95,9 +96,10 @@ export, not the caller's choice. Add a row to the table in
 
 - **A skip is never a pass.** If the check could not run, say so and say why. A
   check reporting success where it checked nothing devalues the whole gate.
-- **If it reads the PR body, list it in `BODY_DEPENDENT`.** Otherwise it stays
-  forever at its first-pass result, which is `skip` — and that looks like a check
-  that ran.
+- **If it reads the PR body, export `needsBody = true`** and add its id to
+  `BODY_DEPENDENT`, which `test/preflight.test.js` holds equal to the checks
+  that export it. Otherwise it stays forever at its first-pass result, which is
+  `skip` — and that looks like a check that ran.
 - **The message must not be wider than the measurement.** Three separate defects
   in this repository were the same shape: a failure that asserted more about the
   input than the check had looked at. Say what you measured.

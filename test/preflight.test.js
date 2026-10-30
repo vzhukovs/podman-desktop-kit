@@ -30,7 +30,7 @@
 import { test, describe, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -112,6 +112,24 @@ describe('the runner', () => {
     assert.equal(checks.length, CHECK_IDS.length);
     assert.deepEqual(checks.map((check) => check.id), CHECK_IDS);
     for (const check of checks) assert.equal(typeof check.run, 'function', `${check.id} has no run()`);
+  });
+
+  // A file under checks/ that CHECK_IDS does not name is a check that never
+  // runs, and nothing else would say so.
+  test('CHECK_IDS names every file under checks/, and only those', async () => {
+    const files = (await readdir(new URL('../lib/preflight/checks/', import.meta.url))).filter((name) => name.endsWith('.js'));
+
+    assert.deepEqual(files.map((name) => basename(name, '.js')).sort(), [...CHECK_IDS].sort());
+  });
+
+  // BODY_DEPENDENT is a copy of what the checks say about themselves. The
+  // order is the list's own and nothing reads it, so the sets are compared.
+  test('BODY_DEPENDENT is exactly the checks that export needsBody', async () => {
+    const checks = await loadChecks();
+
+    assert.deepEqual(checks.filter((check) => check.needsBody).map((check) => check.id).sort(), [...BODY_DEPENDENT].sort());
+    assert.equal(new Set(BODY_DEPENDENT).size, BODY_DEPENDENT.length);
+    for (const check of checks) assert.equal(typeof check.needsBody, 'boolean', `${check.id}: needsBody`);
   });
 
   // The second pass of the /pd:pr flow needs only these four. Re-running
