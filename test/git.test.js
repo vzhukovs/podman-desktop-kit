@@ -24,10 +24,11 @@
 // into, and which whitespace survives. A sha compared with a trailing newline
 // on it, or a diff that lost its leading space, is wrong without looking wrong.
 
+import { EventEmitter } from 'node:events';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { attempt, result, succeeds, text, trimmedEndOrNull, trimmedOrNull, trimmedResult } from '../lib/git.js';
+import { attempt, result, succeeds, text, trimmedEndOrNull, trimmedOrNull, trimmedResult, withStdin } from '../lib/git.js';
 
 /** A runner that succeeds with these streams, recording what it was asked. */
 function answering(stdout, stderr = '') {
@@ -264,6 +265,68 @@ describe('text (slice.gitText)', () => {
       assert.equal(thrown.code, 'ENOENT');
       assert.equal(thrown.cause, error);
       return true;
+    });
+  });
+});
+
+/**
+ * A spawn that plays one child: writes `stderr`, then exits with `code` or
+ * fails to start with `error`. Records what it was asked and what it was fed.
+ */
+function child({ stderr = '', code = 0, error } = {}) {
+  const calls = [];
+  const spawn = (file, args, options) => {
+    const proc = new EventEmitter();
+    proc.stderr = new EventEmitter();
+    proc.stdin = new EventEmitter();
+    proc.stdin.end = (input) => {
+      calls.push({ file, args, options, input });
+      setImmediate(() => {
+        if (error) {
+          proc.emit('error', error);
+          proc.emit('close', -2);
+          return;
+        }
+        if (stderr) proc.stderr.emit('data', Buffer.from(stderr));
+        proc.emit('close', code);
+      });
+    };
+    return proc;
+  };
+  return { spawn, calls };
+}
+
+describe('withStdin (slice.apply)', () => {
+  test('git, with the args and cwd, fed the input', async () => {
+    const { spawn, calls } = child();
+    await withStdin(['apply', '-'], 'patch\n', { cwd: CWD, spawn });
+
+    assert.deepEqual(calls, [{ file: 'git', args: ['apply', '-'], options: { cwd: CWD }, input: 'patch\n' }]);
+  });
+
+  test('exit 0 is ok, stderr as written', async () => {
+    assert.deepEqual(await withStdin(['x'], '', { cwd: CWD, ...child({ stderr: 'warning: x\n' }) }), {
+      ok: true,
+      code: 0,
+      stderr: 'warning: x\n',
+    });
+  });
+
+  test('a non-zero exit is a refusal with its code and stderr', async () => {
+    assert.deepEqual(await withStdin(['x'], '', { cwd: CWD, ...child({ stderr: 'error: patch failed\n', code: 1 }) }), {
+      ok: false,
+      code: 1,
+      stderr: 'error: patch failed\n',
+    });
+  });
+
+  test('git that could not be started is the spawn error, not the close after it', async () => {
+    const error = Object.assign(new Error('spawn git ENOENT'), { code: 'ENOENT' });
+    assert.deepEqual(await withStdin(['x'], '', { cwd: CWD, ...child({ error }) }), {
+      ok: false,
+      code: null,
+      stderr: '',
+      error: 'spawn git ENOENT',
     });
   });
 });
