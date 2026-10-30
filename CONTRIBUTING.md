@@ -53,7 +53,7 @@ a `recommendation` field, that is the boundary being crossed.
 
 | You want to change | Touch | Test |
 |---|---|---|
-| a `pdkit` command | `lib/cli.js` (dispatch, usage and the flag table) and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
+| a `pdkit` command | `lib/cli.js` (its `REGISTRY` row and the usage text) and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
 | a deterministic rule | the owning module in `lib/` | same |
 | a hook's behaviour | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
 | a preflight check | one file under `lib/preflight/checks/`, its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
@@ -67,12 +67,14 @@ a `recommendation` field, that is the boundary being crossed.
 
 1. Implement it in the module that owns the data. If no module owns it, that is
    the finding — see below.
-2. Add it to `COMMANDS` and to the `switch` in `lib/cli.js`, and write the usage
-   line. `test/invariants.test.js` asserts the dispatcher and the exported list
-   agree, in both directions.
-3. Give it a row in `COMMAND_FLAGS`. Every command refuses a flag it does not
-   declare, and the invariants test fails on a flag a handler reads that no row
-   declares, and on a row that declares one nothing reads.
+2. Add a row to `REGISTRY` in `lib/cli.js` — its `flags` and the `run` that
+   handles it — and write the usage line. `COMMANDS` and `COMMAND_FLAGS` are
+   read off the registry, and `main` dispatches through it, so there is no
+   second list to keep in step.
+3. Declare every flag it reads in the row's `flags`. Every command refuses a
+   flag it does not declare, and `test/invariants.test.js` fails on a flag a
+   handler reads that no row declares, and on a row that declares one nothing
+   reads.
 4. Document the flags in the usage text. A flag that exists in code and not in
    `--help` is a flag nobody uses — that happened to `close --confirmed`.
 5. If a person would type it, add it to [`CHEAT_SHEET.md`](CHEAT_SHEET.md). That

@@ -9,6 +9,12 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- For contributors: a `pdkit` command is registered by one row in `REGISTRY` in
+  `lib/cli.js`, its flags and its handler together. `COMMANDS` and
+  `COMMAND_FLAGS` are derived from it, and the dispatcher's `switch` is gone.
+
 ## [0.11.3] - 2026-10-29
 
 ### Added

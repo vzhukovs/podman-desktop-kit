@@ -329,28 +329,28 @@ describe('skills only name commands that exist', () => {
   });
 
   test('the dispatcher and the exported list agree', async () => {
-    const { COMMANDS } = await import('../lib/cli.js');
-    const source = await readFile(join(ROOT, 'lib', 'cli.js'), 'utf8');
+    const { COMMANDS, REGISTRY } = await import('../lib/cli.js');
 
+    // `version` is answered before the dispatcher, since --version has to work
+    // without a command at all — but through its own row, so it needs a run too.
     for (const command of COMMANDS) {
-      // `version` is answered before the switch, since --version has to work
-      // without a command at all.
-      const handled =
-        new RegExp(`case '${command}':`).test(source) || new RegExp(`command === '${command}'`).test(source);
-      assert.ok(handled, `COMMANDS lists "${command}" but nothing in the dispatcher handles it`);
+      assert.equal(typeof REGISTRY[command]?.run, 'function', `COMMANDS lists "${command}" but nothing in the dispatcher handles it`);
     }
   });
 
   test('every dispatched command is in the exported list', async () => {
-    const { COMMANDS } = await import('../lib/cli.js');
+    const { COMMANDS, REGISTRY } = await import('../lib/cli.js');
     const source = await readFile(join(ROOT, 'lib', 'cli.js'), 'utf8');
 
-    // Scoped to the top-level switch: the sub-command switches inside runGate
-    // and runIssue use the same syntax and are not pdkit commands.
-    const body = source.slice(source.indexOf('switch (command) {'));
-    for (const [, command] of body.matchAll(/^\s{6}case '([a-z0-9-]+)':/gm)) {
+    for (const command of Object.keys(REGISTRY)) {
       assert.ok(COMMANDS.includes(command), `the dispatcher handles "${command}", which COMMANDS does not list`);
     }
+
+    // The dispatcher is a lookup in REGISTRY and nothing else. A `case` arm in
+    // main would be a command handled outside the registry, and so outside the
+    // list. The sub-command switches inside runGate and runIssue are not in main.
+    const main = code(source.slice(source.indexOf('export async function main(')));
+    assert.ok(!/^\s*case '/m.test(main), 'main dispatches a command outside the registry');
   });
 });
 
