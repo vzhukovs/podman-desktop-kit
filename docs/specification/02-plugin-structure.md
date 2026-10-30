@@ -50,6 +50,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `knowledge.js` | revision of `knowledge/`: dead links, drift from the package map, entry shape |
 | `drift.js` | composition: a slice's branch point, upstream commits after it, overlap with lines the plan cites |
 | `gh.js` | `gh` wrappers (REST + GraphQL), read-only by default |
+| `git.js` | the one way git is run: `options.exec` for tests, one function per result shape the callers rely on |
 | `gate.js` | issues, verifies and revokes consent tokens; TTL; token kind |
 | `journal.js` | append-only, sliced by month |
 | `render.js` | `templates/*.md` → text |
