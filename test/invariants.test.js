@@ -374,6 +374,12 @@ describe('the flag table describes the commands', () => {
     ]);
   }
 
+  /** Where handlers live: the dispatcher, and the command modules it imports. */
+  async function handlerSource() {
+    const commands = (await modules(join(LIB, 'commands'))).map((entry) => entry.source);
+    return [await readFile(join(LIB, 'cli.js'), 'utf8'), ...commands].join('\n');
+  }
+
   test('every command the dispatcher accepts has a row', async () => {
     const { COMMANDS, COMMAND_FLAGS } = await import('../lib/cli.js');
 
@@ -394,7 +400,7 @@ describe('the flag table describes the commands', () => {
 
   test('every flag any handler reads is declared somewhere', async () => {
     const { COMMAND_FLAGS, GLOBAL_FLAGS } = await import('../lib/cli.js');
-    const source = await readFile(join(LIB, 'cli.js'), 'utf8');
+    const source = await handlerSource();
 
     const declared = new Set([...Object.values(COMMAND_FLAGS).flat(), ...GLOBAL_FLAGS, 'version']);
     const undeclared = [...flagsRead(source)].filter((name) => !declared.has(name)).sort();
@@ -404,11 +410,29 @@ describe('the flag table describes the commands', () => {
 
   test('and no row declares a flag nothing reads', async () => {
     const { COMMAND_FLAGS } = await import('../lib/cli.js');
-    const read = flagsRead(await readFile(join(LIB, 'cli.js'), 'utf8'));
+    const read = flagsRead(await handlerSource());
 
     const unread = [...new Set(Object.values(COMMAND_FLAGS).flat())].filter((name) => !read.has(name)).sort();
 
     assert.deepEqual(unread, [], 'a declared flag nothing reads is accepted and then ignored, which is where this started');
+  });
+
+  // Somewhere is not enough once a command has a file of its own: a flag read
+  // in one module and declared on another command's row passes the check above
+  // and is refused on the command that reads it.
+  test('a command module reads only the flags it declares', async () => {
+    const { GLOBAL_FLAGS } = await import('../lib/cli.js');
+    const undeclared = [];
+
+    for (const entry of await modules(join(LIB, 'commands'))) {
+      if (entry.name === 'support.js') continue;
+      const { flags } = await import(`../lib/commands/${entry.name}`);
+      for (const name of flagsRead(entry.source)) {
+        if (!flags.includes(name) && !GLOBAL_FLAGS.includes(name)) undeclared.push(`${entry.name}: --${name}`);
+      }
+    }
+
+    assert.deepEqual(undeclared.sort(), [], 'a command module reads a flag its own row does not declare');
   });
 });
 
