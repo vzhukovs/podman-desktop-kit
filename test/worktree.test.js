@@ -65,7 +65,7 @@ before(async () => {
 });
 
 after(async () => {
-  await cleanup(repo, home, trees);
+  await cleanup(repo, home, trees, `${trees}-by-another-name`);
 });
 
 describe('create', () => {
@@ -146,7 +146,7 @@ describe('create', () => {
     const real = await create({ repoRoot: repo, name: 'wt-symlink', config: config(), home });
     assert.equal(real.created, true);
 
-    const link = join(repo, '..', 'trees-by-another-name');
+    const link = `${trees}-by-another-name`;
     await rm(link, { recursive: true, force: true });
     await symlink(trees, link);
 

@@ -148,14 +148,19 @@ remedy is `/model` at the start of the phase's session.
 
 ```bash
 npm test                                       # everything, ~45 s
-node --test test/slice.test.js                 # one file
-node --test --test-name-pattern "digest"       # one case, by name
+node --import ./test/helpers/isolate-home.js --test test/slice.test.js              # one file
+node --import ./test/helpers/isolate-home.js --test --test-name-pattern "digest"    # one case, by name
 ```
 
 Tests are `node --test`, zero dependencies, one file per module whose contract
 holds something up. They run against the real `templates/` and `defaults/`
 directories rather than fixtures, so a placeholder renamed in a template without
 its caller being updated fails here.
+
+No run touches your `$PDKIT_HOME`: `test/helpers/isolate-home.js`, loaded with
+`--import`, gives each test file a fresh `PDKIT_HOME` in the temp directory
+(unless one is set explicitly) and removes it on exit, and `test/isolation.test.js`
+fails a run that arrives without it — hence the `--import` above.
 
 **What a test in this repository is for.** The suite has never caught the
 interesting bugs — every finding listed at the bottom of the changelog came from

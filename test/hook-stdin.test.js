@@ -31,14 +31,28 @@
 // stream still attached keeps the event loop alive all by itself — a handler
 // that decides in sixty milliseconds and never exits is the same hang.
 
-import { test, describe } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
+
+// The refused push below is journalled. npm test already isolates the home;
+// this one is explicit as well, because this file is where the live journal
+// got its 299 false `event:denied` lines.
+let home;
+
+before(async () => {
+  home = await mkdtemp(join(tmpdir(), 'pdkit-hook-stdin-'));
+});
+
+after(async () => {
+  await rm(home, { recursive: true, force: true });
+});
 
 /**
  * Run a hook with a pipe that is never closed, and see whether it ends anyway.
@@ -49,7 +63,10 @@ const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit
 function hookWithOpenStdin(input) {
   return new Promise((resolve) => {
     const started = Date.now();
-    const child = spawn('node', [BIN, 'hook', input.event], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('node', [BIN, 'hook', input.event], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PDKIT_HOME: home },
+    });
 
     let output = '';
     child.stdout.on('data', (chunk) => (output += chunk));

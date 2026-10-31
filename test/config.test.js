@@ -24,7 +24,7 @@
 // whether a command may run and in what order slices merge — a list assembled
 // from two halves is a list nobody wrote.
 
-import { test, describe, before, after } from 'node:test';
+import { test, describe, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, homedir } from 'node:os';
@@ -57,9 +57,15 @@ before(async () => {
   await mkdir(repo, { recursive: true });
 });
 
-after(async () => {
+// Some cases delete PDKIT_HOME to reach the layers below it. Put it back after
+// each one, so a case that follows and forgets to set its own does not resolve
+// to the live ~/.pdkit.
+afterEach(() => {
   if (savedHomeEnv === undefined) delete process.env.PDKIT_HOME;
   else process.env.PDKIT_HOME = savedHomeEnv;
+});
+
+after(async () => {
   await rm(root, { recursive: true, force: true });
 });
 

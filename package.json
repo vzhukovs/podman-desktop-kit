@@ -10,6 +10,6 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --import ./test/helpers/isolate-home.js --test \"test/*.test.js\""
   }
 }

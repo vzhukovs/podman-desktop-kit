@@ -211,18 +211,25 @@ describe('the agent-done liveness check', () => {
 describe('the worktree checks', () => {
   let repo;
   let home;
+  let scratch;
+  let trees;
 
+  // The root sits outside the repository, inside a directory of this run's
+  // own: a fixed `$TMPDIR/doctor-trees` was shared by every run on the
+  // machine, and two at once removed it from under each other.
   before(async () => {
     repo = await initRepo('pdkit-doctor-worktree-');
     home = await mkdtemp(join(tmpdir(), 'pdkit-doctor-worktree-home-'));
+    scratch = await mkdtemp(join(tmpdir(), 'pdkit-doctor-worktree-root-'));
+    trees = join(scratch, 'doctor-trees');
 
     await writeFile(join(repo, 'file.txt'), 'x\n');
-    await writeFile(join(repo, '.pdkit.yaml'), `worktrees:\n  root: ${join(repo, '..', 'doctor-trees')}\n`);
+    await writeFile(join(repo, '.pdkit.yaml'), `worktrees:\n  root: ${trees}\n`);
     await commitAll(repo, 'chore: seed');
   });
 
   after(async () => {
-    await cleanup(repo, home, join(repo, '..', 'doctor-trees'));
+    await cleanup(repo, home, scratch);
   });
 
   test('a root that does not exist yet is fine, and is not created by asking', async () => {
@@ -231,12 +238,12 @@ describe('the worktree checks', () => {
 
     assert.equal(root.status, 'ok');
     assert.match(root.detail, /not there yet/);
-    await assert.rejects(access(join(repo, '..', 'doctor-trees')), 'diagnosing must not create what it is diagnosing');
+    await assert.rejects(access(trees), 'diagnosing must not create what it is diagnosing');
   });
 
   test('a tree git lists but disk does not have is a warning with the fix in it', async () => {
-    await create({ repoRoot: repo, name: 'ghost', config: { worktrees: { root: join(repo, '..', 'doctor-trees') }, repo: { base_branch: 'main' } }, home });
-    await rm(join(repo, '..', 'doctor-trees', 'ghost'), { recursive: true, force: true });
+    await create({ repoRoot: repo, name: 'ghost', config: { worktrees: { root: trees }, repo: { base_branch: 'main' } }, home });
+    await rm(join(trees, 'ghost'), { recursive: true, force: true });
 
     const report = await diagnose({ cwd: repo, home, pluginRoot: process.cwd() });
     const registered = find(report.checks, 'worktrees:registered');
