@@ -22,7 +22,7 @@
 // get wrong in a way nobody notices: a security finding that failed to contain
 // a configured word, dropped silently, looks exactly like a quiet review.
 
-import { test, describe, before, after, beforeEach } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
