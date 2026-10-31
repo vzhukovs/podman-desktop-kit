@@ -348,7 +348,8 @@ describe('skills only name commands that exist', () => {
 
     // The dispatcher is a lookup in REGISTRY and nothing else. A `case` arm in
     // main would be a command handled outside the registry, and so outside the
-    // list. The sub-command switches inside runGate and runIssue are not in main.
+    // list. The sub-commands of gate and issue are dispatched in lib/commands/,
+    // not in main.
     const main = code(source.slice(source.indexOf('export async function main(')));
     assert.ok(!/^\s*case '/m.test(main), 'main dispatches a command outside the registry');
   });
