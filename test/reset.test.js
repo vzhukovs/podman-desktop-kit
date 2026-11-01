@@ -19,7 +19,7 @@
 // Tests for lib/reset.js.
 //
 // The command deletes things, so most of this file is about what it does NOT
-// delete. Two of those are promises rather than conveniences — the neighbouring
+// delete. Two of those are promises rather than conveniences — the neighboring
 // issue and the append-only journal — and a regression in either would be found
 // by the person it happened to, after it happened, with nothing to restore.
 
@@ -184,14 +184,14 @@ describe('what a reset removes', () => {
 });
 
 describe('what a reset must not touch', () => {
-  test('the neighbouring issue keeps its record, its artefacts and its token', async () => {
+  test('the neighboring issue keeps its record, its artefacts and its token', async () => {
     await furnish(18548);
     await furnish(18549);
 
     await apply({ issue: 18548, home, purge: true });
 
-    const neighbour = await readState(18549, { home });
-    assert.equal(neighbour.state, 'preflight-green');
+    const neighbor = await readState(18549, { home });
+    assert.equal(neighbor.state, 'preflight-green');
     assert.equal(await readFile(join(issueDir(home, 18549), 'plan.md'), 'utf8'), 'plan for 18549\n');
     assert.equal((await gate.verify({ branch: 'DESKTOP-18549/fix', home })).valid, true);
     assert.ok(await active.current({ worktree: join(home, 'trees', '18549'), home }));

@@ -31,7 +31,7 @@
    `- Requirements:` line is rewritten to the live set. If either half does not
    follow, approve says which and exits non-zero; `pdkit amendment sync` finishes
    it. The `### T<k>` blocks under `Slices affected` are read with the plan's
-   own parser and materialised: `tasks/T<k>.md` rendered (an existing file is
+   own parser and materialized: `tasks/T<k>.md` rendered (an existing file is
    kept, not overwritten), the block added to plan.md's `## Tasks`, and
    `task sync` re-run. A heading `### T<k> (replaces T<j>, …):` withdraws the
    tasks it names: their Status becomes `withdrawn by A<k> (replaced by T<k>)`,

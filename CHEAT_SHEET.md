@@ -309,8 +309,8 @@ Twenty-three checks. Every one blocks except the four marked `warn`.
 | `e2e-environment` | | Notes for reviewers says what the test needs and where it will not run |
 | `validation-evidence` | | every validation step has an artefact, or the body explains |
 | `debug-leftovers` | `warn` | no `console.log`, `.only`, `.skip`, `@ts-ignore`, bare `any` in added lines |
-| `maintainer-rules` | `warn` | added lines clear of what upstream's reviewers flag: `vi.spyOn` in a new test, `as unknown as`, `../` imports, `export function` in `packages/main`, a hardcoded product name or colour — see `knowledge/maintainer-rules.md` |
-| `ci-blind-spots` | | build, packaging or platform behaviour CI cannot judge is named in the body |
+| `maintainer-rules` | `warn` | added lines clear of what upstream's reviewers flag: `vi.spyOn` in a new test, `as unknown as`, `../` imports, `export function` in `packages/main`, a hardcoded product name or color — see `knowledge/maintainer-rules.md` |
+| `ci-blind-spots` | | build, packaging or platform behavior CI cannot judge is named in the body |
 
 **It runs twice, and the second pass is not ceremony.** Eight checks read the
 pull request body, so on the first pass the ones that need it judge nothing.

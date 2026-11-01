@@ -22,7 +22,7 @@ Asking GitHub the same questions again spends context on an answer you have.
 
 Then read the sentences the facts point at: the revert body, the reviews marked
 `CHANGES_REQUESTED`, and the blocking threads. Those are where the reason lives.
-The facts file summarises each to one line on purpose — enough to decide which
+The facts file summarizes each to one line on purpose — enough to decide which
 to open in full, and no more than that.
 
 ## The four questions, in this order

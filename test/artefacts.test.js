@@ -361,7 +361,7 @@ describe('checkPlan', () => {
     assert.ok(result.problems.some((problem) => problem.check === 'slice-hypothesis'));
   });
 
-  // Judgement, not a defect: a task touching four files is a conversation.
+  // Judgment, not a defect: a task touching four files is a conversation.
   test('more than three files per task is a warning, not a refusal', async () => {
     const result = await check({
       requirements: 'R1',
@@ -558,7 +558,7 @@ ${rows}
 
   // Not guessed at. "dropped" probably means withdrawn, and "probably" is not a
   // standard for removing a requirement from a frozen set.
-  test('a word outside the vocabulary is returned unrecognised, with what it said', () => {
+  test('a word outside the vocabulary is returned unrecognized, with what it said', () => {
     const [row] = parseAmendment(amendment('| R2 | dropped | not needed after all |')).requirements;
 
     assert.equal(row.change, null);

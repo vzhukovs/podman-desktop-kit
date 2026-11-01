@@ -33,7 +33,7 @@ destroying the distinction between artefacts that were never produced and
 artefacts that were lost. So the reset *removes the record* instead. With no
 `state.json` the machine reads its own blank, whose only exit is `triaged`, and
 the next cycle is forced to start where a cycle starts. It clears one issue's
-artefacts, consent tokens and active pointers, leaves every neighbour alone, and
+artefacts, consent tokens and active pointers, leaves every neighbor alone, and
 leaves the journal alone too — an issue back at `new` with no history would be
 indistinguishable from one nobody ever worked on.
 

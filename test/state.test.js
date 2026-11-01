@@ -822,7 +822,7 @@ describe('amending a frozen requirement set', () => {
     assert.deepEqual(result.removed, ['R2', 'R4', 'R6']);
   });
 
-  test('an unrecognised row refuses the whole table and names its line', () => {
+  test('an unrecognized row refuses the whole table and names its line', () => {
     const result = amendedRequirements(SIX, [...A1, { ...row(['R3'], null, null, 24), wrote: 'dropped', problem: '"dropped" is not a change' }]);
 
     assert.equal(result.ok, false);
@@ -848,7 +848,7 @@ describe('amending a frozen requirement set', () => {
   });
 
   // What 18915 looks like now: the record already mended by hand. Applying the
-  // table again would refuse on its own added IDs, so it is recognised instead.
+  // table again would refuse on its own added IDs, so it is recognized instead.
   test('a set that already says what the table says is reflected, not reapplied', () => {
     const result = amendedRequirements({ ids: ['R1', 'R3', 'R5', 'R7', 'R8'], next: 9 }, A1);
 
@@ -903,7 +903,7 @@ describe('amending a frozen requirement set', () => {
       assert.deepEqual((await read(ISSUE, { home })).requirements.ids, ['R1', 'R2', 'R3', 'R4', 'R5', 'R6']);
     });
 
-    test('an approved one is applied to the frozen set, and journalled as such', async () => {
+    test('an approved one is applied to the frozen set, and journaled as such', async () => {
       await write('approved');
       const applied = await amendRequirements(ISSUE, { home, amendment: 'A1' });
 

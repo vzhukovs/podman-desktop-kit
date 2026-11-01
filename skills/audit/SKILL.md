@@ -23,7 +23,7 @@ pdkit audit <n> --base main
 
 State and route, the frozen requirement set, every task with its `Owns` and
 `satisfies`, the state of every receipt, the changed files, and three findings
-that need no judgement at all:
+that need no judgment at all:
 
 - **files changed outside every task's ownership** — the pre-write hook is
   silent when no task was ever started, so this is the only place such a change

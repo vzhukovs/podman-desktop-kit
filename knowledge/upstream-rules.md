@@ -41,7 +41,7 @@ with only `// SPDX-License-Identifier: Apache-2.0` is not in the house format
 and will be asked about in review.
 
 **A new file carries the current year only.** A header copied from a
-neighbouring file brings that file's year, or a `2022-2024` range, with it, and
+neighboring file brings that file's year, or a `2022-2024` range, with it, and
 the maintainer asks for it to be changed. This applies to GitHub workflow YAML
 as well. Nothing mechanical catches it. The source is maintainer review, see
 `maintainer-rules.md` section 1.
@@ -132,7 +132,7 @@ Also from `CONTRIBUTING.md`:
 - **Do not change existing tests and their implementation in the same PR.**
   If an existing assertion was wrong, fix it in a pull request of its own.
   Otherwise a reviewer cannot tell which side was wrong: the code or the test
-  that used to describe it. A new test for new behaviour is not a change to an
+  that used to describe it. A new test for new behavior is not a change to an
   existing test. Source: maintainer review, `maintainer-rules.md` section 1.
 - Changes made in response to review go in a **new commit**, so reviewers can
   see what changed between rounds. Do not force-push a rewritten history

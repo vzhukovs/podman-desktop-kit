@@ -37,7 +37,7 @@
      than leaving the section empty: "n/a — no UI change" is an answer, an
      empty heading is a reviewer wondering whether it was forgotten.
 
-     A description of a behaviour change is not a screenshot. If it is visible,
+     A description of a behavior change is not a screenshot. If it is visible,
      show it; if it is not, this is one line.
 
      Budget: 200 characters. -->
@@ -81,11 +81,11 @@
      proof, which is worse than CI failing.
 
      Mandatory when preflight flagged build, packaging or platform-specific
-     behaviour; one line or omitted otherwise.
+     behavior; one line or omitted otherwise.
 
      What does NOT go here, and where it goes instead: the review history
      (the pull request conversation has it), residual risks and design
-     alternatives (a review comment, or the issue), behaviour nuance a reviewer
+     alternatives (a review comment, or the issue), behavior nuance a reviewer
      cannot act on (nowhere). On #19048 this section reached 4215 characters
      that way.
 

@@ -10,7 +10,7 @@
 ```
 
 Planning is skipped on purpose. If the diff fits in one sentence, a plan is
-overhead — and the threshold in config is a defence against ceremony, not an
+overhead — and the threshold in config is a defense against ceremony, not an
 optimization.
 
 If the fix outgrows the thresholds, `pdkit issue escalate 12908` sends it back to

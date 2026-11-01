@@ -85,7 +85,7 @@ describe('unknown flags', () => {
     }
   });
 
-  // The table is per command, so a flag that exists on a neighbour is still
+  // The table is per command, so a flag that exists on a neighbor is still
   // wrong here — which is the whole point of not having one global list.
   test('a flag that belongs to another command is still unknown', () => {
     assert.equal(unknownFlags('e2e', { runs: '3' }).length, 0);

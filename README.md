@@ -130,7 +130,7 @@ without a Claude Code session, which is how most of it was tested.
 Two `pdkit` commands measure rather than act, and no skill runs them. `pdkit
 stats` checks the guessed config thresholds against what upstream merges.
 `pdkit cost` measures the tokens each issue cost, from Claude Code's transcripts,
-split by phase and normalised per task, slice, requirement and changed line. It
+split by phase and normalized per task, slice, requirement and changed line. It
 can snapshot a baseline and compare later issues to it. See
 [docs/workflows/reference/cost.md](docs/workflows/reference/cost.md).
 
@@ -154,8 +154,8 @@ puts one there — a journal entry, or an artefact you can point at.
 | What | Evidence |
 |---|---|
 | The `quickfix` route end to end | issue #18248 → [PR #18561](https://github.com/podman-desktop/podman-desktop/pull/18561), the whole journal from `triaged` to `pr-open` |
-| The `standard` route end to end | issue #17221 → [PR #18562](https://github.com/podman-desktop/podman-desktop/pull/18562), including plan approval, receipts, validation, slicing and materialisation |
-| A **multi-slice graph** end to end, on the `standard` route | issue #18967 → [PR #19001](https://github.com/podman-desktop/podman-desktop/pull/19001) and [PR #19002](https://github.com/podman-desktop/podman-desktop/pull/19002): two slices cut, verified, materialised and preflighted separately, the second from its predecessor's branch. Three plan-review rounds and four approved amendments along the way. The `multi-slice` *route* — chosen as such at triage — is still untaken |
+| The `standard` route end to end | issue #17221 → [PR #18562](https://github.com/podman-desktop/podman-desktop/pull/18562), including plan approval, receipts, validation, slicing and materialization |
+| A **multi-slice graph** end to end, on the `standard` route | issue #18967 → [PR #19001](https://github.com/podman-desktop/podman-desktop/pull/19001) and [PR #19002](https://github.com/podman-desktop/podman-desktop/pull/19002): two slices cut, verified, materialized and preflighted separately, the second from its predecessor's branch. Three plan-review rounds and four approved amendments along the way. The `multi-slice` *route* — chosen as such at triage — is still untaken |
 | The whole machine to `merged`, with a reviewer in the middle | issue #18832 → [PR #18889](https://github.com/podman-desktop/podman-desktop/pull/18889): review threads read and answered, two amendments raised from what reviewers said, a rebase, then `pr-merged … observed by refresh` → `merged` |
 | A real rebase against real upstream drift | on #18832, after upstream `ea086a5d599`: both journal entries exist, `conflict-mechanical` and `conflict-semantic`. The semantic one is the case the module was written for — by its own text the dangerous half never surfaced as a git conflict at all |
 | Validation with Playwright and a codified e2e test | four green runs in a row, tied to a digest of the spec |
@@ -164,13 +164,13 @@ puts one there — a journal entry, or an artefact you can point at.
 | Slicing from a published pull request, and the archaeology behind `redo` | dry runs against upstream PRs, no writes |
 | The plugin loading, and a skill running as `/pd:*` | `claude --plugin-dir . -p "/pd:doctor"` against the fork returns the full report, so the manifest loads and `bin/` reaches `PATH` |
 | `close --finish`, the invariant-4 rollup, and the move to `merged` | a browser merge picked up by `pr refresh`, then the rollup read and the issue closed, both in the journal. Seven issues closed this way: 18248, 18832, 18834, 18835, 17221, 19901 and 18778, and on 18832, 18834 and 18835 the worktrees of a squash-merged pull request removed in the same run |
-| Three slices joined into one pull request after review | issue #19818: [#19829](https://github.com/podman-desktop/podman-desktop/pull/19829), [#19830](https://github.com/podman-desktop/podman-desktop/pull/19830) and [#19831](https://github.com/podman-desktop/podman-desktop/pull/19831) cut by layer, rejected as three, rejoined as [PR #19849](https://github.com/podman-desktop/podman-desktop/pull/19849) with a commit per old slice; the three journalled as `pr-closed … superseded by #19849` |
+| Three slices joined into one pull request after review | issue #19818: [#19829](https://github.com/podman-desktop/podman-desktop/pull/19829), [#19830](https://github.com/podman-desktop/podman-desktop/pull/19830) and [#19831](https://github.com/podman-desktop/podman-desktop/pull/19831) cut by layer, rejected as three, rejoined as [PR #19849](https://github.com/podman-desktop/podman-desktop/pull/19849) with a commit per old slice; the three journaled as `pr-closed … superseded by #19849` |
 | Flake detection | five jobs on one commit reported `flake` after a re-run turned them green |
 | The SessionStart summary fired by the host | sixteen `SessionStart` attachments in session transcripts whose command is `pdkit hook session-start` and whose content is the summary |
 | Windows | ubuntu, macOS and Windows all run the suite in CI, and all three block. Windows has been blocking and green since 2026-08-31, after the two defects that kept it from testing anything were fixed |
 | Fourteen skills through a session, and six agent types dispatched by name | `/pd:doctor`, `/pd:sync`, `/pd:plan`, `/pd:plan-review` on 18832; `/pd:triage`, `/pd:exec`, `/pd:audit`, `/pd:slice`, `/pd:preflight` on 18967; `/pd:pr-sync` on 18889; `/pd:validate` and `/pd:pr` on 18833, 18835 and 18915; `/pd:close` on 18835; `/pd:quickfix` on 19901 — from the plugin as enabled in `settings.json`. The agents: `pd-scout`, `pd-plan-critic`, `pd-implementer`, `pd-auditor`, `pd-slicer`, `pd-thread-resolver` |
 | Review sending a plan back | `plan check` green, `pd-plan-critic` returning three must-change findings anyway, and the issue going `planned` → `triaged` → replanned |
-| The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journalled as `denied` |
+| The gate holding under widened permissions | a session given `--allowedTools Bash` refused `git push --dry-run`, journaled as `denied` |
 
 **Never executed, in order of risk:**
 
@@ -178,9 +178,9 @@ puts one there — a journal entry, or an artefact you can point at.
 |---|---|
 | **Ten of the twenty-four skills** — `editor`, `open`, `knowledge`, `pr-status`, `reset`, `resume`, `review-pr`, `package-map`, `upstream-rules`, `worktree-kit` — and installing from a marketplace fetched over the network | Skill bodies are prose, which is the half of this plugin nothing covers, and two were caught getting it wrong: `/pd:preflight` advised standing on a branch the graph had invented, and `/pd:pr` documented a base `pr create` could not open against. Not invoked is not the same as not exercised — `close --finish`, `review fetch`/`render`, `pr list` and `drift` have all run from a terminal with the skill that wraps them never loaded. What is untested is the prose: what to do with the output, in what order, and when to stop and ask. The manifest now loads from a marketplace entry in `settings.json`, but that entry points at a local directory — the fetch is still the untested half |
 | **Three of the seven hook events** | `pre-bash` has genuine firings, `subagent-stop` has host firings as `agent-done` in the journal (watched by `pdkit doctor`), `session-start` has host firings in session transcripts, and `pre-write` is exercised through the manifest. `post-write`, `pre-compact` and `prompt-submit` have only ever been spawned by a self-test, which proves the handler works and not that the host calls it — and a handler that passes silently leaves the same trace as one never wired up |
-| **`cascade`, and rebasing dependents** | Cutting, verifying, materialising and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
+| **`cascade`, and rebasing dependents** | Cutting, verifying, materializing and preflighting a stacked slice all ran on #18967, so that half is closed. What `cascade` is for has not happened: a review fix landing in a slice something else is stacked on. It needs a reviewer, not a fixture |
 | **`replyToThread`, both GraphQL mutations** | `pr-sync` itself has now run against real threads on #18889 — read, classified, two of them fixed, two turned into approved amendments. Only the reply was posted by hand, by choice. That last step writes into somebody else's pull request, which is why it will not be closed with synthetic material |
-| **`pd-conflict-analyst`** | The conflicts it exists to classify have now happened and are journalled, so this stops waiting for material. What is unknown is the agent: the session classified them itself, and whether a fresh-context read reaches the same verdict is a different question |
+| **`pd-conflict-analyst`** | The conflicts it exists to classify have now happened and are journaled, so this stops waiting for material. What is unknown is the agent: the session classified them itself, and whether a fresh-context read reaches the same verdict is a different question |
 
 None of it blocks use. Each closes with the next issue of the right kind.
 

@@ -446,7 +446,7 @@ describe('ids and the journal', () => {
     assert.equal(second.step.id, 'V2');
   });
 
-  test('every attachment is journalled with the status it earned', async () => {
+  test('every attachment is journaled with the status it earned', async () => {
     await validation.attach({ issue: ISSUE, home, title: 'undemonstrated' });
     const entries = await readJournal({ issue: ISSUE }, { home });
 
@@ -785,7 +785,7 @@ describe('stability', () => {
     assert.match(artefact, /## Output/);
   });
 
-  test('a run whose reporter says nothing recognisable is left alone', async () => {
+  test('a run whose reporter says nothing recognizable is left alone', async () => {
     const issue = 8812;
     const spec = await writeSpec('quiet.spec.ts', 'test("l", () => {});\n');
     await writeFile(join(repo, 'package.json'), JSON.stringify({ scripts: { 'test:e2e:run': 'true' } }));

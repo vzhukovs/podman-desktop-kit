@@ -124,7 +124,7 @@ had no answer for that: `new` has no predecessor, so nothing could return an
 issue to the state its own artefacts had never been produced in.
 
 Adding such an edge would be the wrong fix, and the reason is the same one
-`adopted` exists for. A transition writes history, so an issue that travelled
+`adopted` exists for. A transition writes history, so an issue that traveled
 back to `new` would carry a trip the work never took, and "these artefacts were
 never produced" would stop reading differently from "these artefacts were lost" —
 which is the distinction every downstream check depends on.

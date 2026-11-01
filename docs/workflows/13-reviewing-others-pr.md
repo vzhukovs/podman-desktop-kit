@@ -28,7 +28,7 @@ The axes apply `knowledge/maintainer-rules.md`, the rule set upstream's own revi
 agent uses, and label every finding `issue:`, `nit:` or `question:`. They judge
 **without** the threads already on the pull request, so the review is a second
 opinion and not an echo. Only the synthesis reads those threads, after the
-judgement, and marks a finding a reviewer already raised as `(already raised by
+judgment, and marks a finding a reviewer already raised as `(already raised by
 @login)`.
 
 ## What comes out

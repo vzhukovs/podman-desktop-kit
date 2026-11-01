@@ -53,7 +53,7 @@ journal records as `slice-verify-inconclusive`.
 Five places knew that word. `pdkit slice verify` — the one a person runs and
 reads at the moment it happens — printed `RED`, and on DESKTOP-18832 that sent a
 session into a half-hour investigation of a fact already sitting in
-`slices.json`, ending in a judgement call made under uncertainty the machine did
+`slices.json`, ending in a judgment call made under uncertainty the machine did
 not have. The verdict now has three words everywhere, and the inconclusive one
 names where to look.
 
@@ -79,7 +79,7 @@ reads each layer apart. `materialize` commits the groups in order;
 is an open question (podman-desktop#19798), and the slice as a whole is what
 preflight holds to green.
 
-The form a slice is verified and materialised through is one and the same:
+The form a slice is verified and materialized through is one and the same:
 
 ```
 git diff --binary --find-renames <base>...<ref> -- <the slice's files>
@@ -91,13 +91,13 @@ not exist at that moment, and the only thing that does is the diff restricted to
 its files. `--from-pr` follows from the same shape: somebody else's published diff
 is substituted for the local one and the slicer is unchanged.
 
-Materialisation is the inverse of that diff: a branch from the base,
+Materialization is the inverse of that diff: a branch from the base,
 `git apply --index --binary`, one commit. **The original working branch is not
 destroyed** — if the graph turns out to be wrong there is nothing to roll back.
 
 **A branch is only the slice while it sits where the slice says.** Once a slice
 branch exists, verification builds it rather than the change set — after
-materialisation the branch is the slice, and a review fix lands there. What makes
+materialization the branch is the slice, and a review fix lands there. What makes
 that safe is a base check, and its absence cost a full run: an issue with one
 slice gets the same branch name from `branches.sliced` that `pdkit worktree
 create` gave the working branch, so verify found a branch, built the working tree
@@ -111,7 +111,7 @@ the claim is checkable without `git merge-base` and a suspicion.
 of that exact diff and the base SHA. `slice-standalone` in preflight recomputes
 it in place: a mismatch is a **`fail` demanding a re-run, not a `pass`**. A green
 verification of yesterday's diff is exactly the proof `lib/evidence.js` was
-written against. As a side effect this also checks materialisation: a slice
+written against. As a side effect this also checks materialization: a slice
 branch's diff must match, byte for byte, what was verified.
 
 | Mechanically, `pdkit slice set` | Left to `pd-slicer` |

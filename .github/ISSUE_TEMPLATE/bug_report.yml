@@ -23,7 +23,7 @@ body:
     attributes:
       label: pdkit doctor
       description: >
-        Paste the whole report. Most surprising behaviour turns out to be
+        Paste the whole report. Most surprising behavior turns out to be
         something this already says: a config layer that did not load, a stale
         package map, a Playwright server pointed at the wrong port.
       render: shell

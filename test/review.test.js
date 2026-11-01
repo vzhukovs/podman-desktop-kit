@@ -127,7 +127,7 @@ const THREADS = JSON.stringify({
               isResolved: false,
               path: 'packages/main/src/exec.ts',
               line: 20,
-              comments: { nodes: [{ author: { login: 'reviewer2' }, body: 'This changes behaviour on Windows.', createdAt: '2026-07-03T00:00:00Z' }] },
+              comments: { nodes: [{ author: { login: 'reviewer2' }, body: 'This changes behavior on Windows.', createdAt: '2026-07-03T00:00:00Z' }] },
             },
           ],
         },
@@ -424,7 +424,7 @@ describe('the report', () => {
       values: {
         title: 'feat(main): add a thing',
         verdict: 'APPROVE_WITH_NITS',
-        confidence: 'medium — Windows behaviour was not exercised',
+        confidence: 'medium — Windows behavior was not exercised',
         counts: 'Blockers 0 · Nits 1 · Questions 1 · Files reviewed 2/2',
         requirementFit: [
           '| R1 — the thing runs | yes | `packages/main/src/added.ts:1` |',
@@ -433,7 +433,7 @@ describe('the report', () => {
         blocking: '_None._',
         nits: '- packages/main/src/added.ts:1 — nit: the new file has no SPDX header (§1)',
         questions: '- Is the schema change intentional without regenerating?',
-        couldNotVerify: '- Windows behaviour: no Windows machine here.',
+        couldNotVerify: '- Windows behavior: no Windows machine here.',
       },
     });
 

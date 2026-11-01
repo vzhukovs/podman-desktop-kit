@@ -43,7 +43,7 @@ whether there is any work to do:
 
 - **fail** — red here, green on other people's open pull requests. Yours.
 - **inconclusive** — the same job is red on other PRs too. Not yours. Say so
-  and name the neighbours; do not open an issue, do not "fix" it, and do not
+  and name the neighbors; do not open an issue, do not "fix" it, and do not
   quietly treat it as a pass either.
 - **flake** — the same job, the same commit, two different answers. Link the
   existing flake issue if there is one. **"Let us re-run it" is not a finding**:
@@ -76,5 +76,5 @@ something:
   with everything answered is the reviewer's;
 - the next command: `/pd:pr-sync <k>`, `/pd:resume <n>`.
 
-Do not summarise the healthy ones beyond their line. A dashboard that says
+Do not summarize the healthy ones beyond their line. A dashboard that says
 something about everything is a dashboard nobody reads to the end.

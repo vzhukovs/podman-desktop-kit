@@ -12,7 +12,7 @@ exists, into the manual for the commands.
 | # | Part | What it answers |
 |---|---|---|
 | 1 | [The constraint everything follows from](01-constraint.md) | why state lives outside the tree, why there are no scratch issues, why there is a gate |
-| 2 | [The pieces](02-pieces.md) | what each directory of the plugin is for, and why what must be true is kept apart from what requires judgement |
+| 2 | [The pieces](02-pieces.md) | what each directory of the plugin is for, and why what must be true is kept apart from what requires judgment |
 | 3 | [The lifecycle, and its two ways out](03-lifecycle.md) | the state machine an issue moves through: the usual path, `rework`, `answered`, and why `pdkit reset` is not a transition |
 | 4 | [What the slicer is, in one paragraph](04-slicer.md) | how a slice is verified before any branch exists, and how preflight knows the verdict is still about this diff |
 | 5 | [What validation promises, and what it does not](05-validation.md) | what PASS means, and why `unverified` does not block the transition |
@@ -31,7 +31,7 @@ read last.
 | If you want to know… | Read |
 |---|---|
 | why no state is kept in the working tree | [1 · The constraint](01-constraint.md) |
-| where a rule belongs, and where judgement does | [2 · The pieces](02-pieces.md) |
+| where a rule belongs, and where judgment does | [2 · The pieces](02-pieces.md) |
 | which states an issue moves through, and who may advance it | [3 · The lifecycle](03-lifecycle.md) |
 | what happens when a reviewer rejects the approach rather than the diff | [3 · The lifecycle](03-lifecycle.md) |
 | what `answered` is, and why it is not terminal | [3 · The lifecycle](03-lifecycle.md) |

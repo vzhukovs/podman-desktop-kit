@@ -70,8 +70,8 @@ podman-desktop-kit/                  # repository root = plugin root
 - **`.mcp.json`** — a plugin's MCP servers load with the plugin as a whole, and
   [section 8](08-mcp-servers.md) requires Playwright and context7 to be optional. Configuration is
   documented instead, and `/pd:doctor` checks it.
-- **`commands/`** — the skills-versus-commands fork was settled in favour of
-  `skills/`. Two sources of truth for one behaviour is not a trade.
+- **`commands/`** — the skills-versus-commands fork was settled in favor of
+  `skills/`. Two sources of truth for one behavior is not a trade.
 - **`scripts/`** — every hook goes through the single `bin/pdkit` binary.
 
 ## 2.1 What planning got wrong, and how
@@ -193,7 +193,7 @@ rest.** `parseArgs` accepts any `--word`; before the table, whether anything rea
 it was nobody's question. `pdkit issue fetch <n> --body` exited zero and printed
 a summary with no body, twice under two spellings, on the first live run. The
 worse case is a command that writes: `--force` and `--confirm` are one letter
-from flags that exist on a neighbouring command, and a misspelling reads as the
+from flags that exist on a neighboring command, and a misspelling reads as the
 safe thing having been asked for.
 
 The table is per command rather than per subcommand, so `pdkit gate close --ttl`

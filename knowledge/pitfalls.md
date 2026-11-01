@@ -21,7 +21,7 @@ without saying so is how a PR gets rejected after review has already started.
 
 **Caught by:** the `api-surface` preflight check greps every new or changed
 exported symbol against `extension-api.d.ts`. This is deliberately a grep rather
-than a judgement call — an agent asked to notice this will sometimes not.
+than a judgment call — an agent asked to notice this will sometimes not.
 
 ## e2e flakes
 

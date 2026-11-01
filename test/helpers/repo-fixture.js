@@ -18,7 +18,7 @@
 
 // A real git repository to test against.
 //
-// Not a mock. Everything the slicer and the worktree module do is git behaviour
+// Not a mock. Everything the slicer and the worktree module do is git behavior
 // — applying a partial diff, detaching a tree, cleaning without touching
 // node_modules — and a fake git would only ever confirm what the fake believes.
 // The repositories built here are tiny, so the cost is a few hundred

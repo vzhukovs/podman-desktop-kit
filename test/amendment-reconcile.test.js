@@ -81,7 +81,7 @@ describe('amendmentOutcomes', () => {
   });
 
   test('a file with no status line says so instead of an empty word', () => {
-    assert.deepEqual(amendmentOutcomes([amendment('A1', '')], []), ['A1 — in no recognised status']);
+    assert.deepEqual(amendmentOutcomes([amendment('A1', '')], []), ['A1 — in no recognized status']);
   });
 });
 

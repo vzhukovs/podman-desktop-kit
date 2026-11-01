@@ -44,10 +44,10 @@ The Bash hook refuses `git rebase -i` for this reason and says so.
   in `packages/main` can be declared there too, so location does not tell you.
 - `Steps to check` in the PR body, at any diff size. A reviewer should not have
   to work out how to verify the change.
-- Anything CI cannot judge — packaging, platform behaviour, a manual check —
+- Anything CI cannot judge — packaging, platform behavior, a manual check —
   belongs in `Notes for reviewers`, not in the commit you hope nobody reads.
 - **A new file's header carries the current year only.** Do not copy a
-  neighbour's year or a `2022-2024` range.
+  neighbor's year or a `2022-2024` range.
 - **Existing tests and their implementation are not changed in the same PR.**
   If an assertion was wrong, it is fixed separately, so a reviewer can see
   which side was wrong.

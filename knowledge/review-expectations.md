@@ -24,7 +24,7 @@ this plugin applies to other people's PRs.
   request with a commit per layer instead. A "merge #A → #B → #C" line in the
   body was there and did not count. Whether each commit of such a pull request
   has to build on its own was asked upstream and has no answer yet.
-- **Tests for the behaviour claimed.** Not coverage for its own sake — coverage
+- **Tests for the behavior claimed.** Not coverage for its own sake — coverage
   of what the PR says it does.
 - **A reason, when the approach is not obvious.** Two sentences in the PR body
   prevent a round trip.

@@ -130,7 +130,7 @@ preflight:
   typecheck_scope: repo
 
 # How many failed captures of a task's `Done when` make it blocked. The key
-# exists because the behaviour does: a ceiling that only lived in configuration
+# exists because the behavior does: a ceiling that only lived in configuration
 # would be a number nothing reads, which is what open item G refused.
 #
 # Zero switches blocking off. That direction only — the count itself is not

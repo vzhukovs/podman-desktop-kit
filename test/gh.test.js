@@ -24,7 +24,7 @@
 // are wrong in public — a read that quietly answered about the fork, or a body
 // mangled on its way through a shell.
 //
-// The one behaviour worth more than the argv is the gate check, because the
+// The one behavior worth more than the argv is the gate check, because the
 // Bash hook cannot see a child process this module spawns.
 
 import { test, describe, before, after, beforeEach } from 'node:test';
@@ -183,7 +183,7 @@ describe('reads', () => {
   // The word is there and it is not first, so the pair was never established,
   // the fallback took the newest merge — an unrelated feature — and the report
   // said "merged and nothing reverts it".
-  test('a revert is recognised by what it says it reverts, not by its first word', () => {
+  test('a revert is recognized by what it says it reverts, not by its first word', () => {
     const shapes = [
       { title: 'Revert "fix: the thing"', body: '', isRevert: true, reverts: null },
       { title: 'revert(renderer): restore the sidebar', body: '', isRevert: true, reverts: null },
@@ -574,7 +574,7 @@ describe('reading a pull request', () => {
     const { reviews, comments } = await discussion(17577, { config: CONFIG, exec: fakeGh(discussionPage()) });
 
     const byLogin = Object.fromEntries(reviews.map((review) => [review.author, review.isBotAccount]));
-    assert.equal(byLogin['copilot-pull-request-reviewer'], true, 'not in bots_collapsed, and still recognised');
+    assert.equal(byLogin['copilot-pull-request-reviewer'], true, 'not in bots_collapsed, and still recognized');
     assert.equal(byLogin.reviewer4, false);
     assert.equal(byLogin.maintainer1, false);
     assert.equal(comments[0].isBotAccount, false);

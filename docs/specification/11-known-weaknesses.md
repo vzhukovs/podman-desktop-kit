@@ -28,7 +28,7 @@ Stated here rather than discovered later.
    set from reading source.
 
 5. **Overhead on small things is the main risk of the whole idea.** The
-   `quickfix` threshold is a defence against ceremony, not an optimisation: if
+   `quickfix` threshold is a defense against ceremony, not an optimization: if
    the diff fits in one sentence, planning is not needed at all.
 
 6. **The consent gate degrades into a reflex.** In a month you will be pressing
@@ -62,7 +62,7 @@ Stated here rather than discovered later.
     typecheck names the files exactly.
 
     This item was first written as "the answer is always one slice", and that was
-    wrong. It generalised from a plan that claimed a purely additive first slice
+    wrong. It generalized from a plan that claimed a purely additive first slice
     while owning none of the six fixture files the new fields broke; review
     rejected that plan, the next one withdrew to a single slice, and the
     withdrawal was read as a property of the class. A later plan on the same issue

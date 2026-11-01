@@ -15,7 +15,7 @@
        other bug report in the repository.
 
        Opening it is a human action. `gh issue create` is denied at the hook from
-       every state, and no state in section 1 authorises writing to a tracker
+       every state, and no state in section 1 authorizes writing to a tracker
        that is not ours. -->
 
 ---
@@ -24,7 +24,7 @@
 
 <!-- The title field at the top of the issue form, not part of the body.
 
-     House style upstream is a plain sentence describing the wrong behaviour, in
+     House style upstream is a plain sentence describing the wrong behavior, in
      sentence case, with no prefix and no ticket id — "Kubernetes Pods view
      appears empty without a loading indicator while refreshing context",
      "initial setup - 'click next' but the button is off the screen". Titles run

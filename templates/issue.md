@@ -12,7 +12,7 @@
 <!-- What arrived with the command, verbatim: anything typed after the first
      line of `/pd:triage <n>` is recorded here as it was written.
 
-     Verbatim and not summarised. A summary is the plugin's reading of it, and
+     Verbatim and not summarized. A summary is the plugin's reading of it, and
      a wrong reading does not stay in one place — it reaches the plan, the
      tasks and the audit as a record everything downstream trusts. The same
      reason the [inferred] requirements are read back before this file is
@@ -37,7 +37,7 @@
 
 ## Requirements
 <!-- Source tag on every line. [inferred] items are read back to the user
-     before this file is written — that is the defence against requirements
+     before this file is written — that is the defense against requirements
      the plugin invented rather than found.
      On the quickfix route this section is empty: tracing goes by issue
      number and no R-IDs are allocated. -->

@@ -39,7 +39,7 @@ reviewer it imitates only produces noise:
 - A violation that already existed in the touched file is a `nit:` marked
   "pre-existing", never a blocker, unless the PR adds a new occurrence.
 - A semantic change in a refactor is an `issue:` when a caller today can hit
-  the changed behaviour. When no caller is affected, it is a `question:` asking
+  the changed behavior. When no caller is affected, it is a `question:` asking
   whether the change is intended.
 - Test-only shortcuts (a literal instead of the shared constant, a redundant
   assertion) are a `nit:` unless they make the test vacuous or duplicate
@@ -47,14 +47,14 @@ reviewer it imitates only produces noise:
 - **Blocking in practice:**
   - unrelated changes mixed in;
   - red CI;
-  - missing tests for new behaviour;
+  - missing tests for new behavior;
   - `vi.spyOn` or `Object.defineProperty(window)` in new tests;
   - `!` or `as` casts without a check;
   - exported functions in Inversify packages;
   - `$effect` assigning state;
   - relative `..` imports;
   - extension-API compatibility breaks;
-  - a hardcoded product name or colour.
+  - a hardcoded product name or color.
 
 Verdict, mechanically, first match wins:
 - **Rejected:** any `issue:`, red CI, or the diff contains changes the title
@@ -75,7 +75,7 @@ Verdict, mechanically, first match wins:
 - issue: CI green before review: typecheck, lint, formatter, unit tests, DCO sign-off, semantic PR title. Every commit signed. No merge commits; squash or keep atomic commits; rebase when conflicting.
 - issue: Address CodeRabbit/automated review findings, or explain why they are wrong, before asking for human review. Reply to every reviewer comment.
 - issue: Platform-specific or engine-level changes (Windows, macOS, ARM, installers, Podman bumps, native fetch) need validation on that platform or QE approval; visible UI changes need UX designer approval. State which platforms you verified on.
-- issue: Before removing or changing existing behaviour, check `git log`/`git blame` for why it was introduced; a "dead" store may be an unfinished feature, and removing a guard may reintroduce a fixed bug.
+- issue: Before removing or changing existing behavior, check `git log`/`git blame` for why it was introduced; a "dead" store may be an unfinished feature, and removing a guard may reintroduce a fixed bug.
 - issue: Follow the existing design patterns and screens; a change inventing a new pattern where a sibling pattern exists is rejected even if the underlying bug is real. New extensibility domains and public API changes are discussed in an issue first.
 - nit: Manually verify end-to-end (run the app, open the page, check the produced artifact) before approving; don't land risky changes right before a release.
 - nit: Every new file carries the Apache-2.0 header with the current year only (no copied `2022-2024` range), including GitHub workflow YAML files.
@@ -83,7 +83,7 @@ Verdict, mechanically, first match wins:
 
 ## 2. Unit tests (Vitest)
 
-- issue: Every new or changed behaviour, including bug fixes and error paths, ships with unit tests in the same PR.
+- issue: Every new or changed behavior, including bug fixes and error paths, ships with unit tests in the same PR.
 - issue: Mock modules with `vi.mock(import('./module'))` automocking and configure with `vi.mocked(fn)` / `vi.mocked(Class.prototype.method)`. No `vi.spyOn`, no hand-written factories, no custom mock subclasses, no typed `Mock` constants, no `vi.hoisted`, when automocking suffices.
 - issue: Renderer tests: every `window.*` preload method is already auto-mocked by `vite.tests.setup`. Never `Object.defineProperty(window, ...)` or `vi.stubGlobal` for them; just `vi.mocked(window.xxx).mockResolvedValue(...)` in `beforeEach`. Missing globals (`matchMedia`, timeouts) go into the shared setup file, not into specs.
 - issue: `vi.resetAllMocks()` in `beforeEach`. No `vi.clearAllMocks`, no `vi.restoreAllMocks`, no `afterEach`/`afterAll` cleanup, no `beforeAll`: every test starts from a fresh state built in `beforeEach`.
@@ -101,11 +101,11 @@ Verdict, mechanically, first match wins:
 
 - issue: Computed values use `$derived` / `$derived.by` (including `await` inside `$derived` for async data). `$effect` is only for side effects such as `router.goto`, never to assign state. Never disable `svelte/prefer-writable-derived`; restructure the state instead. No `$:` in new code.
 - issue: Data loading must be reactive to prop changes: no fetching in `onMount`, no raw Promise stored in state, no id snapshots kept from `onMount`. Derived state must not be frozen by `undefined` guards or `{@const}` workarounds that keep a previous item's value.
-- issue: Migrating `$:` to runes preserves the full original semantics (initial derivation, `.then` handlers, try/catch, intermediate status updates). Diff the old and new behaviour line by line.
+- issue: Migrating `$:` to runes preserves the full original semantics (initial derivation, `.then` handlers, try/catch, intermediate status updates). Diff the old and new behavior line by line.
 - issue: Props: always a `Props` interface; extend `HTMLAttributes<HTMLXElement>` (or the element-specific type) instead of ad-hoc `class?`/`style` props; append `{className}` at the end of the class string (see `packages/ui/src/lib/progress/ProgressBar.svelte`), do not convert `class` to an array.
 - issue: Tailwind utility classes only; no `<style>` blocks, no inline `style=`; add an `@utility` if a value is missing. New code uses the short variable syntax `text-(--pd-var)` without rewriting existing lines.
 - issue: Logic (parsing, validation, computation) lives in a `.ts` class so it can be unit-tested; the component only passes arguments and renders. Filtering by feature/setting belongs in the store; renderer stores are fed by IPC events through `EventStore`, never by fetch calls.
-- issue: A component decides its own visibility (render nothing when its feature is disabled) instead of every caller guarding it. Cross-cutting behaviour (table persistence, layout) belongs in the podman-desktop wrapper around the agnostic `packages/ui` component, which never calls `window.*`.
+- issue: A component decides its own visibility (render nothing when its feature is disabled) instead of every caller guarding it. Cross-cutting behavior (table persistence, layout) belongs in the podman-desktop wrapper around the agnostic `packages/ui` component, which never calls `window.*`.
 - issue: No feature-specific code in `App.svelte` or other once-loaded roots; use a generic mechanism.
 - issue: `{#each}`/table keys must be unique across engines (include `engineId` for images) and tolerate objects missing metadata.
 - issue: Migrate components in place, never a duplicated `XxxV5` copy; keep existing prop/slot names; when a shared UI component moves to `on*` callbacks keep dispatching the legacy event if no callback is given.
@@ -139,7 +139,7 @@ Verdict, mechanically, first match wins:
 
 - issue: No exported or file-scope standalone functions in Inversify-managed packages, even when the touched file already has one (existing precedent is not a license to add more): logic goes in an injectable class bound as a singleton, or a private/protected method. Never `new` a collaborator; inject it (or an injected builder/factory). No static methods/fields on injected singletons. Prefer polymorphism (a subclass for dev mode) over `if (mode)` branches.
 - issue: Bindings: `bind(X).toSelf().inSingletonScope()` for classes, `toService()` to map interfaces; symbol declared right before its interface with the same name (no `*Symbol` suffix); every injectable has a binding; `@optional()` for platform-specific ones; don't reorder container bindings, ordering lives where `init()` is called.
-- issue: Empty constructors; initialisation in `init()`/`@postConstruct()`. Dispose every `Disposable` returned by `onDidChange*` subscriptions. Every registered configuration property declares a default. Each property injection (`@inject` on fields) is fine and preferred for new classes.
+- issue: Empty constructors; initialization in `init()`/`@postConstruct()`. Dispose every `Disposable` returned by `onDidChange*` subscriptions. Every registered configuration property declares a default. Each property injection (`@inject` on fields) is fine and preferred for new classes.
 - issue: Main stays generic: no frontend identifiers (`dashboard`), no hardcoded ids, no hardcoded product name (read `product.json`), no hardcoded CLI defaults (pass the flag only when the user set a value), no probing URLs when a configured value exists, no Docker Hub image dependencies in core, no docker/podman CLI in core.
 - issue: Single source of truth: sections/columns/features register themselves; never duplicate name lists between main and renderer; share configuration keys via a `*Settings` object in `packages/api`; use `when` clauses in JSON definitions for conditional visibility; add build-time validation when JSON references assets.
 - issue: Filesystem paths come from the `Directories` object; path constants are main internals never exposed to api/renderer. Tool paths (kubeconfig) come from settings, not env vars. Temp file names are unique so multiple instances can run. Application lifecycle state lives in main, not renderer stores.
@@ -147,7 +147,7 @@ Verdict, mechanically, first match wins:
 - issue: Renderer never reads `product.json` or other main-only data directly; main exposes processed domain-level data through IPC, exposing only what the consumer needs (not "everything by default"). IPC handlers are registered in the owning service, not in `packages/main/src/plugin/index.ts`. Don't bypass abstractions (theming) with new IPC calls.
 - issue: Cross-cutting policies (update permissions, allow-lists) are enforced centrally in core keyed by extension id, not per extension. New classes mirror their existing sibling (autostop like autostart). Encapsulate repeated async write logic (debounce/flush/dispose) in a dedicated class.
 - issue: Don't log on every call of a hot method; not when an optional file is simply absent; telemetry is sent after the operation completes and only computed when telemetry is enabled; expensive checks (admin lookup) run only when needed; aggregate paginated data incrementally.
-- issue: Keep intentionally OS-specific behaviour (macOS single-machine path) instead of unifying on one OS. Dev mode must not silently change runtime defaults.
+- issue: Keep intentionally OS-specific behavior (macOS single-machine path) instead of unifying on one OS. Dev mode must not silently change runtime defaults.
 
 ## 7. Extension API (`packages/extension-api`)
 
@@ -160,8 +160,8 @@ Verdict, mechanically, first match wins:
 ## 8. UI/UX, theming, a11y
 
 - issue: Colors in `color-registry` reference `tailwind-color-palette.json` entries (or `black`/`white`), never hex or raw oklch; update existing values in place instead of adding `modern-*` duplicates; semantic status colors reuse green/red families; no CSS color string manipulation, use `culori` and the palette. `hcDark`/`hcLight` values are always defined with fallbacks in one central place; theme kinds follow VS Code naming; custom themes derive from one of the four root themes.
-- issue: User-facing strings never hardcode "Podman Desktop" or use Electron `app.name`; read `product.json`. Consistent domain terminology (bundled vs built-in) aligned with API property names. Icons registered globally, not aliased inside one component. Contributed objects (menus, actions) honour all declared fields (`icon`, `disabled`, `when`).
-- issue: Don't regress progress feedback (in-progress state visible without hover on icon-only buttons); cancelling a native dialog never surfaces an uncaught rejection; new API options are wired to the UI, never dead values; a single request does not turn an opt-in display option into a default.
+- issue: User-facing strings never hardcode "Podman Desktop" or use Electron `app.name`; read `product.json`. Consistent domain terminology (bundled vs built-in) aligned with API property names. Icons registered globally, not aliased inside one component. Contributed objects (menus, actions) honor all declared fields (`icon`, `disabled`, `when`).
+- issue: Don't regress progress feedback (in-progress state visible without hover on icon-only buttons); canceling a native dialog never surfaces an uncaught rejection; new API options are wired to the UI, never dead values; a single request does not turn an opt-in display option into a default.
 - issue: a11y: no `title` tooltips on decorative `aria-hidden` icons; `aria-current="step"` on the active stepper item; animations respect reduce-motion; no DOM ids/a11y attributes without a justification tied to the issue.
 - nit: Explanatory placeholders for defaults (`default (none)`); explicit `else if` branches for icon string formats instead of a catch-all; global notification when user action (restart) is needed.
 
@@ -169,7 +169,7 @@ Verdict, mechanically, first match wins:
 
 - issue: No new dependency without discussion; check maintenance, prefer stdlib or an already-installed package; but prefer an existing library over a hand-written parser, and a library's programmatic API/promises over spawning its CLI and grepping stdout.
 - issue: Don't add a dependency the project doesn't import directly; scope pnpm overrides to the requiring package (`parent>dep`), never globally. No transitive downgrades in `pnpm-lock.yaml` as a side effect. `@types/*` in devDependencies. No duplicate entries in `package.json`.
-- issue: Use the latest released version; grouped bumps update all members together and honour migration notes; Electron/Node major bumps go to the latest beta with aligned `@types/node`. Verify a CVE affects the resolved version (`pnpm why`) before a security bump. Fixes to a failing dependabot PR target the dependabot branch. No `allowBuilds` entries for packages shipping prebuilt binaries unless proven required.
+- issue: Use the latest released version; grouped bumps update all members together and honor migration notes; Electron/Node major bumps go to the latest beta with aligned `@types/node`. Verify a CVE affects the resolved version (`pnpm why`) before a security bump. Fixes to a failing dependabot PR target the dependabot branch. No `allowBuilds` entries for packages shipping prebuilt binaries unless proven required.
 - nit: Published packages are named after the tooling they bind to (`api-mocks-vitest`), keep `exports`/`files` clean, and prefer shipping a plugin over multi-step README setup.
 
 ## 10. Naming and structure
@@ -190,8 +190,8 @@ Verdict, mechanically, first match wins:
 
 - issue: Complex shell logic goes to `scripts/` so it runs locally; one workflow per concern, keep path filters, don't rename workflows that are required checks; guard repo-specific jobs with `if: github.repository == 'podman-desktop/podman-desktop'`; read Node from `.nvmrc`; pin runner versions; jobs have a green outcome when there is nothing to do.
 - issue: Secrets used directly via `${{ secrets.X }}` where needed, never copied into job env, never added unless required; no personal emails (use `${{ github.actor }}@users.noreply.github.com`); bot token for comments; commits attributed to `github.actor`. Data between steps via `$GITHUB_OUTPUT` and camelCase output names.
-- issue: Telemetry never sends raw user-provided values (hash/anonymise). Validate external input (semver from `product.json`, user paths at the IPC boundary: trim, cap length, reject control chars/UNC, read once to avoid TOCTOU, generic error messages with the original logged). Sanitize markdown on every update, not only on mount. Minimal Flatpak/sandbox permissions with a comment explaining each. Persist state in the existing configuration store; extensions must not tamper with security lists.
-- nit: `curl -sL`; scripts resolve paths from the script location, not cwd; version bump automation replaces all occurrences of the version string; `String(process.env.X).toLowerCase() === 'true'` for boolean env vars; one parameterised script (`pnpm test:e2e <group>`) over many near-identical entries. E2E test semantics are owned by QE: review infra, defer content.
+- issue: Telemetry never sends raw user-provided values (hash/anonymize). Validate external input (semver from `product.json`, user paths at the IPC boundary: trim, cap length, reject control chars/UNC, read once to avoid TOCTOU, generic error messages with the original logged). Sanitize markdown on every update, not only on mount. Minimal Flatpak/sandbox permissions with a comment explaining each. Persist state in the existing configuration store; extensions must not tamper with security lists.
+- nit: `curl -sL`; scripts resolve paths from the script location, not cwd; version bump automation replaces all occurrences of the version string; `String(process.env.X).toLowerCase() === 'true'` for boolean env vars; one parameterized script (`pnpm test:e2e <group>`) over many near-identical entries. E2E test semantics are owned by QE: review infra, defer content.
 
 
 ## Where this differs from upstream-rules.md

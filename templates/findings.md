@@ -7,7 +7,7 @@
        diff (section 1, the `answered` state). Everything below the first
        heading is a DRAFT of the comment for the upstream tracker: publishing it
        is a human action, `gh issue comment` is denied at the hook, and no state
-       in section 1 authorises writing there.
+       in section 1 authorizes writing there.
 
        The rule that decides everything else here decides this too: a step
        nobody ran is a suggestion. A suggestion posted in the voice of a finding
@@ -19,7 +19,7 @@
 
 <!-- The environment in enough detail that someone else can stand in it: the
      versions on both sides of anything that talks to anything, the platform,
-     and the exact command output. Paste captures, do not summarise them. -->
+     and the exact command output. Paste captures, do not summarize them. -->
 {{reproduction}}
 
 ## What the cause turned out to be

@@ -275,7 +275,7 @@ describe('spending', () => {
 
     const result = await close(branch, { home, use: 'comment' });
     assert.equal(result.ok, false);
-    assert.match(result.error, /not something a push token authorises/);
+    assert.match(result.error, /not something a push token authorizes/);
   });
 
   test('spending a branch that has no token fails', async () => {
@@ -314,12 +314,12 @@ describe('revoking', () => {
 describe('the journal', () => {
   test('issuing and spending are both recorded', async () => {
     await readyIssue(1040);
-    await open({ issue: 1040, branch: 'DESKTOP-1040/journalled', home });
-    await close('DESKTOP-1040/journalled', { home });
+    await open({ issue: 1040, branch: 'DESKTOP-1040/journaled', home });
+    await close('DESKTOP-1040/journaled', { home });
 
     const events = (await readJournal({ issue: 1040 }, { home })).map((entry) => entry.event);
-    assert.ok(events.includes('gate-open'), 'gate-open was not journalled');
-    assert.ok(events.includes('gate-spent'), 'gate-spent was not journalled');
+    assert.ok(events.includes('gate-open'), 'gate-open was not journaled');
+    assert.ok(events.includes('gate-spent'), 'gate-spent was not journaled');
   });
 });
 
@@ -379,7 +379,7 @@ describe('kinds of write', () => {
     const reply = await open({ issue: 1058, pr: 18561, kind: 'reply', home });
     assert.equal(reply.ok, true, reply.error);
 
-    // And it still authorises only a sentence. Keys of different kinds are not
+    // And it still authorizes only a sentence. Keys of different kinds are not
     // found for one another, which is the hole stage 4 closed.
     assert.equal((await verify({ pr: 18561, kind: 'reply', home })).valid, true);
     assert.equal((await verify({ branch: 'DESKTOP-1058/x', kind: 'push', home })).valid, false);

@@ -22,7 +22,7 @@
 // rule in build() exists because the shape it rejects produces a pull request
 // that cannot be reviewed, merged or reverted on its own, and every one of them
 // is the kind of set arithmetic a model can get subtly wrong while sounding
-// certain. If these tests pass, the slicer is free to spend its judgement on
+// certain. If these tests pass, the slicer is free to spend its judgment on
 // the question no grep answers: whether the slice justifies itself at all.
 
 import { test, describe, before, after } from 'node:test';

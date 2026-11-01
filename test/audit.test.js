@@ -202,7 +202,7 @@ describe('collect', () => {
 
   // No verdict field, no overall ok: a collector that graded its own findings
   // would be the second opinion the audit is meant to be getting.
-  test('the report states facts and passes no judgement', async () => {
+  test('the report states facts and passes no judgment', async () => {
     const report = await audit();
 
     assert.equal(report.verdict, undefined);
@@ -290,7 +290,7 @@ describe('who did each task', () => {
 });
 
 describe('format', () => {
-  test('leads with what is machine-checkable and says where judgement starts', async () => {
+  test('leads with what is machine-checkable and says where judgment starts', async () => {
     const text = format(await collect({ issue: ISSUE, repoRoot: repo, base: 'main', home }));
 
     assert.match(text, /audit: issue 18248/);

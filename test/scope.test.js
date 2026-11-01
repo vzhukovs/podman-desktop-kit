@@ -29,7 +29,7 @@ import { identities, names, redirection, scope } from '../lib/hooks/scope.js';
 const ids = identities({ repo: { upstream: 'podman-desktop/podman-desktop', fork: 'someone/pd-fork' } });
 
 describe('names', () => {
-  test('the slugs and the bare name are recognised', () => {
+  test('the slugs and the bare name are recognized', () => {
     assert.ok(names('git push git@github.com:podman-desktop/podman-desktop.git', ids));
     assert.ok(names('gh -R someone/pd-fork pr create', ids));
     assert.ok(names('cd ~/src/podman-desktop', ids));

@@ -50,7 +50,7 @@ worst status in the record. `pdkit validate supersede <Vk> --by <Vn> --reason
 in `validation.md` under `Set aside`, and stops counting towards the outcome.
 The guards are what make it not an eraser — the replacement must have
 demonstrated something itself, a step that passed cannot be set aside, the reason
-is required, and the supersession is journalled. It exists because the
+is required, and the supersession is journaled. It exists because the
 alternative was observed on 18835: an issue that could not move until somebody
 edited `validation.json` by hand, which is exactly what the record is designed to
 make impossible.

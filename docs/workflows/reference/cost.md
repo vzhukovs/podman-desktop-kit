@@ -11,7 +11,7 @@ pdkit cost                          # every issue in the journal, grouped by rou
 pdkit cost --issue 12345            # one cycle, split by phase
 pdkit cost --since 2026-10-01       # only calls in a window
 pdkit cost --snapshot               # also write $PDKIT_HOME/cost/<date>.json
-pdkit cost --compare 2026-10-16     # that snapshot beside the issues journalled since
+pdkit cost --compare 2026-10-16     # that snapshot beside the issues journaled since
 ```
 
 Run it from the podman-desktop clone, or pass `--repo`: the transcripts are found

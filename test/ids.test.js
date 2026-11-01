@@ -150,7 +150,7 @@ describe('branchName', () => {
   // preflight checks the branch name against this pattern, so the two have to
   // agree or every PR fails its own gate.
   //
-  // Asserted by behaviour rather than by comparing the pattern to a copy of
+  // Asserted by behavior rather than by comparing the pattern to a copy of
   // itself: a second literal in this file is exactly the duplication exporting
   // BRANCH_PATTERN exists to prevent, and it fails on any edit including a
   // correct one.

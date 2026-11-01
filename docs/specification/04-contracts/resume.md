@@ -7,8 +7,8 @@
    our slices' files.
 3. Rebase. Conflicts are classified by `pd-conflict-analyst`: **mechanical**
    (imports, formatting, a file moved) are resolved immediately, each resolution
-   journalled; **semantic** (upstream rewrote what the plan stood on) means
-   **stop**, analyse the new commits, and take a plan amendment to approval.
+   journaled; **semantic** (upstream rewrote what the plan stood on) means
+   **stop**, analyze the new commits, and take a plan amendment to approval.
 4. After the rebase, `preflight` and `slice verify --all` again. A previous green
    means nothing.
 5. Hand off to `/pd:pr-sync` for accumulated threads.

@@ -17,7 +17,7 @@
 
 - [ ] `lib/` — deterministic, and covered by a test
 - [ ] `lib/hooks/` — a rule the plugin enforces rather than requests
-- [ ] `skills/` or `agents/` — judgement
+- [ ] `skills/` or `agents/` — judgment
 - [ ] `templates/`, `knowledge/`, `defaults/` — artefact shape, constitution, defaults
 - [ ] documentation only
 

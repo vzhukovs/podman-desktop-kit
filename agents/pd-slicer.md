@@ -104,8 +104,8 @@ upstream's review agent applies it to every slice you produce:
   working by itself.
 - **Changes to existing tests do not ship with the implementation they test.**
   If the diff rewrites an existing assertion as well as the code under it, the
-  test fix is a separate slice. New tests for new behaviour stay with that
-  behaviour. A test whose assertion must change *because* the contract changed
+  test fix is a separate slice. New tests for new behavior stay with that
+  behavior. A test whose assertion must change *because* the contract changed
   belongs to the contract change, and the PR body says so.
 - **A move is a pure move.** A file moved and edited in the same slice shows as
   a delete plus an add, and the reviewer cannot see what changed. Move in one

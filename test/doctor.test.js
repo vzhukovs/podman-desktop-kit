@@ -160,7 +160,7 @@ describe('the self-test', () => {
       const checks = await gateSelftest({ pluginRoot: plugin });
 
       // pre-bash fails closed, so a broken handler blocks everything. That is
-      // the intended behaviour, and it is still a broken gate.
+      // the intended behavior, and it is still a broken gate.
       assert.equal(find(checks, 'gate:allows').status, 'fail');
       assert.match(find(checks, 'gate:allows').detail, /git status/);
     } finally {

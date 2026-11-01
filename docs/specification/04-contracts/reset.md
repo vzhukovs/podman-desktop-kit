@@ -5,7 +5,7 @@
 The failure it closes is ordinary and had no answer: a cycle that went wrong
 early, where continuing means every later step inherits the mistake because every
 later step reads what the earlier ones wrote. Before this command the only route
-out was `rm -rf` on a directory whose neighbours share a parent — a thing nobody
+out was `rm -rf` on a directory whose neighbors share a parent — a thing nobody
 should have to type carefully at midnight.
 
 Shaped like `close`: bare, it reports and changes nothing; `--confirm` acts. The

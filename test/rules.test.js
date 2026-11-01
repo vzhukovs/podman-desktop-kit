@@ -97,7 +97,7 @@ describe('coverage of section 6', () => {
   }
 
   // Gated or denied outright — never allowed. Denying is the stronger answer
-  // and belongs to the writes no state in section 1 authorises at all: nothing
+  // and belongs to the writes no state in section 1 authorizes at all: nothing
   // in this workflow has pdkit posting to someone else's tracker.
   test('every GitHub write is gated or denied, never a bare allow', () => {
     for (const rule of RULES.filter((r) => r.program === 'gh')) {
@@ -107,7 +107,7 @@ describe('coverage of section 6', () => {
 
   // Consent to publish code is not consent to speak in a review. Before the
   // token had a kind, the push token for whatever branch you happened to be
-  // standing on authorised every one of these.
+  // standing on authorized every one of these.
   test('a write to an open pull request asks for a reply token, not a push token', () => {
     const kindOf = (id) => RULES.find((rule) => rule.id === id)?.gate ?? 'push';
 
@@ -118,7 +118,7 @@ describe('coverage of section 6', () => {
   });
 });
 
-// Every rule gets a pair: the command it must catch, and the neighbouring one
+// Every rule gets a pair: the command it must catch, and the neighboring one
 // it must not. A one-sided test is what let the rules ship matching everything
 // — the shape and order assertions above all passed while force-push-without-
 // lease was refusing every `git push` and no-verify every `git commit`.

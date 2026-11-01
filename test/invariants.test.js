@@ -18,10 +18,10 @@
 
 // Structural invariants from section 2.2 of the specification.
 //
-// These are not behaviour tests. They are the guards on two properties that
+// These are not behavior tests. They are the guards on two properties that
 // nothing else can check, because both are about what the code is *allowed to
 // contain* rather than what it does when run. A second writer of state.json or
-// a second copy of the hook table would not fail any behaviour test — it would
+// a second copy of the hook table would not fail any behavior test — it would
 // pass every one of them, right up until the two copies disagreed.
 
 import { test, describe } from 'node:test';
@@ -172,7 +172,7 @@ describe('the hook table has one owner', () => {
 // that reaches them, so the eighth gets guessed, and the guess is wrong at
 // exactly the one place the two vocabularies diverge.
 //
-// Two properties are pinned here, because neither is visible in any behaviour
+// Two properties are pinned here, because neither is visible in any behavior
 // test: that every `/pd:x` written down resolves to a skill, and that every
 // state a person can be standing in says what to run from it.
 describe('the handoff between skills', () => {
@@ -359,7 +359,7 @@ describe('skills only name commands that exist', () => {
 
 // The unknown-flag check is only as good as its table, and a table kept by hand
 // beside the code it describes is a table that falls behind. Both halves of the
-// drift are checked here rather than in a behaviour test, because neither is
+// drift are checked here rather than in a behavior test, because neither is
 // about what a command does: one is about a command having a row at all, the
 // other about a handler reading a flag nobody declared.
 //
@@ -514,7 +514,7 @@ describe('dynamic imports are URLs, not paths', () => {
 // `--help` is the one description of the commands a person reads, and it is
 // text: USAGE in lib/cli.js is laid out by hand, so nothing derives it from
 // REGISTRY or from a command's ACTIONS. A command or an action added without a
-// line there passes every behaviour test and is invisible to everybody who
+// line there passes every behavior test and is invisible to everybody who
 // asks pdkit what it can do. Adding an action is three edits — the function,
 // its row in ACTIONS, its line in USAGE — and this holds the third.
 describe('--help names every command and every action', () => {

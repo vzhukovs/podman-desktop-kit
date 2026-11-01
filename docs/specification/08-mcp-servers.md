@@ -58,7 +58,7 @@ podman-desktop binary with `--remote-debugging-port=<port>`, waits for a reply o
 `chromium.connectOverCDP`. The application exposes an ordinary CDP endpoint, and
 Playwright MCP knows how to attach to one (`--cdp-endpoint`).
 
-The division of labour follows directly:
+The division of labor follows directly:
 
 - **`pdkit` brings the application up.** `validate launch` resolves the binary
   (`validation.app.binary`, then `PODMAN_DESKTOP_BINARY`, then
@@ -87,7 +87,7 @@ Playwright call** — three times out of three — after which it recovers on it
 own; `validate launch` warns about this rather than leaving it to be discovered
 mid-scenario.
 
-What remains unmeasured: behaviour under a headless display, and the stability of
+What remains unmeasured: behavior under a headless display, and the stability of
 a CDP session over a long scenario. One snapshot on a fresh application says
 nothing about the twentieth minute. Both are measured by running them, not by
 reasoning, and neither blocks: the degradation is already described.

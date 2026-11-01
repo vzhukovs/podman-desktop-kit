@@ -12,7 +12,7 @@
 | [`templates/`](../../templates/) | the shape of every artefact |
 
 The split is not stylistic. Anything that must be **true** is in `lib/` and
-`hooks/`, where it can be tested. Anything that requires **judgement** is in
+`hooks/`, where it can be tested. Anything that requires **judgment** is in
 `skills/` and `agents/`. A rule stated only in a prompt is a rule that holds most
 of the time.
 

@@ -53,7 +53,7 @@ signature through main, preload and renderer has no part that works alone. The
 slice gets `commits`, `materialize` makes one commit each, and the title carries
 every scope: `refactor(main,preload,renderer): …`.
 
-What stays judgement: whether a slice justifies itself without the next one.
+What stays judgment: whether a slice justifies itself without the next one.
 Upstream does not accept dead code staged for a future PR.
 
 **Verification is re-checked, not remembered.** `slices.json` stores the digest of

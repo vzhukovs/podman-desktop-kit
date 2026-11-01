@@ -18,7 +18,7 @@ Everything after it, in the same message, is prior context.** It goes into
 
 That is the whole rule, and it needs no parsing because it is a line boundary.
 
-Verbatim rather than summarised, for the reason section 4 reads the `[inferred]`
+Verbatim rather than summarized, for the reason section 4 reads the `[inferred]`
 list back: a summary is this plugin's reading of what somebody told it, and a
 wrong reading does not stay where it was made — it reaches the plan, the tasks
 and the audit as a record everything downstream trusts.
@@ -52,7 +52,7 @@ decides, and you do:
 1. **Read the top few bodies, not all of them.** Three to five, with
    `pdkit issue fetch <n>`. The listing exists so that you do not read twenty.
 2. **Judge what no grep judges** — whether the requirement is clear enough to
-   plan against, whether the reported behaviour is specific enough to verify,
+   plan against, whether the reported behavior is specific enough to verify,
    and roughly how big it looks. A well-formatted issue that says "improve the
    UX" is not ready; a free-hand one with a stack trace and a file path is.
 3. **Say what is blocked and why**, rather than silently dropping it. An issue
@@ -92,7 +92,7 @@ references it, in any state. The body is whole; of the comments, the newest
 fifteen, with a line saying how many earlier ones were left out. If the answer
 seems to hang on something said early in the thread, `--full` prints them all.
 
-Act on that before analysing anything:
+Act on that before analyzing anything:
 
 - **an open PR** → the work exists. Report it and stop. Duplicating it is the
   most expensive possible outcome.
@@ -104,7 +104,7 @@ Act on that before analysing anything:
 ## 2. Locate, do not read
 
 Two or three `pd-scout` agents in parallel, different questions each: where
-the behaviour lives, what already exists that resembles the fix, how that area
+the behavior lives, what already exists that resembles the fix, how that area
 is tested. They return a map, ≤ 40 lines, every claim carrying `file:line`.
 
 Do not read the code broadly yourself. The compression is the point — if you
@@ -128,7 +128,7 @@ dependency. Anything else is `standard` or larger.
 - `[operator]` — stated in the prior context that came with the command
 
 **Read the `[inferred]` list back to the user before writing anything to
-disk.** Show it on its own, not buried in a summary. This is the cheap defence
+disk.** Show it on its own, not buried in a summary. This is the cheap defense
 against requirements the plugin invented, and it only works if the list is
 short enough to actually read — if it is long, that is itself the finding.
 

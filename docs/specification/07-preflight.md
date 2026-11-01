@@ -28,8 +28,8 @@ in the order `CHECK_IDS` in `lib/preflight/index.js` runs them:
 | e2e environment | a test needing an environment CI does not have requires a `Notes for reviewers` entry | ✅ |
 | **validation evidence** | a validation step with no attached artefact is named in `Notes for reviewers`. Skipped on `quickfix` and when `validation.require_evidence: false` | ✅ |
 | debug leftovers | `console.log`, `.only`, `.skip`, `@ts-ignore`, `any` in the diff | ⚠️ warn, listing them |
-| maintainer rules | the greppable part of `knowledge/maintainer-rules.md` in the added lines, each pattern scoped to the files its rule covers: `vi.spyOn`, `Object.defineProperty(window)`, `clearAllMocks`, `afterEach` in unit specs; `as unknown as`, `eslint-disable`, `*Sync(`, `../` imports, built-ins without `node:`; `export function` in `packages/main`; `<style>` and `$:` in Svelte; a hardcoded "Podman Desktop", a hex colour in the colour registry; a copyright year other than this one | ⚠️ warn, with the rule's section |
-| CI blind spots | the diff touches build, packaging, platform-specific behaviour or the **dependency graph** — CI will not check it; a `Notes for reviewers` entry is required, worded per the area that fired | ✅ |
+| maintainer rules | the greppable part of `knowledge/maintainer-rules.md` in the added lines, each pattern scoped to the files its rule covers: `vi.spyOn`, `Object.defineProperty(window)`, `clearAllMocks`, `afterEach` in unit specs; `as unknown as`, `eslint-disable`, `*Sync(`, `../` imports, built-ins without `node:`; `export function` in `packages/main`; `<style>` and `$:` in Svelte; a hardcoded "Podman Desktop", a hex color in the color registry; a copyright year other than this one | ⚠️ warn, with the rule's section |
+| CI blind spots | the diff touches build, packaging, platform-specific behavior or the **dependency graph** — CI will not check it; a `Notes for reviewers` entry is required, worded per the area that fired | ✅ |
 
 Four results, and the difference between them matters: **pass** (the check ran
 and was satisfied), **skip** (it did not run, and the summary says why), **warn**
@@ -110,7 +110,7 @@ rule: the ref stayed `HEAD`, so the report was about the slice exactly when
 preflight was run from the slice's own worktree. From anywhere else every file
 check read an unrelated change without a sign, because `HEAD` always resolves. So
 the ref is now the slice's branch; if the branch does not exist yet the run
-**refuses**, because the flow materialises before preflight and answering about
+**refuses**, because the flow materializes before preflight and answering about
 `HEAD` would answer a question nobody asked. An empty diff under a slice is also
 refused: every check passes on nothing, and a green report would open the gate on
 a branch with nothing on it.

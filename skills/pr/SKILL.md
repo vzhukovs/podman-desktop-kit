@@ -101,7 +101,7 @@ merged together." Closing those is `/pd:pr-sync`'s job, after this one is open.
      what should come back, and the cleanup afterwards.
    - `Notes for reviewers`: mandatory when preflight flagged something CI
      cannot judge, and then only that plus the platform you checked on. Not the
-     review history, not residual risks, not behaviour nuance nobody can act on.
+     review history, not residual risks, not behavior nuance nobody can act on.
 
 5. **Preflight, pass two.** `pdkit preflight <n> --body-only --body <file>`.
    The body-dependent checks could only skip on pass one; the command says how

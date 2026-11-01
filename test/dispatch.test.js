@@ -279,9 +279,9 @@ describe('writes that belong to a pull request rather than a branch', () => {
 
   // The hole this closes. Before the token had a kind, every write with no
   // branch of its own fell back to the current branch — so a token issued to
-  // push slice #1 authorised replying in a review, commenting on the issue,
+  // push slice #1 authorized replying in a review, commenting on the issue,
   // and any gh api mutation, all without anyone confirming those.
-  test('a push token does not authorise a review write', async () => {
+  test('a push token does not authorize a review write', async () => {
     await readyIssue(2003);
     await gate.open({ issue: 2003, branch: BRANCH, kind: 'push', home });
 
@@ -428,7 +428,7 @@ describe('outside podman-desktop', () => {
     });
   }
 
-  test('a fork clone is recognised by its name before repo.fork is set', async () => {
+  test('a fork clone is recognized by its name before repo.fork is set', async () => {
     assert.equal((await elsewhere('git push origin main', fork)).block, true);
   });
 

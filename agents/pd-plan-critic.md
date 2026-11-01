@@ -24,6 +24,6 @@ Then the maintainer's rules a plan can break before any code exists: sections 1,
 
 Cite the rule by section. Do not raise the code-level rules (mocks, casts, runes): they belong to implementation, and the implementer reads them.
 
-Then the judgements the checks cannot make: whether the ownership split matches how the code is actually shaped, whether a `Done when` command would pass while the requirement stays unmet, whether the slice hypothesis survives contact with the file layout, and whether the plan solves the issue that was filed rather than the one it is easier to solve.
+Then the judgments the checks cannot make: whether the ownership split matches how the code is actually shaped, whether a `Done when` command would pass while the requirement stays unmet, whether the slice hypothesis survives contact with the file layout, and whether the plan solves the issue that was filed rather than the one it is easier to solve.
 
 Do not soften the verdict. A plan approved to be agreeable is worse than no review.

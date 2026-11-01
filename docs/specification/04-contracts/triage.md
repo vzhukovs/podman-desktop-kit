@@ -33,7 +33,7 @@ all**.
    person starting the work already knew. Neither may be folded into `[issue]`,
    which means a maintainer can be pointed at the line that says it. A read-back
    is mandatory: the `[inferred]` list is shown separately, before the file is
-   written. It is a cheap defence against "the plugin invented the requirements".
+   written. It is a cheap defense against "the plugin invented the requirements".
 6. Verdict: `ROUTE: quickfix | standard | multi-slice | redo | invalid`.
 
 **On the `quickfix` route tracing goes by issue number and no R-IDs are
@@ -96,7 +96,7 @@ open backlog with the facts that say whether an issue can be started at all.
 | Mechanically, `pdkit issue list` | Left to the model |
 |---|---|
 | pull requests referencing the issue **in this repository**; an open one means work is under way | whether the requirement is clear enough to plan against |
-| assignee: somebody has taken it | whether behaviour is described concretely enough to check |
+| assignee: somebody has taken it | whether behavior is described concretely enough to check |
 | whether a maintainer replied (`MEMBER`/`OWNER`/`COLLABORATOR`), **excluding the issue author** | how big this looks |
 | whether a bug report carries a reproduction: a `Steps to reproduce` section with content, not `_No response_` | whether it is worth taking now |
 | which upstream template the body follows, or none | |

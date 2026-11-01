@@ -313,7 +313,7 @@ describe('a half-applied amendment', () => {
 describe('the tasks an amendment writes', () => {
   /** A task in plan.md's shape. */
   const T1 = ['### T1: reproduce the stall', '- Satisfies: R1', '- Owns: packages/main/src/index.ts', '- Done when: `npx vitest run packages/main/src/index.spec.ts`', ''];
-  const T2 = ['### T2: close handler honours the update flag', '- Satisfies: R2', '- Owns: packages/main/src/mainWindow.ts', '- Done when: `npx vitest run packages/main/src/mainWindow.spec.ts`', ''];
+  const T2 = ['### T2: close handler honors the update flag', '- Satisfies: R2', '- Owns: packages/main/src/mainWindow.ts', '- Done when: `npx vitest run packages/main/src/mainWindow.spec.ts`', ''];
 
   /** A1's "Slices affected", as A1 wrote its own: free text, then a task block, then more text. */
   const SLICES = [
@@ -351,7 +351,7 @@ describe('the tasks an amendment writes', () => {
     await writeFile(join(home, 'values.json'), JSON.stringify({ ...VALUES, slices: SLICES }));
     await writeFile(issueFile('plan.md'), withTasks('R1, R2'));
     await taskFile('T1', 'reproduce the stall', 'R1', 'packages/main/src/index.ts');
-    await taskFile('T2', 'close handler honours the update flag', 'R2', 'packages/main/src/mainWindow.ts');
+    await taskFile('T2', 'close handler honors the update flag', 'R2', 'packages/main/src/mainWindow.ts');
     assert.equal((await pdkit('task', 'sync', '--issue', String(ISSUE))).code, 0);
   });
 

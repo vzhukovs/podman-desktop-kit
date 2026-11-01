@@ -35,12 +35,12 @@ body:
       label: Which half of the plugin is this
       description: >
         Anything that must be *true* belongs in `lib/`, where it can be tested.
-        Anything that needs *judgement* belongs in a skill or an agent. Guessing
+        Anything that needs *judgment* belongs in a skill or an agent. Guessing
         wrong is fine — the answer is often the interesting part of the
         discussion.
       options:
         - A fact something could measure (deterministic, belongs in pdkit)
-        - A judgement (belongs in a skill or an agent)
+        - A judgment (belongs in a skill or an agent)
         - Not sure
     validations:
       required: true

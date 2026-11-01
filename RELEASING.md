@@ -165,4 +165,4 @@ alongside `pdkit doctor`.
   file under `issues/<n>/` orphans every issue in flight; if one has to, it needs
   a `pdkit` command that performs the move and a MINOR bump.
 - **Widen what the gate allows without saying so in the changelog.** That is the
-  one behaviour whose failure mode is public and irreversible.
+  one behavior whose failure mode is public and irreversible.

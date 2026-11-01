@@ -42,14 +42,14 @@ raising rather than a gap to paper over.
 | `pd-review-architecture` | does it fit existing patterns; does it duplicate a utility; right layer; dependency direction |
 | `pd-review-api-compat` | backwards compatibility, `Disposable` and leaks, schemas, the public surface |
 | `pd-review-tests` | are the claimed edge cases covered; skips, weakened assertions, `any`, `@ts-ignore`; determinism |
-| `pd-review-product` | does it do what the issue asked; i18n, a11y, contrast; error and empty states; neighbouring regressions |
+| `pd-review-product` | does it do what the issue asked; i18n, a11y, contrast; error and empty states; neighboring regressions |
 
 Each axis gets the diff, the facts above, the target files and the linked
 issue, **but not the threads already on the pull request**. Leave out
 `feedback` from what `review fetch` returned. An axis that has read what
 someone else already said ends up agreeing with it, or arguing with it. Either
 way the review stops being a second opinion. The threads are not wasted: they
-go to the synthesis, after the judgement is made.
+go to the synthesis, after the judgment is made.
 
 Each axis reads `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`: its calibration, and the
 sections named in its own prompt. That is the rule set upstream's own review
@@ -66,7 +66,7 @@ path/to/file.ts:LINE — issue: <what and why, imperative, one or two sentences>
 
 `(§n)` cites the section of `maintainer-rules.md`. A finding that comes from
 our own axis lens and not from those rules (does it solve the issue, does it
-regress a neighbouring scenario) is marked `(outside the rule set)`. That
+regress a neighboring scenario) is marked `(outside the rule set)`. That
 marker is a label, not a downgrade. A finding is reported only after it has
 been checked in the actual code. If it could not be checked, it becomes a
 `question:`.
@@ -88,9 +88,9 @@ the path and leaving a copy-paste between finishing a review and reading it is
 the wrong last step. Where there is no desktop it says so on one line and the
 render still succeeds; drop the flag if you would rather it stayed quiet. `What I could not verify` is
 mandatory and is never empty by default: the platforms you did not exercise,
-the steps that need a human, the behaviour you could only read about.
+the steps that need a human, the behavior you could only read about.
 
-The verdict follows from the findings. It is not a separate judgement. Take
+The verdict follows from the findings. It is not a separate judgment. Take
 the first row that matches, the same order upstream's review agent uses:
 
 | Verdict | When |

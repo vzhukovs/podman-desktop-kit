@@ -8,7 +8,7 @@
        `pdkit validate attach` and `pdkit validate run` from what was actually
        captured; there is no parameter that sets a step to PASS. What the
        outcome promises is an attached artefact, not that what appeared on
-       screen was correct — that judgement stays with a human. -->
+       screen was correct — that judgment stays with a human. -->
 
 ## Steps
 

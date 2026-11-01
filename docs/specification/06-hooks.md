@@ -23,11 +23,11 @@ the command string are applied by code in `lib/hooks/`.
 
 The rules the handlers apply:
 
-| Handler | Rule | Behaviour |
+| Handler | Rule | Behavior |
 |---|---|---|
 | `pre-bash` | `git push`, `gh pr create` | deny without a valid **`push`** token for that branch; otherwise allow and spend the token. Allowed without a token where the command is proven to act outside podman-desktop (below) |
 | `pre-bash` | `gh pr edit/review/merge/comment`, `gh api` with a mutation | deny without a valid **`reply`** token for that PR. Such writes belong to no branch, and the token is not spent: the unit of consent is the batch |
-| `pre-bash` | `gh issue comment`, `gh issue create/edit/close` | **deny always.** No state authorises a write to the tracker, and the one route that produces issue text says a human posts it. A gate that cannot open is worse than a refusal that says what to do |
+| `pre-bash` | `gh issue comment`, `gh issue create/edit/close` | **deny always.** No state authorizes a write to the tracker, and the one route that produces issue text says a human posts it. A gate that cannot open is worse than a refusal that says what to do |
 | `pre-bash` | `git push --force` without `--force-with-lease` | deny always |
 | `pre-bash` | `git add -A`, `git add .` | deny always, with a hint to list paths |
 | `pre-bash` | `git rebase -i` | deny, hint `git reset --soft <base>` — husky's `commit-msg` appends `Signed-off-by` and then rejects the duplicate it created |
@@ -115,7 +115,7 @@ before preflight.
 
 **This also closed a hole nobody had seen.** For commands with no branch of their
 own, `dispatch.js` fell back to the current branch. So the token issued to push
-slice #1 also authorised a review reply, a comment in somebody else's tracker,
+slice #1 also authorized a review reply, a comment in somebody else's tracker,
 and any `gh api` mutation: one confirmation, given for publishing code, working
 for writes nobody was asked about. Token kinds remove that not by adding a check
 but by making keys of different kinds unfindable for one another.
@@ -148,7 +148,7 @@ put new commits on a branch already under review, with nobody confirming them in
 the moment.
 
 Reply tokens are unchanged: no uses, spent by the TTL rather than on first write,
-because what they authorise is the batch of drafts somebody read in one go.
+because what they authorize is the batch of drafts somebody read in one go.
 
 ## Receipts, and why the ceiling holds
 
@@ -157,7 +157,7 @@ The two `subagent-stop` rows rest not on the strictness of the validator but on
 --task T1` reads the command out of the task's `## Done when`, runs it through
 `lib/evidence.js` (by spawning it directly, so nothing can sit between the
 command and its output), and records what it printed. There is no parameter
-through which an agent could hand over text — the "summarise the run
+through which an agent could hand over text — the "summarize the run
 convincingly" path is closed by the absence of an input, not by a check. The
 validator catches the remainder: a file edited by hand (the digest over the
 `## Output` block stops matching) and a truncated capture (`complete: false`).

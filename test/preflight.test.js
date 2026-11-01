@@ -645,7 +645,7 @@ describe('the artefact checks', () => {
   const body = ({ steps = '1. Build → it builds\n2. Run → it runs\n3. Restart → still fine', notes = '- Checked on macOS.', extra = '' } = {}) =>
     `### What issues does this PR fix or reference?\n\nFixes #5001\n${extra}\n\n### How to test this PR?\n\n${steps}\n\n**Notes for reviewers**\n${notes}\n\n- [ ] Tests are covering the bug fix or the new feature\n`;
 
-  // The threshold this measures had never been measured: it was a judgement
+  // The threshold this measures had never been measured: it was a judgment
   // made at triage, on an estimate, before any code existed.
   describe('quickfix-size', () => {
     test('it says nothing on any other route', async () => {
@@ -1302,7 +1302,7 @@ describe('a sliced issue', () => {
     }
   });
 
-  // Work reaches a pull request without ever being materialised when the branch
+  // Work reaches a pull request without ever being materialized when the branch
   // was cut before the graph existed. The graph then names a branch nobody has,
   // and on DESKTOP-18832 standing on the only branch the issue had matched no
   // slice at all: `slice-standalone` skipped, advising "run preflight while
@@ -1329,7 +1329,7 @@ describe('a sliced issue', () => {
       await rm(join(slicedHome, 'issues', String(ISSUE), 'prs.json'), { force: true });
     });
 
-    test('standing on it is recognised as standing on the slice', async () => {
+    test('standing on it is recognized as standing on the slice', async () => {
       await gitIn(['checkout', PUBLISHED], sliced);
       const prepared = await on();
 
@@ -1338,7 +1338,7 @@ describe('a sliced issue', () => {
       assert.equal(prepared.problem, null);
     });
 
-    // Telling its author to materialise it would make a second name for one
+    // Telling its author to materialize it would make a second name for one
     // commit, which is what the live run did by hand.
     test('--slice reads it instead of asking for a materialize', async () => {
       await gitIn(['checkout', 'main'], sliced);

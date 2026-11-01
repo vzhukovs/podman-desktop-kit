@@ -264,7 +264,7 @@ describe('collecting drift', () => {
     assert.match(text, /a semantic conflict that merges cleanly is the dangerous one/);
   });
 
-  // Work can reach a pull request without ever being materialised — a branch
+  // Work can reach a pull request without ever being materialized — a branch
   // cut before the graph existed, or an issue adopted at pr-open — and then the
   // graph names a branch nobody has. On DESKTOP-18832 that produced "nothing
   // was measured" about a branch that was sitting right there under review, and

@@ -33,7 +33,7 @@ import { capture, digest, fence, transcript, validateReceipt, writeReceipt } fro
 
 // `node -e "…"` rather than `echo`, `printf`, `pwd` and `sleep`.
 //
-// capture() hands the command to the platform shell, which is the behaviour
+// capture() hands the command to the platform shell, which is the behavior
 // under test and is correct: a `Done when` command is whatever the repository's
 // scripts are. But the shell is `/bin/sh` on POSIX and `cmd.exe` on Windows, and
 // the fixtures were written in one of those two languages — `;` is not a

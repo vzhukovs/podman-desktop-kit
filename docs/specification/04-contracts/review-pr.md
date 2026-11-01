@@ -27,9 +27,9 @@ target files:
 | Architecture fit | `pd-review-architecture` | does it sit in existing patterns; does it duplicate a utility; correct layer; coupling and dependency direction |
 | API & compatibility | `pd-review-api-compat` | `extension-api.d.ts`; backwards compatibility; `Disposable` and leaks; schema changes without regeneration |
 | Tests & quality | `pd-review-tests` | are the claimed edge cases covered; workarounds (`skip`, weakened asserts, `any`, `@ts-ignore`); test determinism |
-| Product & UX | `pd-review-product` | fit to the issue; i18n, a11y, contrast; error and empty states; regressions in neighbouring flows |
+| Product & UX | `pd-review-product` | fit to the issue; i18n, a11y, contrast; error and empty states; regressions in neighboring flows |
 
-`pd-review-synth` (opus) deduplicates, prioritises and reaches a verdict.
+`pd-review-synth` (opus) deduplicates, prioritizes and reaches a verdict.
 
 **Reviewer discipline, straight from experience: a reviewer told to find problems
 will find them in correct code.** So the axis prompts forbid reporting style,

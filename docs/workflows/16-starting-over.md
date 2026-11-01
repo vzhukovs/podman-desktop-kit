@@ -20,7 +20,7 @@ would put a trip in the history that the work never took, and the distinction
 between "these artefacts were never produced" and "these artefacts were lost" is
 what every later check rests on.
 
-It touches **one** issue. Its neighbours keep their records, their tokens and
+It touches **one** issue. Its neighbors keep their records, their tokens and
 their worktrees, and the match is exact rather than by prefix — `DESKTOP-1854`
 does not select the tree of `DESKTOP-18548`.
 

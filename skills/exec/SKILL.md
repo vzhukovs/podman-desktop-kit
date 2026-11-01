@@ -85,7 +85,7 @@ because it looks like nothing happened.
 7. `pdkit task stop`.
 
 Tasks that share no files may run in parallel. Tasks that do share files were
-mis-planned — say so instead of serialising around it.
+mis-planned — say so instead of serializing around it.
 
 ## Follow the plan literally
 
@@ -156,7 +156,7 @@ neither the plan checks nor `pd-plan-critic`.
    Never delete task headings, or rewrite tasks as prose, to get the check
    out of the way. That buys an approval, and the gap comes back as a refused
    `slice set` after the work is done.
-   Then it applies the requirement table and materialises the tasks: it
+   Then it applies the requirement table and materializes the tasks: it
    renders `tasks/T<k>.md`, adds the blocks to `plan.md`, marks the replaced
    tasks `withdrawn by A<k>` and re-runs `task sync`. `pdkit plan check <n>`
    now reads the plan with them in it. If an amendment was approved but did
@@ -174,7 +174,7 @@ that replaced it. Start that task instead.
 ## Receipts
 
 A task is done when the output of its `Done when` command is captured
-verbatim — not summarised, not trimmed to the interesting part.
+verbatim — not summarized, not trimmed to the interesting part.
 
 `pdkit receipt write` runs the command itself. There is no parameter for
 output text, so there is nothing to compose: the choice between "the tests

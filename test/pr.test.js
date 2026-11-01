@@ -165,7 +165,7 @@ describe('a merge that happened in the browser', () => {
   // It reaches the plugin through refresh and no other call. Until 0.16 that
   // changed prs.json silently: state.json says where the work is, the journal
   // says why and when, and a merge is exactly what it is read back for.
-  test('is journalled once, when the state actually changes', async () => {
+  test('is journaled once, when the state actually changes', async () => {
     const WEB = 4500;
     await pr.register({ issue: WEB, number: 700, branch: 'DESKTOP-4500/one', home });
 
@@ -325,7 +325,7 @@ describe('judging a red job', () => {
   // Twenty-five seconds after #18561 opened: twenty-three jobs in progress,
   // nothing red, and the rollup said `fail`. A third-party status context
   // spells "not yet" as a state rather than by having no conclusion, and a
-  // status context always normalises to COMPLETED — so it arrived as "finished,
+  // status context always normalizes to COMPLETED — so it arrived as "finished,
   // and not green", which is what failure looks like everywhere else here.
   test('a status context that says PENDING has not answered yet', () => {
     assert.equal(pr.judge({ name: 'CodeRabbit', status: 'COMPLETED', conclusion: 'PENDING' }).verdict, 'pending');

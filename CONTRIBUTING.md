@@ -14,7 +14,7 @@ and section numbers are stable: a comment in `lib/` that cites "section 7" means
 [`docs/specification/07-preflight.md`](docs/specification/07-preflight.md). Keep
 it that way — a new section is a new numbered file, linked from its directory's
 `README.md` and from the previous and next files' footers, not a heading
-appended to a neighbour.
+appended to a neighbor.
 
 ## Environment
 
@@ -37,7 +37,7 @@ There is no build. `lib/` is what runs.
 ## The one rule that decides where code goes
 
 **Anything that must be *true* belongs in `lib/` or `lib/hooks/`, where it can be
-tested. Anything that requires *judgement* belongs in `skills/` or `agents/`.**
+tested. Anything that requires *judgment* belongs in `skills/` or `agents/`.**
 
 A rule stated only in a prompt is a rule that holds most of the time. That is
 usually fine; it is not fine for the rules this plugin exists to hold — that a
@@ -55,7 +55,7 @@ a `recommendation` field, that is the boundary being crossed.
 |---|---|---|
 | a `pdkit` command | `lib/commands/<command>.js` (its handler and the flags it reads), its `REGISTRY` row and usage text in `lib/cli.js`, and the module that does the work | the module's own `test/<module>.test.js`; `test/invariants.test.js` and `test/flags.test.js` for the table |
 | a deterministic rule | the owning module in `lib/` | same |
-| a hook's behaviour | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
+| a hook's behavior | `lib/hooks/<handler>.js`; the event map in `lib/hooks/events.js`, the deny rules as data in `lib/hooks/rules.js` | `test/rules.test.js`, `test/dispatch.test.js`, and **`pdkit doctor --gate-selftest`** |
 | a preflight check | one file under `lib/preflight/checks/` (exporting `needsBody` if it reads the body), its id added to `CHECK_IDS` in `lib/preflight/index.js` | `test/preflight.test.js`, `test/preflight-body.test.js` if it reads the body |
 | an artefact's shape | `templates/*.md`, registered in `TEMPLATES` in `lib/render.js` | `test/render.test.js` |
 | what a skill does | `skills/<name>/SKILL.md` | `test/invariants.test.js` checks every `pdkit` command and every `/pd:*` a skill names exists, and that plugin files are reached through `${CLAUDE_PLUGIN_ROOT}/` |

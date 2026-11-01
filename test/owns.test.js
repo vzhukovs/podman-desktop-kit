@@ -99,7 +99,7 @@ describe('with a task running', () => {
     assert.equal(decision.block, false);
   });
 
-  // The pair that matters: the neighbouring file, in the same repository, one
+  // The pair that matters: the neighboring file, in the same repository, one
   // directory across.
   test('a file in the same repository that the task does not own is refused', async () => {
     const decision = await write(join(repo, 'packages/renderer/src/App.svelte'));

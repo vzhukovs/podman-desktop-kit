@@ -42,7 +42,7 @@ import {
   collect,
   compare,
   format,
-  normalise,
+  normalize,
   phaser,
   readUsage,
   scan,
@@ -126,8 +126,8 @@ describe('the scale', () => {
     assert.equal(totals.units, 480.5);
   });
 
-  test('normalising divides by what is known, and by nothing that is zero or unknown', () => {
-    const per = normalise(1200, { tasks: 4, slices: 0, requirements: null, changedLines: 600, mergedPrs: 1, agentRuns: 3 });
+  test('normalizing divides by what is known, and by nothing that is zero or unknown', () => {
+    const per = normalize(1200, { tasks: 4, slices: 0, requirements: null, changedLines: 600, mergedPrs: 1, agentRuns: 3 });
     assert.equal(per.tasks, 300);
     assert.equal(per.slices, null);
     assert.equal(per.requirements, null);

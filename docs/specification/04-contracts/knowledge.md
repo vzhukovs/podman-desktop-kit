@@ -12,7 +12,7 @@ The mechanical half, `pdkit knowledge check [--json]`:
 |---|---|
 | paths and `file:line` that no longer exist in the fork | a link to a vanished file is literally "an entry that is now wrong" |
 | `package-map.md` against `package-map.json` and `slicing.layer_order` | drift is found mechanically and accumulates silently |
-| the shape of `pitfalls.md` entries (Looks like / Actually / Why it matters / Caught by) | a template, not a judgement |
+| the shape of `pitfalls.md` entries (Looks like / Actually / Why it matters / Caught by) | a template, not a judgment |
 | a `## What to add here` section in every file | the acceptance criterion for new entries is part of the base itself |
 | issues closed since the last revision carrying `conflict-semantic` or `slice-regressed` events | a list of harvest candidates, not the harvest |
 

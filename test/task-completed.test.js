@@ -191,7 +191,7 @@ describe('who the gate is for', () => {
 
   // The host's own agents, prompt suggestions among them, report an empty
   // agent_type. On DESKTOP-19818 they were held for T2's receipt, then
-  // journalled as "T2 accepted".
+  // journaled as "T2 accepted".
   test('one of the host\'s own agents is neither held nor counted', async () => {
     const before = (await readJournal({ issue: ISSUE, event: 'agent-done' }, { home })).length;
 
@@ -553,7 +553,7 @@ describe('completing a task', () => {
     });
   });
 
-  test('acceptance is journalled with the agent’s own task id', async () => {
+  test('acceptance is journaled with the agent’s own task id', async () => {
     await writeReceipt({ issue: ISSUE, taskId: 'T1', run: run(), home });
     await complete();
 

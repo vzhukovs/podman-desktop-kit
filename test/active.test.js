@@ -56,7 +56,7 @@ describe('the pointer', () => {
     assert.equal(found.taskId, 'T1');
     // Resolved, which is what the pointer stores and what keyFor hashes. On
     // Windows `resolve('/work/fork')` gains the current drive, so comparing
-    // against the literal asserted that the path had NOT been normalised.
+    // against the literal asserted that the path had NOT been normalized.
     assert.equal(found.worktree, resolve('/work/fork'));
     assert.ok(Date.parse(found.startedAt) > 0);
   });
@@ -141,7 +141,7 @@ describe('unreadable pointers', () => {
 
   // The file is named after the tree; trusting the name over the contents
   // would apply one tree's ownership rules to another.
-  test('a pointer naming a different tree is not honoured', async () => {
+  test('a pointer naming a different tree is not honored', async () => {
     await start({ issue: 18248, taskId: 'T1', worktree: '/work/fork', home });
     await writeFile(
       join(paths(home).active, `${keyFor('/work/fork')}.json`),
@@ -162,7 +162,7 @@ describe('list and journal', () => {
     assert.deepEqual(running.map((entry) => entry.taskId).sort(), ['T1', 'T2']);
   });
 
-  test('start and stop are journalled', async () => {
+  test('start and stop are journaled', async () => {
     await start({ issue: 18248, taskId: 'T1', worktree: '/work/fork', home });
     await stop({ worktree: '/work/fork', home });
 

@@ -22,7 +22,7 @@ Sections present; `Owns` exclusive between tasks; `Done when` a command rather
 than prose; every R-ID closed by a task and every task pointing at a real R-ID;
 `e2e coverage` decided; `Slice hypothesis` written; no `[NEEDS DECISION]` left.
 
-None of these need judgement, and none of them should cost any. An Opus asked
+None of these need judgment, and none of them should cost any. An Opus asked
 to intersect two lists of paths is an Opus that can fail to; `pdkit plan check`
 cannot. Red here means the plan gets **redone rather than patched** — these are
 the requirements from `/pd:plan`, not preferences.

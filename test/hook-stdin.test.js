@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
 
 const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
 
-// The refused push below is journalled. npm test already isolates the home;
+// The refused push below is journaled. npm test already isolates the home;
 // this one is explicit as well, because this file is where the live journal
 // got its 299 false `event:denied` lines.
 let home;
