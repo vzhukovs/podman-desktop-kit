@@ -63,7 +63,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `upstream.js` | shared primitives for upstream rules: SPDX, conventional commits, `Signed-off-by`. Used by **both** hooks and preflight so a rule lives in one place |
 | `evidence.js` | raw capture of command output for receipts |
 | `hooks/` | `events.js` (event → handler table), `rules.js` (deny rules as data), `dispatch.js`, `command-parse.js`, `owns.js`, `post-write.js`, `session-start.js`, `task-completed.js` |
-| `preflight/` | `index.js` runner plus one file per check under `checks/`; `scope.js` is what the script checks share — an unrunnable script, the slice verification's run — and re-exports `scripts.js` |
+| `preflight/` | `index.js` runner plus one file per check under `checks/`; `body.js` is the skip a check returns while the PR body is not drafted, imported by checks instead of the runner; `scope.js` is what the script checks share — an unrunnable script, the slice verification's run — and re-exports `scripts.js` |
 
 ## What is deliberately absent from the tree
 
