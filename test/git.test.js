@@ -258,12 +258,13 @@ describe('text (slice.gitText)', () => {
     await assert.rejects(text(['x'], { cwd: CWD, exec }), (thrown) => thrown === error);
   });
 
-  test('a missing git says how to fix it, and is still ENOENT', async () => {
+  test('a missing git rethrows execFile’s own ENOENT, untouched', async () => {
     const { exec, error } = missing();
     await assert.rejects(text(['x'], { cwd: CWD, exec }), (thrown) => {
-      assert.match(thrown.message, /^git is not installed — see the required dependencies in README\.md$/);
+      assert.equal(thrown, error);
+      assert.equal(thrown.message, 'spawn git ENOENT');
       assert.equal(thrown.code, 'ENOENT');
-      assert.equal(thrown.cause, error);
+      assert.equal(thrown.stderr, '');
       return true;
     });
   });

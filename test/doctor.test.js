@@ -28,9 +28,11 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { access, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { cleanup, commitAll, initRepo } from './helpers/repo-fixture.js';
 import { GATE_PROBES, RETIRED_KEYS, checkAgentRuns, checkSessionModel, diagnose, gateSelftest, mcpServers, playwrightCdp } from '../lib/doctor.js';
@@ -482,4 +484,38 @@ describe('the session model in the fork', () => {
 
     assert.ok(find(report.checks, 'settings:model'));
   });
+});
+
+// Without git, the self-test fails at its first `git init` and says so in
+// execFile's own words, as it did before git calls went through lib/git.js.
+// `git.text` once swapped `spawn git ENOENT` for an install hint here — wrong
+// besides when it was `cwd` that was missing — and the line a person saw
+// changed with it.
+describe('doctor --gate-selftest without git', () => {
+  let bin;
+
+  before(async () => {
+    bin = await mkdtemp(join(tmpdir(), 'pdkit-node-only-'));
+    if (platform() !== 'win32') await symlink(process.execPath, join(bin, 'node'));
+  });
+
+  after(async () => {
+    await rm(bin, { recursive: true, force: true });
+  });
+
+  test(
+    'reports execFile’s own spawn error, exit 1',
+    { skip: platform() === 'win32' ? 'a PATH of only node needs a symlink, which Windows does not give an unprivileged user' : false },
+    () => {
+      const pdkit = fileURLToPath(new URL('../bin/pdkit', import.meta.url));
+      const run = spawnSync(process.execPath, [pdkit, 'doctor', '--gate-selftest'], {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: bin },
+      });
+
+      assert.equal(run.status, 1);
+      assert.equal(run.stderr, 'pdkit doctor: spawn git ENOENT\n');
+      assert.doesNotMatch(run.stderr, /git is not installed/);
+    },
+  );
 });
