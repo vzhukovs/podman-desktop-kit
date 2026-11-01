@@ -9,8 +9,13 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-11-01
+
 ### Changed
 
+- Internal restructuring only. Skills, `pdkit` commands and flags, their output
+  and exit codes, the gate's decisions, and what lives under `$PDKIT_HOME` are
+  the same as in 0.11.3. Nothing changes in what you do.
 - For contributors: a `pdkit` command is registered by one row in `REGISTRY` in
   `lib/cli.js`, its flags and its handler together. `COMMANDS` and
   `COMMAND_FLAGS` are derived from it, and the dispatcher's `switch` is gone.
@@ -21,6 +26,10 @@ fixes — see [RELEASING.md](RELEASING.md).
   `skipForBody`, and the note after pass one counts its `waitingFor: 'body'`
   field rather than matching the wording of its summary. Summaries and `--json`
   output are unchanged.
+- For contributors: `lib/git.js` is the one place that starts git. Each of its
+  functions keeps the result shape its callers already relied on (trimmed or
+  not, a refusal returned or thrown), and `options.exec` is the seam a test
+  injects.
 
 ## [0.11.3] - 2026-10-29
 
@@ -2306,7 +2315,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.0...v0.11.1

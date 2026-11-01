@@ -8,7 +8,7 @@ carry those pull requests through review.
 It is built around one fact — **you do not own the repository you are opening
 pull requests against** — and most of what follows is a consequence of that.
 
-> **Status: 0.11.3, pre-1.0.** Used on thirteen podman-desktop issues: fifteen
+> **Status: 0.11.4, pre-1.0.** Used on thirteen podman-desktop issues: fifteen
 > pull requests published upstream, seven of them merged, and seven issues carried
 > all the way to `merged` — four on the `standard` route, three on `quickfix`. One
 > issue went out as a two-slice graph into two pull requests; another as three
