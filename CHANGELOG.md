@@ -9,6 +9,27 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-11-01
+
+### Changed
+
+- Internal restructuring only. Skills, `pdkit` commands and flags, their output
+  and exit codes, the gate's decisions, and what lives under `$PDKIT_HOME` are
+  the same as in 0.11.4. Nothing changes in what you do.
+- For contributors: every command with several actions dispatches through its
+  own `ACTIONS` table, exported from its module; an action is added by one row
+  there and one line in `USAGE`.
+- For contributors: the conditions for entering a state are a list,
+  `ENTRY_RULES` in `lib/state/entry.js`, rather than branches inside
+  `state.transition`.
+- For contributors: `skipForBody` and `BODY_NOT_DRAFTED` live in the leaf
+  module `lib/preflight/body.js`, so a preflight check no longer imports the
+  runner that loads it. `lib/preflight/index.js` still re-exports both.
+- For contributors: `test/invariants.test.js` holds the boundaries this drew:
+  `--help` names every command and every action in `ACTIONS`, the submodules of
+  `slice`, `validation` and `state` are imported only through their facade, no
+  preflight check imports the runner, and `lib/` has no static import cycle.
+
 ## [0.11.4] - 2026-11-01
 
 ### Changed
@@ -2315,7 +2336,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...HEAD
+[0.11.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.1...v0.11.2
