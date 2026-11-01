@@ -47,6 +47,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `contracts.js` | which IPC channels a file's changed lines belong to; facts for `slice set`, no verdict |
 | `worktree.js` | creates, lists, removes trees and prepares the verification tree |
 | `pr.js` | pull requests as entities; CI verdicts; the merge rollup; owns `prs.json` |
+| `publishing.js` | where a pull request is opened: the base it opens against, checked against upstream before the push; the opening through the gate; its record in `prs.json` and the move to `pr-open`, in that order; called by `pr create` and `publish`, owns no file |
 | `threads.js` | facts about review threads: bot or human, thread → file → slice → task → R-ID; no verdict |
 | `validation.js` | validation steps and their evidence: read and save, attaching, codifying, recording a run, superseding, finishing; owns `validation.json`, and is the facade that re-exports `validation/` under the names callers know |
 | `validation/` | `verdict.js` (the derived status of a step, the outcome of a record, the green streak of the e2e series — a leaf the others import directly), `app.js` (launching and stopping the app under CDP), `e2e.js` (what is waiting to be validated, the single-spec command, the run series), `format.js` (validation.md and the terminal); none names `validation.json` — reading and saving the record, and the facade's functions that do so, are handed over by `validation.js` |
