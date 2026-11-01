@@ -26,9 +26,11 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, posix } from 'node:path';
+import { promisify } from 'node:util';
 
 const LIB = fileURLToPath(new URL('../lib/', import.meta.url));
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -506,6 +508,353 @@ describe('dynamic imports are URLs, not paths', () => {
     }
 
     assert.deepEqual(offenders, [], 'these refuse to load on Windows, where a path is not a URL');
+  });
+});
+
+// `--help` is the one description of the commands a person reads, and it is
+// text: USAGE in lib/cli.js is laid out by hand, so nothing derives it from
+// REGISTRY or from a command's ACTIONS. A command or an action added without a
+// line there passes every behaviour test and is invisible to everybody who
+// asks pdkit what it can do. Adding an action is three edits — the function,
+// its row in ACTIONS, its line in USAGE — and this holds the third.
+describe('--help names every command and every action', () => {
+  /** What `pdkit --help` prints, from the entry point a person runs. */
+  async function help() {
+    const { stdout } = await promisify(execFile)(process.execPath, [join(ROOT, 'bin', 'pdkit'), '--help']);
+    return stdout;
+  }
+
+  // Descriptions start in this column; what is left of it is the synopsis.
+  const DESCRIPTION = 32;
+
+  /**
+   * The synopses of one command in USAGE: every entry that starts with
+   * `  <command> `, and the indented lines that continue it, up to the next
+   * entry — without the description column.
+   *
+   * Prose is left out because it names actions in passing: `task sync` says
+   * "start, receipt write and the hook refuse it", and with prose counted,
+   * nine actions were still found after their own lines were deleted.
+   *
+   * @param {string} usage
+   * @param {string} command
+   * @returns {string}
+   */
+  function synopsesOf(usage, command) {
+    const found = [];
+    let inside = false;
+    for (const line of usage.split('\n')) {
+      if (/^ {2}\S/.test(line)) inside = line.startsWith(`  ${command} `) || line === `  ${command}`;
+      else if (!/^ {3}/.test(line)) inside = false;
+      if (!inside || line.startsWith(' '.repeat(DESCRIPTION))) continue;
+      // A synopsis too long for its column takes the whole line, and its
+      // description starts on the next one.
+      const described = line.length > DESCRIPTION && line.slice(DESCRIPTION - 2, DESCRIPTION) === '  ';
+      found.push(described ? line.slice(0, DESCRIPTION) : line);
+    }
+    return found.join('\n');
+  }
+
+  test('every command in COMMANDS has an entry', async () => {
+    const { COMMANDS } = await import('../lib/cli.js');
+    const usage = await help();
+
+    const missing = COMMANDS.filter((command) => !new RegExp(`^  ${command}\\b`, 'm').test(usage));
+
+    assert.deepEqual(missing, [], `pdkit --help says nothing about: ${missing.join(', ')}. Add a line for each to USAGE in lib/cli.js`);
+  });
+
+  test("every action in a command's ACTIONS is named in that command's synopsis", async () => {
+    const { REGISTRY } = await import('../lib/cli.js');
+    const usage = await help();
+
+    const tables = Object.entries(REGISTRY).filter(([, module]) => module.ACTIONS);
+    // The table is what dispatches, so a command that has one and does not
+    // export it is a command this test silently stops covering.
+    assert.ok(tables.length >= 9, `only ${tables.length} command modules export ACTIONS; a table that is not exported is not checked here`);
+
+    const missing = [];
+    for (const [command, { ACTIONS }] of tables) {
+      const synopses = synopsesOf(usage, command);
+      for (const action of Object.keys(ACTIONS)) {
+        // Neither a word character nor a hyphen on either side: `block` is not
+        // found inside `draft-blocker`, and `slice` is not found in `--slice`.
+        const named = new RegExp(`(^|[^\\w-])${action.replace(/[-]/g, '\\-')}($|[^\\w-])`).test(synopses);
+        if (!named) missing.push(`pdkit ${command} ${action}`);
+      }
+    }
+
+    assert.deepEqual(
+      missing,
+      [],
+      `ACTIONS dispatches these, and pdkit --help does not name them:\n  ${missing.join('\n  ')}\n` +
+        'Add a line for each under its command in USAGE in lib/cli.js.',
+    );
+  });
+});
+
+/**
+ * Source with comments, template text and regex bodies blanked, and quoted
+ * strings kept — the strings are where the specifiers are.
+ *
+ * `code` above is a pair of regular expressions, which is enough for finding a
+ * file name in code but not for finding imports: `templates/*.md` in a line
+ * comment opens a block comment for it, and the imports below that line
+ * vanish. This walks the source once and knows which of the four it is in.
+ * Newlines are kept, so `^` still means the start of a line.
+ *
+ * @param {string} source
+ * @returns {string}
+ */
+function lexed(source) {
+  const blank = (text) => text.replace(/[^\n]/g, ' ');
+  // After one of these, `/` starts a regular expression rather than dividing.
+  const beforeRegex = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|new|delete|void|throw|yield|await))\s*$/;
+  // One entry per open `${`: how many `{` inside it are still open.
+  const templates = [];
+  let out = '';
+  let i = 0;
+
+  const template = () => {
+    // From just after a backtick or a closing `}`, to the end of the text or
+    // the next `${`.
+    let text = '';
+    while (i < source.length && source[i] !== '`' && !(source[i] === '$' && source[i + 1] === '{')) {
+      if (source[i] === '\\') text += source[i++];
+      text += source[i++] ?? '';
+    }
+    out += blank(text);
+    if (source[i] === '`') out += source[i++];
+    else if (i < source.length) {
+      out += '${';
+      i += 2;
+      templates.push(0);
+    }
+  };
+
+  while (i < source.length) {
+    const char = source[i];
+    const next = source[i + 1];
+
+    if (char === '/' && next === '/') {
+      const end = source.indexOf('\n', i);
+      const stop = end === -1 ? source.length : end;
+      out += blank(source.slice(i, stop));
+      i = stop;
+    } else if (char === '/' && next === '*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      out += blank(source.slice(i, stop));
+      i = stop;
+    } else if (char === "'" || char === '"') {
+      let j = i + 1;
+      while (j < source.length && source[j] !== char && source[j] !== '\n') j += source[j] === '\\' ? 2 : 1;
+      out += source.slice(i, j + 1);
+      i = j + 1;
+    } else if (char === '`') {
+      out += char;
+      i += 1;
+      template();
+    } else if (char === '/' && beforeRegex.test(out)) {
+      let j = i + 1;
+      let inClass = false;
+      while (j < source.length && source[j] !== '\n' && (inClass || source[j] !== '/')) {
+        if (source[j] === '\\') j += 1;
+        else if (source[j] === '[') inClass = true;
+        else if (source[j] === ']') inClass = false;
+        j += 1;
+      }
+      out += `/${blank(source.slice(i + 1, j))}/`;
+      i = j + 1;
+    } else if (templates.length > 0 && char === '{') {
+      templates[templates.length - 1] += 1;
+      out += char;
+      i += 1;
+    } else if (templates.length > 0 && char === '}') {
+      out += char;
+      i += 1;
+      if (templates[templates.length - 1] === 0) {
+        templates.pop();
+        template();
+      } else templates[templates.length - 1] -= 1;
+    } else {
+      out += char;
+      i += 1;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * The relative specifiers a module loads: static `import … from`, bare
+ * `import '…'`, `export … from`, and `await import('…')` with a literal.
+ *
+ * Read from lexed source, so a JSDoc type such as
+ * `{import('../slice.js').Graph}` is not an import: it loads nothing. A
+ * dynamic import of a built path is not here either — what it loads is decided
+ * at run time, and the URL test above already holds those to a known shape.
+ *
+ * @param {{name: string, source: string}} module path relative to the repository, with `/`
+ * @returns {{static: string[], dynamic: string[]}} paths relative to the repository
+ */
+function importsOf(module) {
+  const resolve = (specifier) => posix.normalize(posix.join(posix.dirname(module.name), specifier));
+  const relative = (specifier) => specifier.startsWith('.');
+  const text = lexed(module.source);
+
+  const statics = [
+    ...text.matchAll(/^[ \t]*(?:import|export)\b[^;'"`]*?\bfrom\s*(['"])([^'"]+)\1/gm),
+    ...text.matchAll(/^[ \t]*import\s*(['"])([^'"]+)\1/gm),
+  ].map((match) => match[2]);
+  const dynamics = [...text.matchAll(/await\s+import\(\s*(['"])([^'"]+)\1\s*\)/g)].map((match) => match[2]);
+
+  return {
+    static: statics.filter(relative).map(resolve),
+    dynamic: dynamics.filter(relative).map(resolve),
+  };
+}
+
+/** Every .js file under lib/, named from the repository root. */
+const libModules = () => modules(LIB, 'lib');
+
+// A facade with `deps` is the permanent API of its package, not a step on the
+// way to importing the submodules directly: the wrappers that hand a submodule
+// access to the owned file exist only in the facade, so importing the submodule
+// instead gets the function without what makes it safe to call. And a
+// submodule that imports its facade is a cycle in the making, since the facade
+// imports it. The preflight checks are the same shape one level down: a check
+// that imports the runner is loaded by the module it depends on.
+//
+// The rule is for the code that ships. A test may import a submodule to test
+// it where it lives — test/state.test.js holds the shape of ENTRY_RULES that
+// way — since a test calls nothing through it on anybody's behalf.
+describe("a package's submodules are private to it", () => {
+  const PACKAGES = ['slice', 'validation', 'state'];
+
+  test('lib/slice/*, lib/validation/*, lib/state/* are imported only by their facade and their siblings', async () => {
+    const offenders = [];
+    for (const module of await libModules()) {
+      const { static: statics, dynamic } = importsOf(module);
+      for (const target of [...statics, ...dynamic]) {
+        const owner = PACKAGES.find((name) => posix.dirname(target) === `lib/${name}`);
+        if (!owner) continue;
+        const inside = module.name === `lib/${owner}.js` || posix.dirname(module.name) === `lib/${owner}`;
+        if (!inside) offenders.push(`${module.name} imports ${target}`);
+      }
+    }
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `these reach past a facade into its package:\n  ${offenders.join('\n  ')}\n` +
+        'Import from lib/slice.js, lib/validation.js or lib/state.js instead; if the facade does not export it, ' +
+        'export it there — the facade decides what the package offers.',
+    );
+  });
+
+  test('no submodule imports its own facade', async () => {
+    const offenders = [];
+    for (const module of await libModules()) {
+      const owner = PACKAGES.find((name) => posix.dirname(module.name) === `lib/${name}`);
+      if (!owner) continue;
+      const { static: statics, dynamic } = importsOf(module);
+      if ([...statics, ...dynamic].includes(`lib/${owner}.js`)) offenders.push(`${module.name} imports lib/${owner}.js`);
+    }
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `these import the facade that imports them:\n  ${offenders.join('\n  ')}\n` +
+        'Import the function from the leaf sibling it lives in (lib/slice/graph.js, lib/validation/verdict.js, ' +
+        'lib/state/machine.js, …), or have the facade pass it in through deps if it touches the owned file.',
+    );
+  });
+
+  test('no preflight check imports the runner', async () => {
+    const offenders = (await modules(join(LIB, 'preflight', 'checks'), 'lib/preflight/checks'))
+      .filter((module) => {
+        const { static: statics, dynamic } = importsOf(module);
+        return [...statics, ...dynamic].includes('lib/preflight/index.js');
+      })
+      .map((module) => module.name);
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `these checks import lib/preflight/index.js, which loads them:\n  ${offenders.join('\n  ')}\n` +
+        'What a check needs from the runner lives in a leaf module beside it (lib/preflight/body.js); import it from there.',
+    );
+  });
+});
+
+// A static cycle is visible to anyone who draws the graph. One closed through
+// `await import()` is not: the import runs after both modules have loaded, so
+// it works, and nothing that reads only the static graph sees it. lib/state.js
+// has three, each documented where it is: highestOnDisk reads the slice graph
+// and the validation record so a fresh ID cannot collide with a live one, and
+// the amendment parser lives in artefacts.js. A fourth should be a decision
+// made on purpose, so it has to be written down here.
+describe('no new cycle hides behind a dynamic import', () => {
+  const HIDDEN = ['lib/state.js -> lib/artefacts.js', 'lib/state.js -> lib/slice.js', 'lib/state.js -> lib/validation.js'];
+
+  /** The static import graph of lib/: module -> the modules it imports. */
+  async function graph() {
+    const lib = await modules(LIB, 'lib');
+    return {
+      lib,
+      edges: new Map(lib.map((module) => [module.name, importsOf(module).static.filter((target) => target.startsWith('lib/'))])),
+    };
+  }
+
+  /** Whether `to` is reached from `from` along static imports. */
+  function reaches(edges, from, to) {
+    const seen = new Set();
+    const queue = [from];
+    while (queue.length > 0) {
+      const next = queue.shift();
+      if (next === to) return true;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      queue.push(...(edges.get(next) ?? []));
+    }
+    return false;
+  }
+
+  test('lib/ has no static import cycle', async () => {
+    const { edges } = await graph();
+
+    const cycles = [];
+    for (const [module, targets] of edges) {
+      for (const target of targets) {
+        if (reaches(edges, target, module)) cycles.push(`${module} -> ${target}`);
+      }
+    }
+
+    assert.deepEqual(
+      cycles,
+      [],
+      `each of these imports a module that imports it back:\n  ${cycles.join('\n  ')}\n` +
+        'Move what both need into a leaf module that imports neither.',
+    );
+  });
+
+  test('the only dynamic imports that close a cycle are the three in lib/state.js', async () => {
+    const { lib, edges } = await graph();
+
+    const hidden = [];
+    for (const module of lib) {
+      for (const target of importsOf(module).dynamic) {
+        if (reaches(edges, target, module.name)) hidden.push(`${module.name} -> ${target}`);
+      }
+    }
+
+    assert.deepEqual(
+      [...new Set(hidden)].sort(),
+      HIDDEN,
+      'a dynamic import closes a cycle the static graph cannot see. Break it with a leaf module; if it cannot be broken, ' +
+        'say why in a comment at the import and add the pair to HIDDEN in test/invariants.test.js.',
+    );
   });
 });
 

@@ -81,6 +81,10 @@ a `recommendation` field, that is the boundary being crossed.
    reads, and on a command module reading a flag it does not declare itself.
 5. Document the flags in the usage text. A flag that exists in code and not in
    `--help` is a flag nobody uses — that happened to `close --confirmed`.
+   A command with actions (`pdkit pr ci`, `pdkit task start`) dispatches through
+   an exported `ACTIONS` table, so adding an action is a function, its row in
+   `ACTIONS`, and its line in the usage text; `test/invariants.test.js` fails on
+   a command or an action the usage text does not name.
 6. If a person would type it, add it to [`CHEAT_SHEET.md`](CHEAT_SHEET.md). That
    file says the CLI is right when the two disagree, so a missing line there is
    only a gap, but it is the page people read.
