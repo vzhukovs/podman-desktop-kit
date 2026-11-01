@@ -29,7 +29,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `config.js` | three layers: `defaults/config.yaml` ← `$PDKIT_HOME/config.yaml` ← `<repo>/.pdkit.yaml` |
 | `yaml.js` | a reader for a deliberate subset of YAML (see [section 9](09-configuration.md#the-yaml-subset)) |
 | `state.js` | the [section 1](01-domain-model.md#the-state-machine) machine on disk; validates transitions; owns `state.json`, and is the facade that re-exports `state/` under the names callers know |
-| `state/` | `machine.js` (the machine as data: states, transitions, gate-eligible states, routes, the next step), `requirements.js` (what an amendment does to a requirement set, computed); neither reads or writes a file |
+| `state/` | `machine.js` (the machine as data: states, transitions, gate-eligible states, routes, the next step), `requirements.js` (what an amendment does to a requirement set, computed), `entry.js` (what a state asks for before it can be entered, as an ordered list of rules: the redo route's archaeology, preflight's record, an answer's capture, the reason for a re-cut or a rework); none writes a file, and only `entry.js` reads one, to ask whether evidence exists |
 | `active.js` | which task is running **in which working tree**; one file per tree |
 | `ids.js` | R-IDs, task IDs, slice IDs; allocation and freeze |
 | `globs.js` | path matching for `Owns` (`**`, `*`, `?`), pure strings, no disk access |

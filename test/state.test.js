@@ -53,6 +53,7 @@ import { skillModel } from '../lib/session-model.js';
 import { read as readJournal } from '../lib/journal.js';
 import { BODY_DEPENDENT, CHECK_IDS } from '../lib/preflight/index.js';
 import { write } from '../lib/preflight/record.js';
+import { ENTRY_RULES } from '../lib/state/entry.js';
 import { preflightGreen } from './helpers/preflight-evidence.js';
 
 let home;
@@ -111,6 +112,19 @@ describe('transition table integrity', () => {
       for (const state of states) {
         assert.ok(state in TRANSITIONS, `${state} is in ${name} but not a state`);
       }
+    }
+  });
+});
+
+// The conditions for entering a state are a list, in the order their refusals
+// are reported. What each one refuses is covered where the rule is exercised;
+// this only holds the shape a sixth rule has to take.
+describe('the conditions for entering a state', () => {
+  test('are five rules, each saying when it applies and what it refuses', () => {
+    assert.equal(ENTRY_RULES.length, 5);
+    for (const rule of ENTRY_RULES) {
+      assert.equal(typeof rule.applies, 'function');
+      assert.equal(typeof rule.refuse, 'function');
     }
   });
 });
