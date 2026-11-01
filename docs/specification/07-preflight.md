@@ -99,7 +99,7 @@ renderer tests pick up — while the file checks were reading a commit without i
 on a fork the local branch of that name is a copy of the base as fresh as the
 last pull. First live run: a local `main` 491 commits behind turned a two-file
 diff into an 805-file one, and preflight reported four blocking failures about
-other people's work — a licence header on a file we never touched, 87 commits
+other people's work — a license header on a file we never touched, 87 commits
 with the wrong sign-off, eight public API symbols. Nothing looked wrong. The base
 now resolves to `<upstream_remote>/<base_branch>` when that ref exists, and **the
 report prints which ref it read, at what sha and from what date**: a

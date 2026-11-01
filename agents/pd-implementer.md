@@ -20,9 +20,9 @@ The violations a review sends back first:
 - An exported or file-scope function in `packages/main`, or `new` on a collaborator that should be injected.
 - A relative `../` import.
 
-Touch only the lines the task needs. Reformatting, reordering imports, renaming or tidying a neighbour is a change the PR title does not explain, and the maintainer rejects it even when it is an improvement. A new file's licence header carries the current year only.
+Touch only the lines the task needs. Reformatting, reordering imports, renaming or tidying a neighbour is a change the PR title does not explain, and the maintainer rejects it even when it is an improvement. A new file's license header carries the current year only.
 
-These rules shape how you write what the plan asks for. They are not licence to change what it asks for. If the plan requires something a rule forbids, for example editing an existing assertion alongside the implementation, that is a plan error: stop and report it, as with any other.
+These rules shape how you write what the plan asks for. They are not license to change what it asks for. If the plan requires something a rule forbids, for example editing an existing assertion alongside the implementation, that is a plan error: stop and report it, as with any other.
 
 ## Finish
 

@@ -45,5 +45,5 @@ pdkit doctor --gate-selftest --repo <a real podman-desktop fork>
 ---
 
 - [ ] Commits are conventional and each carries exactly one `Signed-off-by`
-- [ ] New `.js` and YAML files carry the licence header in full
+- [ ] New `.js` and YAML files carry the license header in full
 - [ ] `CHANGELOG.md` has an entry under `## [Unreleased]`, if a user would notice

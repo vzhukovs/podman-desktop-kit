@@ -477,7 +477,7 @@ refused, and every changing phase gained a first step.
   define. Values files that still pass `shouldFix` are ignored. Values files
   that do not pass `counts` fail to render.
 - **`knowledge/upstream-rules.md` gains two maintainer-review rules.** A new
-  file's licence header carries the current year only. Existing tests and the
+  file's license header carries the current year only. Existing tests and the
   implementation they test are not changed in the same PR.
 - **The `conventional-commits` note on a missing scope now says the
   maintainer's review asks for one.** commitlint still does not require it, so
@@ -2119,7 +2119,7 @@ A pull request stops being something the plugin forgets the moment it is opened.
   mentions reads exactly like a verified one.
 - `lib/review.js` — the audit applied to somebody else's pull request. Files by
   layer, exported symbols reaching the public API, schemas changed with nothing
-  generated beside them, added files without a licence header, and the threads
+  generated beside them, added files without a license header, and the threads
   reviewers already opened so four axes do not repeat a point from last week. No
   verdict, and **no mention of commit scope**: upstream does not require it, and
   spending an author's attention on a rule their project does not have is how a
@@ -2317,7 +2317,7 @@ found by a unit test.
 
 ### Preparing this release
 
-- **The repository carries the licence header it demands upstream.** Every file
+- **The repository carries the license header it demands upstream.** Every file
   carried a bare `SPDX-License-Identifier` line, which is exactly the form
   `knowledge/upstream-rules.md` tells contributors podman-desktop does not accept.
   All 100 source files now carry the house block, taken byte for byte from

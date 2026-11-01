@@ -189,7 +189,7 @@ claude plugin validate . --strict
 
 Catches a misspelled manifest field before anybody installs it.
 
-## Licence headers
+## License headers
 
 Every `.js` file and every YAML file carries the podman-desktop house header —
 the Apache block with the copyright line and the SPDX identifier **inside** it,

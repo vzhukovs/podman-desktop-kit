@@ -249,6 +249,6 @@ docs/              workflows/, specification/, architecture/, configuration/ —
                    one file per scenario, section or part
 ```
 
-## Licence
+## License
 
 Apache-2.0. See [LICENSE](LICENSE).

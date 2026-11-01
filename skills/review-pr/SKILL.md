@@ -24,7 +24,7 @@ about work they never did.
 What comes back is mechanical and already done: files by layer, whether the
 public API is touched, exported symbols that reach `extension-api.d.ts`,
 schemas changed with nothing generated beside them, added files without a
-licence header, the threads reviewers have already opened, and **the linked
+license header, the threads reviewers have already opened, and **the linked
 issue with its text** — read from `closingIssuesReferences` first, then from
 keywords in the body, then from the bare number under upstream's "What issues
 does this PR fix or reference?" heading.

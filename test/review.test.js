@@ -155,7 +155,7 @@ before(async () => {
   await seedWorkspace(upstream);
   await commitAll(upstream, 'chore: seed');
 
-  // Their branch: two layers, a new file without a licence header, and a
+  // Their branch: two layers, a new file without a license header, and a
   // schema changed with nothing generated alongside it.
   await git(['checkout', '-q', '-b', 'their-branch'], upstream);
   await writeFiles(upstream, {
@@ -249,7 +249,7 @@ describe('the mechanical half', () => {
     assert.deepEqual(report.schemas.generated, []);
   });
 
-  test('an added file with no licence header is reported', async () => {
+  test('an added file with no license header is reported', async () => {
     const report = await collect();
 
     assert.deepEqual(report.missingSpdx, ['packages/main/src/added.ts']);
