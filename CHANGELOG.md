@@ -9,6 +9,8 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-11-02
+
 ### Fixed
 
 - For an issue whose pull request is open, the tree a command offers to create
@@ -2363,7 +2365,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...HEAD
+[0.11.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.2...v0.11.3
