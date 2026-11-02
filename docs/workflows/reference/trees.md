@@ -27,6 +27,12 @@ such as one passed to `/pd:review-pr`, is not looked at.
 | the issue's branch is checked out in the fork | shows two commands, to run once you agree — `git -C <fork> switch main` and `pdkit worktree create --issue <n> --branch <b>` — then `EnterWorktree` |
 | the issue's branch exists and is checked out nowhere | the same without the `git switch` |
 
+"The issue's branch" is the branch of its open pull request when one is
+recorded in `prs.json`, and only otherwise the first local `DESKTOP-<n>/…`
+branch. After slicing, the branch the slices were cut from is still there,
+and it is not where the review is. A tree on an open pull request's branch is
+the issue's whatever the branch is called.
+
 What it prints, for the second case:
 
 ```

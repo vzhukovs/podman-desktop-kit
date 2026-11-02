@@ -28,13 +28,14 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { realpath } from 'node:fs/promises';
 
+import { treeOf } from '../lib/commands/support.js';
 import { buildPackageMap } from '../lib/repo.js';
 import { forIssue, issueBranches } from '../lib/worktree.js';
 import { cleanup, commitAll, git, initRepo, seedWorkspace, sh, writeFiles } from './helpers/repo-fixture.js';
@@ -46,6 +47,12 @@ const OURS = 100;
 const OTHER = 200;
 const OUR_BRANCH = `DESKTOP-${OURS}/fix-quit-race`;
 const OTHER_BRANCH = `DESKTOP-${OTHER}/1-fix-reconnect`;
+
+// An issue under review after slicing: the branch the slices were cut from is
+// still here, beside the one its pull request is on.
+const REVIEWED = 800;
+const CUT_FROM = `DESKTOP-${REVIEWED}/before-slicing`;
+const UNDER_REVIEW = `DESKTOP-${REVIEWED}/1-under-review`;
 
 let repo;
 let trees;
@@ -190,6 +197,68 @@ describe('forIssue', () => {
       await git(['branch', '-D', `DESKTOP-${OURS}/1-part`], repo);
     }
   });
+
+  test('an open pull request\'s branch outranks the branch its slices were cut from', async () => {
+    await git(['branch', CUT_FROM, 'main'], repo);
+    await git(['branch', UNDER_REVIEW, 'main'], repo);
+    try {
+      // By name alone the pre-slicing branch wins: what the record is for.
+      assert.equal((await forIssue({ issue: REVIEWED, cwd: repo })).home?.branch, CUT_FROM);
+
+      const found = await forIssue({ issue: REVIEWED, cwd: repo, recorded: [UNDER_REVIEW] });
+      assert.equal(found.verdict, 'foreign');
+      assert.deepEqual(found.home, { source: 'branch', path: null, branch: UNDER_REVIEW });
+      assert.match(found.reason, /the branch of its open pull request/);
+    } finally {
+      await git(['branch', '-D', CUT_FROM, UNDER_REVIEW], repo);
+    }
+  });
+
+  test('a recorded branch that is not here leaves the choice to the names', async () => {
+    await git(['branch', CUT_FROM, 'main'], repo);
+    try {
+      const found = await forIssue({ issue: REVIEWED, cwd: repo, recorded: [UNDER_REVIEW] });
+      assert.deepEqual(found.home, { source: 'branch', path: null, branch: CUT_FROM });
+    } finally {
+      await git(['branch', '-D', CUT_FROM], repo);
+    }
+  });
+
+  test('a tree on an open pull request\'s branch is the issue\'s, whatever the branch is called', async () => {
+    const adopted = join(trees, 'adopted-work');
+    await git(['worktree', 'add', '-b', 'fix-adopted', adopted, 'main'], repo);
+    try {
+      assert.equal((await forIssue({ issue: 900, cwd: adopted })).verdict, 'unclaimed');
+      assert.equal((await forIssue({ issue: 900, cwd: adopted, recorded: ['fix-adopted'] })).verdict, 'ours');
+      assert.deepEqual((await forIssue({ issue: 900, cwd: repo, recorded: ['fix-adopted'] })).home, {
+        source: 'worktree',
+        path: adopted,
+        branch: 'fix-adopted',
+      });
+    } finally {
+      await git(['worktree', 'remove', '--force', adopted], repo);
+      await git(['branch', '-D', 'fix-adopted'], repo);
+    }
+  });
+});
+
+describe('treeOf, for an issue with no tree', () => {
+  test('a branch checked out nowhere gets a tree on it, not a new branch', async () => {
+    await git(['branch', CUT_FROM, 'main'], repo);
+    try {
+      const { error } = await treeOf(REVIEWED, { root: repo, config: {} });
+      assert.match(error, new RegExp(`its work is on ${CUT_FROM}, checked out nowhere`));
+      assert.ok(error.includes(`pdkit worktree create --issue ${REVIEWED} --branch ${CUT_FROM}`), error);
+      assert.doesNotMatch(error, /--slug/);
+    } finally {
+      await git(['branch', '-D', CUT_FROM], repo);
+    }
+  });
+
+  test('nothing naming the issue still asks for a slug', async () => {
+    const { error } = await treeOf(REVIEWED, { root: repo, config: {} });
+    assert.match(error, /pdkit worktree create --issue 800 --slug <slug>/);
+  });
 });
 
 describe('slice suggest from a tree on another issue\'s branch', () => {
@@ -299,6 +368,38 @@ describe('preflight from a tree on another issue\'s branch', () => {
     assert.doesNotMatch(result.stderr, /nothing was run/);
     assert.match(result.stdout, /branch-name/);
     assert.equal(await present(join(tree, 'typecheck-ran.txt')), true, 'typecheck did not run in the issue\'s tree');
+  });
+});
+
+describe('preflight for an issue under review, from the main checkout', () => {
+  test('the tree it offers is on the pull request\'s branch', async () => {
+    await git(['branch', CUT_FROM, 'main'], repo);
+    await git(['branch', UNDER_REVIEW, 'main'], repo);
+    const dir = join(home, 'issues', String(REVIEWED));
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, 'prs.json'),
+      JSON.stringify({
+        issue: REVIEWED,
+        prs: [
+          { number: 4001, slice: 1, branch: UNDER_REVIEW, state: 'open' },
+          { number: 4002, slice: 2, branch: `DESKTOP-${REVIEWED}/2-withdrawn`, state: 'closed' },
+        ],
+      }),
+    );
+    try {
+      const result = await pdkit(repo, 'preflight', String(REVIEWED), '--json');
+      assert.equal(result.code, 1);
+
+      const said = JSON.parse(result.stdout);
+      assert.deepEqual(said.home, { source: 'branch', path: null, branch: UNDER_REVIEW });
+      assert.deepEqual(said.commands, [
+        `pdkit worktree create --issue ${REVIEWED} --branch ${UNDER_REVIEW} && cd ${sh(join(trees, `DESKTOP-${REVIEWED}`))} && pdkit preflight ${REVIEWED} --json`,
+      ]);
+    } finally {
+      await git(['branch', '-D', CUT_FROM, UNDER_REVIEW], repo);
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

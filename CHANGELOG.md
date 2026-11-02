@@ -9,6 +9,19 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- For an issue whose pull request is open, the tree a command offers to create
+  is on the pull request's branch. After slicing, the branch the slices were
+  cut from stays beside them, and by its name alone it was picked first: a
+  `/pd:resume` from the main checkout offered a tree on that stale branch, and
+  the rebase, the verification and the review fixes would all have missed the
+  pull request. A tree on an open pull request's branch also counts as the
+  issue's when the branch is not named `DESKTOP-<n>/…`.
+- `pdkit open` and `pdkit editor` for an issue with no tree but a branch
+  checked out nowhere suggest `worktree create --branch <that branch>`. They
+  suggested `--slug`, which makes a second, empty branch from the base.
+
 ## [0.11.5] - 2026-11-01
 
 ### Changed

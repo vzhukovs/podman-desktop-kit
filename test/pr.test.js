@@ -30,7 +30,7 @@
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -946,5 +946,39 @@ describe('staleness and rendering', () => {
 
     assert.equal(values.slice, '#2');
     assert.match(values.jobs[0], /\| Windows \| pr-check \| FAILURE \| inconclusive \| #18550, #18486 \|/);
+  });
+});
+
+// Where the work under review is, for whoever asks where an issue lives: the
+// branch the slices were cut from stays beside them, and only the record says
+// which of the two a reviewer is reading.
+describe('the branches open pull requests are on', () => {
+  async function book(prs) {
+    await mkdir(join(home, 'issues', String(ISSUE)), { recursive: true });
+    await writeFile(join(home, 'issues', String(ISSUE), 'prs.json'), JSON.stringify({ issue: ISSUE, prs }));
+  }
+
+  test('open ones only, first slice first', async () => {
+    await book([
+      { number: 4003, slice: 2, branch: 'DESKTOP-7101/2-second', state: 'open' },
+      { number: 4001, slice: 1, branch: 'DESKTOP-7101/1-first', state: 'open' },
+      { number: 4000, slice: null, branch: 'DESKTOP-7101/before-slicing', state: 'closed' },
+      { number: 4002, slice: 3, branch: 'DESKTOP-7101/3-landed', state: 'merged' },
+    ]);
+
+    assert.deepEqual(await pr.openBranches(ISSUE, { home }), ['DESKTOP-7101/1-first', 'DESKTOP-7101/2-second']);
+  });
+
+  test('a superseded record and one without a branch name nothing', async () => {
+    await book([
+      { number: 4001, slice: 1, branch: 'DESKTOP-7101/1-first', state: 'open', supersededBy: 4005 },
+      { number: 4004, slice: 2, branch: null, state: 'open' },
+    ]);
+
+    assert.deepEqual(await pr.openBranches(ISSUE, { home }), []);
+  });
+
+  test('nothing registered is an empty answer, not a refusal', async () => {
+    assert.deepEqual(await pr.openBranches(ISSUE, { home }), []);
   });
 });

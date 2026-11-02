@@ -160,6 +160,31 @@ describe('a command for one issue, typed in another issue\'s tree', () => {
   });
 });
 
+// After slicing, the branch the slices were cut from is still there, and by
+// name it ranks before theirs. The tree the hook offers for a resume is the
+// pull request's.
+describe('an issue under review, with the branch its slices were cut from beside', () => {
+  const REVIEWED = 4242;
+  before(async () => {
+    await git(['branch', `DESKTOP-${REVIEWED}/before-slicing`, 'main'], MAIN);
+    await git(['branch', `DESKTOP-${REVIEWED}/1-under-review`, 'main'], MAIN);
+    await mkdir(issueDir(home, REVIEWED), { recursive: true });
+    await writeFile(
+      join(issueDir(home, REVIEWED), 'prs.json'),
+      JSON.stringify({ prs: [{ number: 4001, slice: 1, branch: `DESKTOP-${REVIEWED}/1-under-review`, state: 'open' }] }),
+    );
+  });
+
+  test('the tree to make is on the pull request\'s branch', async () => {
+    const decision = await submit(`/pd:resume ${REVIEWED}`);
+
+    assert.match(decision.message, new RegExp(`DESKTOP-${REVIEWED}/1-under-review, a local branch checked out nowhere`));
+    const steps = decision.message.split('\n').filter((line) => /^ {7}\S/.test(line)).map((line) => line.trim());
+    assert.deepEqual(steps, [`pdkit worktree create --issue ${REVIEWED} --branch DESKTOP-${REVIEWED}/1-under-review`]);
+    assert.doesNotMatch(decision.message, /before-slicing/);
+  });
+});
+
 // DESKTOP-18915 once more: the pull request's branch left in the main checkout
 // by `slice materialize`, and the review round committed beside the worktree.
 describe('the main checkout on the issue\'s own branch', () => {
