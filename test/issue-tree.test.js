@@ -37,7 +37,7 @@ import { realpath } from 'node:fs/promises';
 
 import { treeOf } from '../lib/commands/support.js';
 import { buildPackageMap } from '../lib/repo.js';
-import { forIssue, issueBranches } from '../lib/worktree.js';
+import { enterDirections, forIssue, issueBranches, switchSteps } from '../lib/worktree.js';
 import { cleanup, commitAll, git, initRepo, seedWorkspace, sh, writeFiles } from './helpers/repo-fixture.js';
 
 const exec = promisify(execFile);
@@ -239,6 +239,73 @@ describe('forIssue', () => {
       await git(['worktree', 'remove', '--force', adopted], repo);
       await git(['branch', '-D', 'fix-adopted'], repo);
     }
+  });
+});
+
+// A tree made before the pull request existed — here on the branch the slices
+// were cut from — is still the issue's tree, and what is done in it misses the
+// pull request. forIssue reports it; the hooks word it.
+describe('the issue\'s tree on another branch than its open pull request', () => {
+  let stale;
+  before(async () => {
+    stale = join(trees, `DESKTOP-${REVIEWED}`);
+    await git(['branch', UNDER_REVIEW, 'main'], repo);
+    await git(['worktree', 'add', '-b', CUT_FROM, stale, 'main'], repo);
+  });
+  after(async () => {
+    await git(['worktree', 'remove', '--force', stale], repo);
+    await git(['branch', '-D', CUT_FROM, UNDER_REVIEW], repo);
+  });
+
+  const recorded = [UNDER_REVIEW];
+
+  test('from inside it, the tree is ours and stale', async () => {
+    const found = await forIssue({ issue: REVIEWED, cwd: stale, recorded });
+    assert.equal(found.verdict, 'ours');
+    assert.deepEqual(found.stale, { path: stale, branch: CUT_FROM, wanted: UNDER_REVIEW, heldBy: null });
+  });
+
+  test('from elsewhere, the way in switches it first', async () => {
+    const found = await forIssue({ issue: REVIEWED, cwd: repo, recorded });
+    assert.deepEqual(found.home, { source: 'worktree', path: stale, branch: CUT_FROM });
+    assert.equal(found.stale?.wanted, UNDER_REVIEW);
+
+    const directions = await enterDirections(found, { config: {} });
+    assert.equal(directions?.path, stale);
+    assert.deepEqual(directions?.steps, [`git -C ${stale} switch ${UNDER_REVIEW}`]);
+  });
+
+  test('nothing recorded, or the tree on the recorded branch, is not stale', async () => {
+    assert.equal((await forIssue({ issue: REVIEWED, cwd: stale })).stale, null);
+
+    await git(['switch', UNDER_REVIEW], stale);
+    try {
+      assert.equal((await forIssue({ issue: REVIEWED, cwd: stale, recorded })).stale, null);
+    } finally {
+      await git(['switch', CUT_FROM], stale);
+    }
+  });
+
+  test('a tree already on the pull request\'s branch is where the session goes', async () => {
+    const reviewing = join(trees, `DESKTOP-${REVIEWED}-2`);
+    await git(['worktree', 'add', reviewing, UNDER_REVIEW], repo);
+    try {
+      const fromFork = await forIssue({ issue: REVIEWED, cwd: repo, recorded });
+      assert.deepEqual(fromFork.home, { source: 'worktree', path: reviewing, branch: UNDER_REVIEW });
+      assert.equal(fromFork.stale, null);
+
+      const fromStale = await forIssue({ issue: REVIEWED, cwd: stale, recorded });
+      assert.equal(fromStale.verdict, 'ours');
+      assert.deepEqual(fromStale.stale?.heldBy, { path: reviewing, main: false });
+    } finally {
+      await git(['worktree', 'remove', '--force', reviewing], repo);
+    }
+  });
+
+  test('a branch the main checkout holds leaves it before the tree takes it', () => {
+    const steps = switchSteps({ path: '/t', branch: null, wanted: 'B', heldBy: { path: '/fork', main: true } }, { repo: { base_branch: 'main' } });
+    assert.deepEqual(steps, ['git -C /fork switch main', 'git -C /t switch B']);
+    assert.deepEqual(switchSteps({ path: '/t', branch: null, wanted: 'B', heldBy: { path: '/other', main: false } }, {}), []);
   });
 });
 

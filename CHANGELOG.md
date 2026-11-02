@@ -28,6 +28,13 @@ fixes — see [RELEASING.md](RELEASING.md).
   cut from, `preflight --slice 1` went green on that branch's code. Each of
   the four now fails without running and says where to run it, unless
   `slice verify` already ran it on the slice's commit.
+- The prompt hook notices an issue's tree that is not on its open pull
+  request's branch: one made before the pull request, detached or on the
+  branch its slices were cut from. From inside it the hook was quiet, since
+  the tree is the issue's, and every commit landed beside the pull request.
+  It now shows the `git switch` to the pull request's branch before anything
+  else, and from elsewhere shows it before `EnterWorktree`. Among several
+  trees of one issue, the one on the pull request's branch is chosen.
 
 ## [0.11.5] - 2026-11-01
 

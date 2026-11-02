@@ -22,6 +22,8 @@ such as one passed to `/pd:review-pr`, is not looked at.
 | Where the issue's work is | What the hook does |
 |---|---|
 | the session is already in the issue's tree | nothing |
+| the session is in the issue's tree, and the tree is not on its open pull request's branch | shows `git -C <tree> switch <the pull request's branch>`, to run once you agree after `git status` there shows nothing uncommitted. If another tree already has that branch, says to start `claude` in the fork again: the next command moves the session there |
+| the issue has a tree on another branch than its open pull request, and the session is elsewhere | the same switch first, then `EnterWorktree` |
 | nothing names the issue yet — no tree, no `DESKTOP-<n>/…` branch | nothing: it is the start of the work, and triage and planning run where you stand. **Except `/pd:exec`**, which writes code: it is told to create the tree with `pdkit worktree create --issue <n> --slug <…>` and move into it |
 | the issue has a tree, and the session is elsewhere | tells Claude to call `EnterWorktree` with the tree's path, before anything else |
 | the issue's branch is checked out in the fork | shows two commands, to run once you agree — `git -C <fork> switch main` and `pdkit worktree create --issue <n> --branch <b>` — then `EnterWorktree` |
@@ -31,7 +33,8 @@ such as one passed to `/pd:review-pr`, is not looked at.
 recorded in `prs.json`, and only otherwise the first local `DESKTOP-<n>/…`
 branch. After slicing, the branch the slices were cut from is still there,
 and it is not where the review is. A tree on an open pull request's branch is
-the issue's whatever the branch is called.
+the issue's whatever the branch is called. Among several trees of one issue,
+the one on an open pull request's branch is where the session is sent.
 
 What it prints, for the second case:
 

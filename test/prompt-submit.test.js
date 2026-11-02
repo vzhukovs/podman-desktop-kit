@@ -185,6 +185,68 @@ describe('an issue under review, with the branch its slices were cut from beside
   });
 });
 
+// A tree made before the pull request, still on the branch the slices were cut
+// from: the issue's tree, and everything done in it misses the pull request.
+describe('the issue\'s tree on another branch than its open pull request', () => {
+  const STALE = 4343;
+  const CUT_FROM = `DESKTOP-${STALE}/before-slicing`;
+  const UNDER_REVIEW = `DESKTOP-${STALE}/1-under-review`;
+  let tree;
+
+  before(async () => {
+    tree = join(base, 'pd-worktrees', `DESKTOP-${STALE}`);
+    await git(['branch', UNDER_REVIEW, 'main'], MAIN);
+    await git(['worktree', 'add', '-q', '-b', CUT_FROM, tree, 'main'], MAIN);
+    await mkdir(issueDir(home, STALE), { recursive: true });
+    await writeFile(join(issueDir(home, STALE), 'prs.json'), JSON.stringify({ prs: [{ number: 4002, slice: 1, branch: UNDER_REVIEW, state: 'open' }] }));
+  });
+
+  const steps = (message) => message.split('\n').filter((line) => /^ {7}\S/.test(line)).map((line) => line.trim());
+
+  test('from the main checkout: switch the tree, then move the session into it', async () => {
+    const decision = await submit(`/pd:resume ${STALE}`);
+
+    assert.match(decision.message, new RegExp(`The tree is on ${esc(CUT_FROM)}, and the open pull request is on ${esc(UNDER_REVIEW)}`));
+    assert.match(decision.message, new RegExp(`git -C ${esc(tree)} status`));
+    assert.deepEqual(steps(decision.message), [`git -C ${tree} switch ${UNDER_REVIEW}`]);
+    assert.match(decision.message, new RegExp(`EnterWorktree tool with path: ${esc(tree)}$`, 'm'));
+  });
+
+  test('from inside it: the hook is no longer quiet', async () => {
+    const decision = await submit(`/pd:resume ${STALE}`, tree);
+
+    assert.match(decision.message, new RegExp(`this tree is on ${esc(CUT_FROM)} — its open pull request is on ${esc(UNDER_REVIEW)}`));
+    assert.deepEqual(steps(decision.message), [`git -C ${tree} switch ${UNDER_REVIEW}`]);
+    assert.doesNotMatch(decision.message, /EnterWorktree/);
+  });
+
+  test('with the pull request\'s branch in another tree, the session is sent there by way of the fork', async () => {
+    const reviewing = join(base, 'pd-worktrees', `DESKTOP-${STALE}-2`);
+    await git(['worktree', 'add', '-q', reviewing, UNDER_REVIEW], MAIN);
+    try {
+      const inside = await submit(`/pd:resume ${STALE}`, tree);
+      assert.match(inside.message, new RegExp(`${esc(UNDER_REVIEW)} is checked out in ${esc(reviewing)}`));
+      assert.match(inside.message, /end this session and start claude in the main checkout/);
+      assert.deepEqual(steps(inside.message), []);
+
+      const fromFork = await submit(`/pd:resume ${STALE}`);
+      assert.match(fromFork.message, new RegExp(`EnterWorktree tool with path: ${esc(reviewing)}$`, 'm'));
+      assert.doesNotMatch(fromFork.message, /git -C \S+ switch/);
+    } finally {
+      await git(['worktree', 'remove', '--force', reviewing], MAIN);
+    }
+  });
+
+  test('on the pull request\'s branch, quiet again', async () => {
+    await git(['switch', '-q', UNDER_REVIEW], tree);
+    try {
+      assert.equal((await submit(`/pd:resume ${STALE}`, tree)).message, undefined);
+    } finally {
+      await git(['switch', '-q', CUT_FROM], tree);
+    }
+  });
+});
+
 // DESKTOP-18915 once more: the pull request's branch left in the main checkout
 // by `slice materialize`, and the review round committed beside the worktree.
 describe('the main checkout on the issue\'s own branch', () => {
