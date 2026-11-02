@@ -115,6 +115,15 @@ the ref is now the slice's branch; if the branch does not exist yet the run
 refused: every check passes on nothing, and a green report would open the gate on
 a branch with nothing on it.
 
+**The scripts are held to the same ref.** The file checks read `base...ref`, but
+`tests`, `lint`, `typecheck` and `schemas` run what the tree has checked out.
+When that is another commit than `ref` — the issue's tree on the branch its
+slices were cut from, `preflight --slice 1` — each of them **fails without
+running**, names both commits, and says where to run it. A green there would be
+about the other branch and reported as the slice's. A `slice verify` run on the
+slice's own commit still counts (below): it is about the right commit wherever
+the tree stands.
+
 **The base comes from the graph, not from the config.** Every file check reads
 `base...ref`, and for a stacked slice the base is the predecessor's branch. From
 `main` the stack's diff contains the previous slice's changes, and `spdx`,

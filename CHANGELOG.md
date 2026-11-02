@@ -21,6 +21,13 @@ fixes — see [RELEASING.md](RELEASING.md).
 - `pdkit open` and `pdkit editor` for an issue with no tree but a branch
   checked out nowhere suggest `worktree create --branch <that branch>`. They
   suggested `--slug`, which makes a second, empty branch from the base.
+- Preflight no longer runs `tests`, `lint`, `typecheck` and `schemas` on a tree
+  that has another commit checked out than the one under check. The file
+  checks follow the slice's branch wherever the tree stands, and the scripts
+  ran what was on disk: from the issue's tree on the branch its slices were
+  cut from, `preflight --slice 1` went green on that branch's code. Each of
+  the four now fails without running and says where to run it, unless
+  `slice verify` already ran it on the slice's commit.
 
 ## [0.11.5] - 2026-11-01
 

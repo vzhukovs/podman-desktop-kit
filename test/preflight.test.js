@@ -45,7 +45,7 @@ import * as pr from '../lib/pr.js';
 import * as slice from '../lib/slice.js';
 import * as state from '../lib/state.js';
 import { staleCopyright } from '../lib/preflight/checks/maintainer-rules.js';
-import { candidatesFor, runScript, scopedScripts, typecheckScripts, unrunnable } from '../lib/preflight/scope.js';
+import { candidatesFor, offDisk, runScript, scopedScripts, typecheckScripts, unrunnable } from '../lib/preflight/scope.js';
 import { buildPackageMap } from '../lib/repo.js';
 
 const execFileAsync = promisify(execFile);
@@ -1500,6 +1500,72 @@ describe('a sliced issue', () => {
       assert.doesNotMatch(dirty.results[0].summary, /passed in slice verify/);
     } finally {
       await writeFile(path, original);
+    }
+  });
+
+  // The file checks follow the slice's branch wherever the tree stands; the
+  // scripts run what is on disk. In the issue's tree on the branch its slices
+  // were cut from, a green from tests, lint and typecheck would be about that
+  // branch and reported as the slice's.
+  describe('a tree standing on another commit than the slice', () => {
+    const SCRIPTED = ['tests', 'lint', 'typecheck'];
+    let was;
+
+    before(async () => {
+      was = await gitIn(['branch', '--show-current'], sliced);
+      await gitIn(['checkout', `DESKTOP-${ISSUE}/work`], sliced);
+    });
+
+    after(async () => {
+      await gitIn(['checkout', was], sliced);
+    });
+
+    test('the scripts are not run, and the report says where to run them', async () => {
+      const path = join(slicedHome, 'issues', String(ISSUE), 'slices.json');
+      const original = await readFile(path, 'utf8');
+      const unverified = JSON.parse(original);
+      delete unverified.slices[0].verification.evidence;
+      await writeFile(path, JSON.stringify(unverified, null, 2));
+
+      try {
+        const prepared = await on({ slice: 1 });
+        assert.equal(prepared.ref, `DESKTOP-${ISSUE}/1-api`);
+        assert.notEqual(prepared.diskSha, prepared.headSha);
+
+        const report = await run(prepared, await loadChecks(SCRIPTED));
+        assert.equal(report.ok, false);
+        for (const result of report.results) {
+          assert.equal(result.status, 'fail', result.id);
+          assert.equal(result.blocking, true, result.id);
+          assert.match(result.summary, new RegExp(`^not run: this tree has DESKTOP-${ISSUE}/work at [0-9a-f]{11} checked out`), result.id);
+          assert.ok(result.remedy.includes(`git switch DESKTOP-${ISSUE}/1-api`), result.id);
+          assert.equal(result.output, undefined, `${result.id} ran something`);
+        }
+        // The file checks still read the slice's own diff.
+        assert.deepEqual(prepared.changedFiles, [API]);
+      } finally {
+        await writeFile(path, original);
+      }
+    });
+
+    test('a verification that ran them on the slice\'s commit still counts', async () => {
+      const report = await run(await on({ slice: 1 }), await loadChecks(SCRIPTED));
+      for (const result of report.results) {
+        assert.equal(result.status, 'pass', `${result.id}: ${result.summary}`);
+        assert.match(result.summary, /passed in slice verify/, result.id);
+      }
+    });
+  });
+
+  test('on the slice\'s own branch nothing is refused', async () => {
+    const was = await gitIn(['branch', '--show-current'], sliced);
+    await gitIn(['checkout', `DESKTOP-${ISSUE}/1-api`], sliced);
+    try {
+      const prepared = await on({ slice: 1 });
+      assert.equal(prepared.diskSha, prepared.headSha);
+      assert.equal(offDisk('tests', true, prepared), null);
+    } finally {
+      await gitIn(['checkout', was], sliced);
     }
   });
 
