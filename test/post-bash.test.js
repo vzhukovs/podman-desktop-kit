@@ -70,6 +70,16 @@ describe('windows', () => {
     assert.deepEqual(windows('grep -n "start() {" loader.ts | head -15'), []);
   });
 
+  test('counts head and tail piped straight from a file printer', () => {
+    // `cat f | head` cuts the file exactly as `head f` does.
+    assert.deepEqual(windows('cat api.d.ts | head -100'), ['head -100']);
+    assert.deepEqual(windows('cat -n api.d.ts | head -n 100'), ['head -n 100']);
+    assert.deepEqual(windows('git show HEAD:api.d.ts | tail -80'), ['tail -80']);
+    // A search between them makes it a list of matches again; a `;` is no pipe.
+    assert.deepEqual(windows('cat api.d.ts | grep export | head -5'), []);
+    assert.deepEqual(windows('cat a.ts; grep x f | head'), []);
+  });
+
   test('reads clustered and separated context options, and git grep', () => {
     assert.deepEqual(windows('git grep -nA5 foo'), ['git grep -nA5']);
     assert.deepEqual(windows('rg -C 3 foo'), ['rg -C 3']);

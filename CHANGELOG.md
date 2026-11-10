@@ -12,7 +12,7 @@ fixes — see [RELEASING.md](RELEASING.md).
 ### Added
 
 - A `post-bash` hook. When a Bash read went through a window (`grep -A60`,
-  `sed -n a,bp`, `head -40 <file>`) and its output ends inside an open block,
+  `sed -n a,bp`, `head -40 <file>`, `cat <file> | head -40`) and its output ends inside an open block,
   it tells the model that what lies past the window is unread, not absent,
   and to read the block to its closing brace before claiming something does
   not exist. New members are appended at the end of a namespace or an object,
