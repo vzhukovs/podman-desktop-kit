@@ -30,7 +30,8 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { braces, handle, windows } from '../lib/hooks/post-bash.js';
+import { braces } from '../lib/hooks/cut.js';
+import { handle, windows } from '../lib/hooks/post-bash.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BIN = join(ROOT, 'bin', 'pdkit');

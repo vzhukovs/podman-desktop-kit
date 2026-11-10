@@ -16,7 +16,10 @@ fixes — see [RELEASING.md](RELEASING.md).
   it tells the model that what lies past the window is unread, not absent,
   and to read the block to its closing brace before claiming something does
   not exist. New members are appended at the end of a namespace or an object,
-  so a window from the top loses the newest API first. The rule itself is in
+  so a window from the top loses the newest API first. A `post-read` hook does
+  the same for the `Read` and `Grep` tools, which the model is told to prefer
+  over the shell: a plain `Read` returns the first 2000 lines of a file, and
+  `Grep` has `-A`/`-C` and `head_limit`. The rule itself is in
   `knowledge/pitfalls.md`; the hook carries it into every session, including
   work done outside the `/pd:*` skills, where no rule in a prompt is loaded.
 - A `post-claim` hook. When a markdown write says a backticked name is

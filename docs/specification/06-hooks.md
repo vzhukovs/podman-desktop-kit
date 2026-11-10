@@ -8,7 +8,7 @@ Instructions in skills are advisory. Hooks are deterministic.
 `hooks.json` is compared **only against the tool name** (`Bash`, `Write`,
 `Edit`) — never against the command string. `Bash(git push*)` cannot be written
 as a matcher: such a hook either never fires or fires in the wrong place. So
-`hooks.json` stays thin — nine entries, all on one binary — and the conditions on
+`hooks.json` stays thin — ten entries, all on one binary — and the conditions on
 the command string are applied by code in `lib/hooks/`.
 
 | Event | Matcher | Handler |
@@ -18,6 +18,7 @@ the command string are applied by code in `lib/hooks/`.
 | `PostToolUse` | `Write\|Edit` | `bin/pdkit hook post-write` |
 | `PostToolUse` | `Write\|Edit` | `bin/pdkit hook post-claim` |
 | `PostToolUse` | `Bash` | `bin/pdkit hook post-bash` |
+| `PostToolUse` | `Read\|Grep` | `bin/pdkit hook post-read` |
 | `SubagentStop` | — | `bin/pdkit hook subagent-stop` |
 | `SessionStart` | — | `bin/pdkit hook session-start` |
 | `PreCompact` | — | `bin/pdkit hook pre-compact` |
@@ -41,6 +42,7 @@ The rules the handlers apply:
 | `post-write` | a new file without the SPDX header | exit 2 with the text to paste |
 | `post-write` | `*.ts` under schemas | remind about `generate:schemas`, mark `schemas_dirty` |
 | `post-bash` | a command with a window (`grep -A/-B/-C`, `sed -n a,bp`, `awk` on `NR`, `head`/`tail` reading a file) whose output ends with more `{` opened than closed | add the context: the block was cut, what lies past the window is unread rather than absent, and the rule in `knowledge/pitfalls.md`. Never blocks. Runs in every repository: the rule is true anywhere, and the reads it exists for include a clone of a reference project. A message after a tool reaches the model only as `additionalContext`, so `pdkit hook` sends it that way on `PostToolUse` |
+| `post-read` | a `Read` that returned part of a file (its `startLine`, `numLines` and `totalLines` say so, or `truncatedByTokenCap`), or a `Grep` in content mode with `-A`/`-B`/`-C` or an applied `head_limit`, whose output ends with more `{` opened than closed | the same context as `post-bash`, from the same module (`cut.js`), so the two cannot word the rule differently. Exists because the model is told to prefer `Read` and `Grep` over the shell, and a plain `Read` of a long declaration file returns its first 2000 lines. Never blocks; runs in every repository |
 | `post-claim` | a markdown write that says a backticked name is missing, asks whether a name is needed or should be added (any name: the question's premise is the absence), or proposes adding a dotted name (a member of something that exists), and the name matches nothing in podman-desktop outside that document | add the context: a name with no match is not yet evidence the concept is absent; translate a name borrowed from another project, search the concept, and write the search next to the claim as `searched: …`, per `knowledge/pitfalls.md`. A line that already cites its search, a query and an empty result (`searched: <query> -> 0`), is skipped; `searched: yes` is not a search. The wording of absence is read from `lib/absence.js`, which `plan check` uses too. Never blocks, never calls the claim false: a genuinely new name matches nothing too. All names in one `git grep`, with no cap on how many |
 | `subagent-stop` | any agent other than `pd:pd-implementer` finishing | allow, after counting it. Only the implementer's finish claims the active task; a payload with no `agent_type` is treated as the implementer |
 | `subagent-stop` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |

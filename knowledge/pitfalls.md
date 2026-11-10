@@ -75,9 +75,10 @@ closing brace is in the output, or search the whole file with no window. A
 claim that something does not exist, is not supported or is not handled is
 never made from windowed output.
 
-**Caught by:** the `post-bash` hook. After any Bash command with a windowing
-operator whose output ends with more `{` opened than closed, it puts this rule
-next to the output. It runs in every session, including work done outside the
+**Caught by:** the `post-bash` and `post-read` hooks. After a Bash command
+with a windowing operator, a `Read` that returned part of a file, or a `Grep`
+with context lines or a cap, whose output ends with more `{` opened than
+closed, they put this rule next to the output. It runs in every session, including work done outside the
 `/pd:*` skills. It misses a cut when several reads in one command balance each
 other's braces, so the rule holds without it.
 
