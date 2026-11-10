@@ -78,7 +78,16 @@ describe('asksWhetherToAdd', () => {
 describe('citations', () => {
   test('a search and a location are each recognized', () => {
     assert.equal(citesSearch('searched: git grep -i scheme -> 0'), true);
+    assert.equal(citesSearch('searched: git grep -i scheme packages/extension-api → 0'), true);
     assert.equal(citesSearch('we searched the API'), false);
+  });
+
+  test('a search names what was run and that it came back empty', () => {
+    // One word satisfied the form before, so the form asked nothing.
+    assert.equal(citesSearch('The API has no `uriScheme`; searched: yes'), false);
+    assert.equal(citesSearch('searched: git grep -i scheme'), false);
+    assert.equal(citesSearch('searched: git grep -i scheme -> 0'), true);
+    assert.equal(citesSearch('searched: git grep -i scheme -> 03 hits'), false);
     assert.equal(citesLocation('`event-store.ts:134-178` has no catch'), true);
     assert.equal(citesLocation('callers catch at `:252`'), true);
     assert.equal(citesLocation('The API has no field.'), false);

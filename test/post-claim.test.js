@@ -150,6 +150,11 @@ describe('handle', () => {
     assert.deepEqual(await handle(write(join(repo, 'design.md'), text), context()), { block: false });
   });
 
+  test('is not quieted by a search that names nothing', async () => {
+    const text = 'The API has no `uriScheme`; searched: yes.';
+    assert.equal((await handle(write(join(repo, 'design.md'), text), context())).rule, 'name-claim');
+  });
+
   test('reads the new text of an Edit', async () => {
     const payload = {
       tool_name: 'Edit',

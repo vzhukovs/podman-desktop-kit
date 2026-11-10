@@ -45,7 +45,9 @@ fixes — see [RELEASING.md](RELEASING.md).
   from the codebase or an API and cites neither a `file:line` nor a search.
   The location rule could not hold such a line, because an absence has no line
   to cite, so it passed with nothing behind it; it now cites the search,
-  `searched: <query> in <where> -> 0`. An absence scoped to a place keeps its
+  `searched: <query> in <where> -> 0`. The line has to name what was run and
+  its empty result (`-> 0`): `searched: yes` is not a search. An absence
+  scoped to a place keeps its
   `file:line`. The plan skill, the plan template and `pd-scout` say so, and
   `knowledge/pitfalls.md` has the rule. A plan written before this can turn
   red on such a line: add the search, or the range it was read in.
