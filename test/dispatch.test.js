@@ -404,13 +404,32 @@ describe('outside podman-desktop', () => {
     assert.equal((await elsewhere('gh pr comment 3 --body x')).block, false);
   });
 
-  test('deny rules hold everywhere', async () => {
-    assert.equal((await elsewhere('git push --force origin main')).block, true);
-    assert.equal((await elsewhere('git commit --no-verify -m x')).block, true);
+  // Deny rules are podman-desktop's house rules — Husky, explicit staging, a
+  // tracker no state may write to — and held everywhere they blocked ordinary
+  // git work in a person's own projects.
+  test('deny rules stand aside in another repository', async () => {
+    for (const line of [
+      'git push --force origin main',
+      'git commit --no-verify -m x',
+      'git add -A',
+      'git rebase -i main',
+      'gh issue comment 1 -b x',
+      'git push origin main && gh issue comment 1 -b x',
+    ]) {
+      const decision = await elsewhere(line);
+      assert.equal(decision.block, false, `${line} was blocked`);
+      assert.match(decision.message, /guards podman-desktop/);
+    }
+  });
+
+  test('deny rules still hold where podman-desktop is not ruled out', async () => {
+    assert.equal((await elsewhere('git add -A', fork)).block, true);
+    assert.equal((await elsewhere(`cd ${repo} && git add -A`)).block, true);
+    assert.equal((await elsewhere('gh -R podman-desktop/podman-desktop issue comment 1 -b x')).block, true);
   });
 
   test('a denied command later in the line is not carried by the push in front of it', async () => {
-    const decision = await elsewhere('git push origin main && gh issue comment 1 -b x');
+    const decision = await elsewhere('git push origin main && gh issue comment 1 -b x', repo);
     assert.equal(decision.block, true);
     assert.equal(decision.rule, 'gh-issue-comment');
   });
@@ -436,6 +455,7 @@ describe('outside podman-desktop', () => {
     const nowhere = await mkdtemp(join(tmpdir(), 'pdkit-dispatch-nowhere-'));
     try {
       assert.equal((await elsewhere('git push', nowhere)).block, true);
+      assert.equal((await elsewhere('git add -A', nowhere)).block, true);
     } finally {
       await rm(nowhere, { recursive: true, force: true });
     }

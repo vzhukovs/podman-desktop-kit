@@ -20,6 +20,17 @@ fixes — see [RELEASING.md](RELEASING.md).
   `knowledge/pitfalls.md`; the hook carries it into every session, including
   work done outside the `/pd:*` skills, where no rule in a prompt is loaded.
 
+### Changed
+
+- The `pre-bash` deny rules — force push without a lease, `--no-verify`,
+  `git add -A` / `git add .`, `git rebase -i`, issue writes — now stand aside in
+  a repository proven not to be podman-desktop, as the consent gate already
+  did. They are podman-desktop's house rules, and held everywhere they blocked
+  ordinary git work in unrelated projects. Proof works as before: no remote
+  names podman-desktop, and the line does not `cd`, use `git -C` or name it.
+  In a podman-desktop clone or worktree, or outside any repository, they are
+  refused as before.
+
 ### Fixed
 
 - Messages from `PostToolUse` hooks now reach the model. They were written as

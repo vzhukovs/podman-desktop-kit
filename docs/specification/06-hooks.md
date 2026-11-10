@@ -72,8 +72,9 @@ for the comment.
 Hooks on the Bash tool are global, so the token rules above used to apply in
 every repository on the machine — this plugin's own checkout included, where
 the only way to push was a `/pd:pr` flow built for somebody else's project.
-`lib/hooks/scope.js` now lets a gated command (`push` or `reply` kind) run
-without a token **only when it is proven to act outside podman-desktop**:
+`lib/hooks/scope.js` now lets a command any rule matched — a gated one (`push`
+or `reply` kind) or a denied one — run **only when it is proven to act outside
+podman-desktop**:
 
 - the working tree has no remote whose slug is `repo.upstream` or `repo.fork`,
   or whose repository name is `podman-desktop` — the last one is what keeps a
@@ -90,8 +91,12 @@ The burden of proof is on "outside" on purpose. A wrong "inside" is one refusal
 in a repository that did not need guarding; a wrong "outside" is an ungated push
 to upstream. So every failure — a config that does not load, a directory that
 is not a repository, a `git` that cannot be run — is "inside", and the gate
-decides as before. Deny rules are untouched: force push, `--no-verify`,
-`add -A`, `rebase -i` and tracker writes are refused everywhere. Each command
+decides as before. Deny rules follow the same scope. Force push, `--no-verify`,
+`add -A`, `rebase -i` and tracker writes are podman-desktop's house rules — its
+Husky hooks, its review habits, a tracker no state may write to — and held
+everywhere they refused ordinary git work in a person's own projects. Inside
+podman-desktop, or wherever outside is not proven, they are refused as before,
+before any token is looked at. Each command
 the gate stands aside for is written to the journal as `allowed-outside`, so
 standing aside does not leave the same trace as never running.
 `pdkit doctor --gate-selftest` probes both sides, in throwaway repositories, so
