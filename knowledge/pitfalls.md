@@ -3,7 +3,7 @@
 Traps that cost time once and should not cost it twice. Each entry says what it
 looks like, why it is a trap, and how it is now caught.
 
-> Three entries so far, and it grows one issue at a time: `/pd:close` proposes
+> Four entries so far, and it grows one issue at a time: `/pd:close` proposes
 > additions from what a finished issue actually cost. Short is the intended
 > state, not an unfinished one — see "What to add here".
 
@@ -50,6 +50,36 @@ re-run wastes twenty minutes; if it is a known flake, re-running hides it.
 **Caught by:** `/pd:pr-status` classifies a red job as platform difference,
 flake, or real regression before proposing anything. A flake gets a link to the
 existing issue, not a re-run.
+
+## A window that ends inside a block
+
+**Looks like:** `grep -n "export namespace <name>" -A40 extension-api.d.ts`, or
+`sed -n 300,340p <file>.ts`, prints a namespace or an object literal that looks
+complete: members, then nothing more.
+
+**Actually:** the window stopped before the block did, and nothing in the
+output says so. `grep -A`, `sed -n a,bp`, `head` and `tail` cut silently. New
+members are appended at the end of a namespace or an object, so the members a
+window from the top loses are the newest ones, which are exactly the ones a
+question like "does the API already have X?" is about. A filter piped after the
+window (`| grep export`) also removes the closing brace whose absence would
+have given the cut away.
+
+**Why it matters:** an unread member becomes "absent", and "absent" becomes a
+proposal to add something that already exists, in a document a maintainer then
+has to correct.
+
+**The rule:** a block you draw a conclusion from is read to its closing brace.
+Use Read on the file from the block's first line, or widen the window until the
+closing brace is in the output, or search the whole file with no window. A
+claim that something does not exist, is not supported or is not handled is
+never made from windowed output.
+
+**Caught by:** the `post-bash` hook. After any Bash command with a windowing
+operator whose output ends with more `{` opened than closed, it puts this rule
+next to the output. It runs in every session, including work done outside the
+`/pd:*` skills. It misses a cut when several reads in one command balance each
+other's braces, so the rule holds without it.
 
 ## What to add here
 

@@ -32,6 +32,16 @@
             "args": ["hook", "post-write"]
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pdkit",
+            "args": ["hook", "post-bash"]
+          }
+        ]
       }
     ],
     "SubagentStop": [

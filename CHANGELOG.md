@@ -9,6 +9,24 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- A `post-bash` hook. When a Bash read went through a window (`grep -A60`,
+  `sed -n a,bp`, `head -40 <file>`) and its output ends inside an open block,
+  it tells the model that what lies past the window is unread, not absent,
+  and to read the block to its closing brace before claiming something does
+  not exist. New members are appended at the end of a namespace or an object,
+  so a window from the top loses the newest API first. The rule itself is in
+  `knowledge/pitfalls.md`; the hook carries it into every session, including
+  work done outside the `/pd:*` skills, where no rule in a prompt is loaded.
+
+### Fixed
+
+- Messages from `PostToolUse` hooks now reach the model. They were written as
+  plain stdout, which Claude Code sends to the debug log after a tool, so the
+  `generate:schemas` reminder from `post-write` had been reaching nobody. They
+  now go as `additionalContext`.
+
 ## [0.12.0] - 2026-11-10
 
 ### Upgrading

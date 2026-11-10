@@ -8,7 +8,7 @@ Instructions in skills are advisory. Hooks are deterministic.
 `hooks.json` is compared **only against the tool name** (`Bash`, `Write`,
 `Edit`) — never against the command string. `Bash(git push*)` cannot be written
 as a matcher: such a hook either never fires or fires in the wrong place. So
-`hooks.json` stays thin — seven entries, all on one binary — and the conditions on
+`hooks.json` stays thin — eight entries, all on one binary — and the conditions on
 the command string are applied by code in `lib/hooks/`.
 
 | Event | Matcher | Handler |
@@ -16,6 +16,7 @@ the command string are applied by code in `lib/hooks/`.
 | `PreToolUse` | `Bash` | `bin/pdkit hook pre-bash` |
 | `PreToolUse` | `Write\|Edit` | `bin/pdkit hook pre-write` |
 | `PostToolUse` | `Write\|Edit` | `bin/pdkit hook post-write` |
+| `PostToolUse` | `Bash` | `bin/pdkit hook post-bash` |
 | `SubagentStop` | — | `bin/pdkit hook subagent-stop` |
 | `SessionStart` | — | `bin/pdkit hook session-start` |
 | `PreCompact` | — | `bin/pdkit hook pre-compact` |
@@ -38,6 +39,7 @@ The rules the handlers apply:
 | `pre-write` | no active task in this working tree | allow — the restriction belongs to executing a planned task, not to having the plugin installed |
 | `post-write` | a new file without the SPDX header | exit 2 with the text to paste |
 | `post-write` | `*.ts` under schemas | remind about `generate:schemas`, mark `schemas_dirty` |
+| `post-bash` | a command with a window (`grep -A/-B/-C`, `sed -n a,bp`, `awk` on `NR`, `head`/`tail` reading a file) whose output ends with more `{` opened than closed | add the context: the block was cut, what lies past the window is unread rather than absent, and the rule in `knowledge/pitfalls.md`. Never blocks. Runs in every repository: the rule is true anywhere, and the reads it exists for include a clone of a reference project. A message after a tool reaches the model only as `additionalContext`, so `pdkit hook` sends it that way on `PostToolUse` |
 | `subagent-stop` | any agent other than `pd:pd-implementer` finishing | allow, after counting it. Only the implementer's finish claims the active task; a payload with no `agent_type` is treated as the implementer |
 | `subagent-stop` | no `receipts/<TASK_ID>.md`, or it fails `validateReceipt` | exit 2 with the exact command to run |
 | `subagent-stop` | a real receipt with `exitCode ≠ 0` | exit 2: the `Done when` command did not pass |
