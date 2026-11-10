@@ -3,7 +3,7 @@
 Traps that cost time once and should not cost it twice. Each entry says what it
 looks like, why it is a trap, and how it is now caught.
 
-> Six entries so far, and it grows one issue at a time: `/pd:close` proposes
+> Seven entries so far, and it grows one issue at a time: `/pd:close` proposes
 > additions from what a finished issue actually cost. Short is the intended
 > state, not an unfinished one — see "What to add here".
 
@@ -144,6 +144,39 @@ are missing here.
 is absent and cites neither a location nor a search. The `post-claim` hook
 asks for the search when a markdown write states an absence. Neither sees an
 absence that was never written down, so the rule holds without them.
+
+## A question for reviewers that carries an unchecked fact
+
+**Looks like:** an open question in a design: "should `ns.member` be added
+for callers that need it?", "is a new setting worth it?", "do we need
+`ns.member`?".
+
+**Actually:** a question about adding something rests on the fact that it is
+not there, and a question is the one form nobody marks as checked. Put to
+reviewers, it hands them a decision and quietly hands them the fact as well.
+They answer the decision and take the fact as given, so a reviewer can agree
+to add what already exists. The same happens when one list holds both "not
+verified" and "open questions": a gap in the facts, phrased as "is X
+needed?", turns from the author's work into the reviewers' decision. A public
+document that carries no verification marks loses whatever provenance the
+working notes had.
+
+**Why it matters:** the premise reaches the people least placed to check it,
+in the form least likely to be questioned, and their agreement then reads as
+confirmation.
+
+**The rule:** before a question goes to a reviewer, pull its premise out and
+check it. Write the premise as a claim with its source, then ask: "`ns.other`
+already holds this (`api.d.ts:120`); is it enough?" or "`ns.member` is not in
+the API (searched: `git grep -i <concept> -- <api>` -> 0); should it be
+added?". Questions for reviewers are decisions only. Keep "not verified" and
+"open questions" in separate lists: the first is the author's work, the
+second is someone else's.
+
+**Caught by:** the `post-claim` hook reads a question about whether something
+is needed or should be added as a claim that it is absent, and checks the name
+against podman-desktop. It does not see a premise that names nothing in
+backticks, or one asked in another language, so the rule holds without it.
 
 ## What to add here
 

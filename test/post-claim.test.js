@@ -79,6 +79,12 @@ describe('claims', () => {
     assert.deepEqual(claims('Add a new `DeepLinkDispatcher` class.'), []);
   });
 
+  test('takes any name, bare or dotted, from a question whose premise is an absence', () => {
+    assert.deepEqual(claims('Do we need `env.uriScheme`?').map((claim) => claim.name), ['env.uriScheme']);
+    assert.deepEqual(claims('Should `env` get a `uriScheme` field?').map((claim) => claim.name), ['uriScheme']);
+    assert.deepEqual(claims('Is it worth exposing `uriScheme` to extensions?').map((claim) => claim.name), ['uriScheme']);
+  });
+
   test('ignores paths, commands, short leaves and neutral sentences', () => {
     assert.deepEqual(claims('There is no `packages/main/src/x.ts` file.'), []);
     assert.deepEqual(claims('There is no `--force` flag.'), []);

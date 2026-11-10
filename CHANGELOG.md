@@ -51,6 +51,10 @@ fixes — see [RELEASING.md](RELEASING.md).
   red on such a line: add the search, or the range it was read in.
 - The `post-claim` hook asks for the same `searched:` line, and stays quiet on
   a line that already has one.
+- The `post-claim` hook reads a question about whether something is needed or
+  should be added ("do we need `x`?", "should `ns` get an `x`?", "is it worth
+  exposing `x`?") as a claim that it is absent. Only "whether `x` should be added" was read
+  before, and the same premise went through in the other forms.
 
 ### Fixed
 

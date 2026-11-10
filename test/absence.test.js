@@ -26,7 +26,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { citesLocation, citesSearch, proposesAdding, saysAbsent, unsearched } from '../lib/absence.js';
+import { asksWhetherToAdd, citesLocation, citesSearch, proposesAdding, saysAbsent, unsearched } from '../lib/absence.js';
 
 describe('saysAbsent', () => {
   test('reads English negatives', () => {
@@ -49,6 +49,29 @@ describe('proposesAdding', () => {
   test('reads proposals', () => {
     assert.equal(proposesAdding('whether `env.uriScheme` should be added'), true);
     assert.equal(proposesAdding('The field holds the scheme.'), false);
+  });
+});
+
+describe('asksWhetherToAdd', () => {
+  // A question has a premise, and nobody marks a question as checked. The
+  // premise that went through was "is `env.uriScheme` needed?", after the same
+  // premise as "whether to add" had been the only form recognized.
+  test('reads the questions whose premise is an absence', () => {
+    for (const text of [
+      '(g) whether `env.uriScheme` should be added for extensions.',
+      'Do we need `env.uriScheme`?',
+      'Should `env` get a `uriScheme` field?',
+      'Is it worth exposing `uriScheme` to extensions?',
+      'Do we need a new field?',
+    ]) {
+      assert.equal(asksWhetherToAdd(text), true, text);
+    }
+  });
+
+  test('leaves statements and questions about something else', () => {
+    assert.equal(asksWhetherToAdd('Add a new `DeepLinkDispatcher` class.'), false);
+    assert.equal(asksWhetherToAdd('Does `registerUriHandler` return a Disposable?'), false);
+    assert.equal(asksWhetherToAdd('It is worth noting that the field exists.'), false);
   });
 });
 
