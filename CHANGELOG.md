@@ -9,6 +9,29 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-10
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing to change in your config.
+
+- Two preflight checks now block. `maintainer-rules` fails on a rule with no
+  exception. The new `self-review` fails pass two until the four review axes
+  have read the commit and the body being published, with nothing open. A
+  branch that was green on 0.11.x can go red: fix the code it names, then run
+  the self-review (`/pd:pr` step 5).
+- A pull request already open goes through the self-review at its next
+  `/pd:pr-sync` round, on the whole pull request.
+
+MINOR rather than PATCH because a preflight check that starts blocking can
+refuse a push that used to pass.
+
 ### Added
 
 - **A self-review before every push, enforced by preflight.** `/pd:pr`
@@ -2402,7 +2425,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...v0.12.0
 [0.11.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.3...v0.11.4
