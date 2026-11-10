@@ -4,8 +4,8 @@
      rather than the obvious alternative.
 
      Not the reasoning trail. The analysis that got here is the plan, the plan
-     is not published, and a reviewer who wanted it would ask. On #19048 this
-     section ran to 4336 characters of numbered argument; the same change is
+     is not published, and a reviewer who wanted it would ask. This section
+     has run past four thousand characters of numbered argument for a change
      explainable in four sentences, and the four are what gets read.
 
      Budget: 600 characters. -->
@@ -86,7 +86,7 @@
      What does NOT go here, and where it goes instead: the review history
      (the pull request conversation has it), residual risks and design
      alternatives (a review comment, or the issue), behavior nuance a reviewer
-     cannot act on (nowhere). On #19048 this section reached 4215 characters
+     cannot act on (nowhere). This section has passed four thousand characters
      that way.
 
      Budget: 400 characters. -->
