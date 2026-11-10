@@ -34,6 +34,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pdkit",
+            "args": ["hook", "post-claim"]
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {

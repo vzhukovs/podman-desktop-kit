@@ -19,6 +19,14 @@ fixes — see [RELEASING.md](RELEASING.md).
   so a window from the top loses the newest API first. The rule itself is in
   `knowledge/pitfalls.md`; the hook carries it into every session, including
   work done outside the `/pd:*` skills, where no rule in a prompt is loaded.
+- A `post-claim` hook. When a markdown write says a backticked name is
+  missing, or proposes adding a member to something that exists
+  (`env.someName`), and that name matches nothing in podman-desktop outside
+  the document, it reminds the model that a zero for a name is not yet
+  evidence: a name borrowed from another project is translated first (what is
+  it built from there?) and the concept is searched for in the API
+  declarations. The rule is "A name from another project" in
+  `knowledge/pitfalls.md`.
 
 ### Changed
 
