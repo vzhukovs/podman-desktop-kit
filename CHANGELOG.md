@@ -9,11 +9,33 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-10
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing to change in your config.
+
+- `pdkit plan check` now refuses a `Context` line that says something is
+  absent and cites neither a `file:line` nor a search. A plan that was green
+  on 0.12.0 can go red: add `searched: <query> -> 0` to the line, or the
+  range it was read in.
+- Outside podman-desktop, the `pre-bash` deny rules no longer apply. Inside
+  it, nothing changes.
+
+MINOR rather than PATCH because a plan check that starts refusing can stop a
+plan that used to pass.
+
 ### Added
 
 - A `post-bash` hook. When a Bash read went through a window (`grep -A60`,
-  `sed -n a,bp`, `head -40 <file>`, `cat <file> | head -40`) and its output ends inside an open block,
-  it tells the model that what lies past the window is unread, not absent,
+  `sed -n a,bp`, `head -40 <file>`, `cat <file> | head -40`) and its output
+  ends inside an open block, it tells the model that what lies past the window is unread, not absent,
   and to read the block to its closing brace before claiming something does
   not exist. New members are appended at the end of a namespace or an object,
   so a window from the top loses the newest API first. A `post-read` hook does
@@ -41,25 +63,22 @@ fixes — see [RELEASING.md](RELEASING.md).
   names podman-desktop, and the line does not `cd`, use `git -C` or name it.
   In a podman-desktop clone or worktree, or outside any repository, they are
   refused as before.
-
-### Changed
-
 - `pdkit plan check` refuses a `Context` line that says something is absent
   from the codebase or an API and cites neither a `file:line` nor a search.
   The location rule could not hold such a line, because an absence has no line
   to cite, so it passed with nothing behind it; it now cites the search,
   `searched: <query> in <where> -> 0`. The line has to name what was run and
   its empty result (`-> 0`): `searched: yes` is not a search. An absence
-  scoped to a place keeps its
-  `file:line`. The plan skill, the plan template and `pd-scout` say so, and
+  scoped to a place keeps its `file:line`. The plan skill, the plan template and `pd-scout` say so, and
   `knowledge/pitfalls.md` has the rule. A plan written before this can turn
   red on such a line: add the search, or the range it was read in.
 - The `post-claim` hook asks for the same `searched:` line, and stays quiet on
   a line that already has one.
 - The `post-claim` hook reads a question about whether something is needed or
   should be added ("do we need `x`?", "should `ns` get an `x`?", "is it worth
-  exposing `x`?") as a claim that it is absent. Only "whether `x` should be added" was read
-  before, and the same premise went through in the other forms.
+  exposing `x`?") as a claim that it is absent. Only "whether `x` should be
+  added" was read before, and the same premise went through in the other
+  forms.
 
 ### Fixed
 
@@ -2484,7 +2503,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...v0.12.0
 [0.11.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.4...v0.11.5
