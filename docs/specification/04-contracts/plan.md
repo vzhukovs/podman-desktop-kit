@@ -22,7 +22,9 @@ a rewrite:
 2. `Done when` is an executable command with expected output. Prose is forbidden.
 3. Interfaces between tasks are hoisted into `Frozen interfaces` as real signatures.
 4. A task is 1–3 files.
-5. Every context item cites `file:line` from the reconnaissance.
+5. Every context item cites `file:line` from the reconnaissance. An item saying
+   something is absent from the codebase or an API has no line to cite, and
+   cites the search instead: `searched: <query> in <where> -> 0`.
 6. Every task declares `satisfies: [R1, R3]`. A requirement with no task and a
    task with no requirement are both errors.
 7. `Upstream compliance` is filled in from `knowledge/upstream-rules.md`.

@@ -39,6 +39,19 @@ fixes — see [RELEASING.md](RELEASING.md).
   In a podman-desktop clone or worktree, or outside any repository, they are
   refused as before.
 
+### Changed
+
+- `pdkit plan check` refuses a `Context` line that says something is absent
+  from the codebase or an API and cites neither a `file:line` nor a search.
+  The location rule could not hold such a line, because an absence has no line
+  to cite, so it passed with nothing behind it; it now cites the search,
+  `searched: <query> in <where> -> 0`. An absence scoped to a place keeps its
+  `file:line`. The plan skill, the plan template and `pd-scout` say so, and
+  `knowledge/pitfalls.md` has the rule. A plan written before this can turn
+  red on such a line: add the search, or the range it was read in.
+- The `post-claim` hook asks for the same `searched:` line, and stays quiet on
+  a line that already has one.
+
 ### Fixed
 
 - Messages from `PostToolUse` hooks now reach the model. They were written as

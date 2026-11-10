@@ -9,7 +9,8 @@ content: machine first, then model.**
    present; `Owns` exclusive between tasks; `Done when` a command in backticks
    rather than prose; every R-ID closed by at least one task and every task
    citing an existing R-ID; `e2e coverage` filled in; `Slice hypothesis`
-   non-empty; no `[NEEDS DECISION]` left.
+   non-empty; no `[NEEDS DECISION]` left; no `Context` line saying something is
+   absent that cites neither a `file:line` nor a `searched:` query.
 2. `pd-plan-critic` receives the plan **and that report**, and spends itself on
    the question code cannot check: is this task needed at all, and does a utility
    for it already exist.

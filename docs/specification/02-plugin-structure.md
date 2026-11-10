@@ -34,6 +34,7 @@ podman-desktop-kit/                  # repository root = plugin root
 | `ids.js` | R-IDs, task IDs, slice IDs; allocation and freeze |
 | `globs.js` | path matching for `Owns` (`**`, `*`, `?`), pure strings, no disk access |
 | `artefacts.js` | reads `plan.md` and `tasks/T*.md` back, plus the mechanical plan checks |
+| `absence.js` | what a claim that something is absent looks like in prose, and whether it cites a location or a search; read by `plan check` and the `post-claim` hook |
 | `amendment.js` | reconciliation with amendments: what each one ended up as, and what an approved one changes in the requirement set, `plan.md` and the task files; writes through `state.js`, `render.js`, `journal.js`, prints nothing |
 | `archaeology.js` | facts about a previous attempt; owns `archaeology.json`; reaches no verdict |
 | `attempts.js` | how many times a task has been tried; **derived** from the journal, never stored |

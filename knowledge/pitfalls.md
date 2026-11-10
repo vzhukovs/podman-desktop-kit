@@ -3,7 +3,7 @@
 Traps that cost time once and should not cost it twice. Each entry says what it
 looks like, why it is a trap, and how it is now caught.
 
-> Five entries so far, and it grows one issue at a time: `/pd:close` proposes
+> Six entries so far, and it grows one issue at a time: `/pd:close` proposes
 > additions from what a finished issue actually cost. Short is the intended
 > state, not an unfinished one — see "What to add here".
 
@@ -114,6 +114,36 @@ document and, when there is no match, puts this rule next to the write. It
 cannot tell a borrowed name from a genuinely new one, and it does not see
 claims about bare names phrased only as a proposal, so the rule holds without
 it.
+
+## Not found, written down as not there
+
+**Looks like:** a search came back empty, or a read did not show the thing,
+and the analysis moves on as if the codebase lacks it. Later the absence turns
+up as a premise: "should we add X?", "X will need to be introduced".
+
+**Actually:** "I did not see it" and "it is not there" are different findings,
+and only a search can turn the first into the second. A cut window, a
+borrowed name or a search in the wrong file all produce the first. The usual
+verification convention makes it worse: a claim is checked by its `file:line`,
+an absence has no line to cite, so it is either left unmarked or not written
+down at all and goes straight into a question. A comparison table that lists
+what was matched has no row for what was concluded missing.
+
+**Why it matters:** an absence nobody wrote down cannot be checked by anybody,
+including the author a minute later, and a premise inside a question is the
+hardest claim for a reviewer to see.
+
+**The rule:** an absence is written down as a claim of its own, with the search
+it rests on: `searched: <query> in <where> -> 0`, case-insensitive, with no
+window, for the concept and not only for one name. An absence scoped to a
+place cites that place's `file:line` range instead. A comparison with another
+project has a row for every element it touches, including those it concludes
+are missing here.
+
+**Caught by:** `pdkit plan check` refuses a `Context` line that says something
+is absent and cites neither a location nor a search. The `post-claim` hook
+asks for the search when a markdown write states an absence. Neither sees an
+absence that was never written down, so the rule holds without them.
 
 ## What to add here
 

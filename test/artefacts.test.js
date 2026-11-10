@@ -46,7 +46,7 @@ import {
 /**
  * A plan in template shape, with the pieces a case needs replaced.
  *
- * @param {{requirements?: string, e2e?: string, tasks?: string, sliceHypothesis?: string, decisions?: string}} [over]
+ * @param {{requirements?: string, e2e?: string, context?: string, tasks?: string, sliceHypothesis?: string, decisions?: string}} [over]
  */
 function plan(over = {}) {
   return [
@@ -58,7 +58,7 @@ function plan(over = {}) {
     '',
     '## Context',
     '<!-- Every point cites file:line. -->',
-    '- `packages/main/src/plugin/container-registry.ts:559` — the offending line',
+    over.context ?? '- `packages/main/src/plugin/container-registry.ts:559` — the offending line',
     '',
     '## Frozen interfaces',
     '```ts',
@@ -234,6 +234,31 @@ describe('checkPlan', () => {
     const result = await check();
 
     assert.equal(result.ok, true, JSON.stringify(result.problems));
+  });
+
+  // A negative claim about the codebase has no file:line to cite, so the
+  // location rule let it through with nothing behind it. A field missed past
+  // the end of a cut read, or searched under another project's name, arrives
+  // as exactly this line.
+  test('an absence citing neither a place nor a search is refused', async () => {
+    const result = await check({ context: '- The extension API has no field for the URL scheme.' });
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.problems.map((problem) => problem.check),
+      ['absence'],
+    );
+    assert.match(result.problems[0].detail, /searched: <query> in <where> -> 0/);
+  });
+
+  test('an absence that cites its search, or the place it was read in, passes', async () => {
+    const searched = await check({
+      context: '- The extension API has no field for the URL scheme. searched: git grep -i "scheme|protocol" packages/extension-api -> 0',
+    });
+    const located = await check({ context: '- `event-store.ts:134-178`: `performUpdate` has no `catch`.' });
+
+    assert.equal(searched.ok, true, JSON.stringify(searched.problems));
+    assert.equal(located.ok, true, JSON.stringify(located.problems));
   });
 
   // The failure the pre-write hook cannot catch and the whole ownership model

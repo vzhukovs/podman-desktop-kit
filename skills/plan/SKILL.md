@@ -52,7 +52,12 @@ misses one gets redone rather than patched:
    cannot each invent their own version of the same boundary.
 4. **One to three files per task.**
 5. **Every context line cites `file:line`** from phase 1. A context line
-   without a location was not verified.
+   without a location was not verified. A line saying something is **absent**
+   from the codebase or an API has no line to cite, so it cites the search:
+   `searched: <query> in <where> -> 0`, run case-insensitive, with no window,
+   for the concept as well as the name. "Not found" is not "not there" until
+   that search says so. `pdkit plan check` refuses an absence that cites
+   neither.
 6. **Every task declares `satisfies: [R…]`.** A requirement with no task and a
    task with no requirement are both errors.
 7. **`Upstream compliance` is filled in** from `${CLAUDE_PLUGIN_ROOT}/knowledge/upstream-rules.md`:

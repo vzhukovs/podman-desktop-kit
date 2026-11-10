@@ -139,6 +139,11 @@ describe('handle', () => {
     assert.deepEqual(await handle(write(join(repo, 'a.md'), text), context({ exec })), { block: false });
   });
 
+  test('stays quiet when the sentence already names its search', async () => {
+    const text = 'Add `env.uriScheme`; searched: git grep -i "scheme|protocol" -- api -> 0.';
+    assert.deepEqual(await handle(write(join(repo, 'design.md'), text), context()), { block: false });
+  });
+
   test('reads the new text of an Edit', async () => {
     const payload = {
       tool_name: 'Edit',

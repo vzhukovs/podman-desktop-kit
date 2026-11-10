@@ -6,7 +6,8 @@
 
 ## Context
 <!-- Every point cites file:line from reconnaissance. A context line without a
-     location was not verified. -->
+     location was not verified. A point saying something is absent cites the
+     search instead: `searched: <query> in <where> -> 0`. -->
 {{context}}
 
 ## Frozen interfaces
