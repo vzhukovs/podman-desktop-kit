@@ -9,6 +9,43 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **A self-review before every push, enforced by preflight.** `/pd:pr`
+  step 5 runs the four review axes and the synthesis on our own pull request.
+  They read the title, the body and every changed file against
+  `knowledge/maintainer-rules.md`, as upstream's review agent will. `pdkit
+  self-review target` prints the diff and the commit preflight will check.
+  `pdkit self-review record` ties the findings to that commit and to the body.
+  A new blocking `self-review` check fails pass two unless the record matches
+  both and nothing is open: no `issue:`, no `nit:` on code the branch wrote,
+  no unanswered `question:`. A review of an earlier commit or an earlier body
+  counts for nothing. `/pd:pr-sync` runs the same review before pass two of
+  each round, and the quickfix route is held to it too.
+
+### Changed
+
+- **`maintainer-rules` blocks.** A rule the maintainer's agent raises as an
+  `issue:` and that has no exception now fails preflight instead of warning:
+  `vi.spyOn`, `as unknown as`, `../` imports, `export function` in
+  `packages/main` and the rest of the list in section 7. The check also
+  catches more of what the agent raised on real pull requests: `any`, `!`, an
+  empty `catch`, `void` on a promise, a real `setTimeout` sleep and
+  `toBeDefined()` in specs, exported arrow and file-scope functions in
+  `packages/main`, `app.name`, `tick()` and Node types in renderer code. A
+  rule that carries its own condition ("a factory *when automocking
+  suffices*") only warns, and the self-review rules on each such hit.
+- **`pd-implementer` applies every section of the rules**, not only those
+  for the files it owns. Before reporting, it runs the `maintainer-rules`
+  check on its own lines and reports each section it checked. `/pd:exec`
+  re-runs the check and sends a task back on a fail in its files.
+- **`/pd:quickfix` reads the rules before writing.** No implementer runs on
+  that route, and nothing in it named the rules.
+- **`pd-auditor` asks a fourth question:** which added lines break a
+  maintainer rule. Its "style is not a finding" said the opposite of the
+  rules file, which tells every reader that these rules are not style. An
+  audit finding of that kind goes back to `/pd:exec` and cannot be accepted.
+
 ## [0.11.6] - 2026-11-02
 
 ### Fixed

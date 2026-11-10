@@ -1,6 +1,6 @@
 ---
 name: pd-review-api-compat
-description: "Reviews someone else's PR for public API surface and backward compatibility."
+description: "Reviews a pull request, someone else's or our own before it is published, for public API surface and backward compatibility."
 model: sonnet
 tools: Read, Grep, Glob
 ---

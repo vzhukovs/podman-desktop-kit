@@ -120,7 +120,7 @@ the reporter still has to confirm.
 | `/pd:validate <n>` | the code is written | `implemented` | evidence from the running app → `validated` |
 | `/pd:audit <n>` | validation is done | `validated` | the diff against the plan, in fresh context → `audited` |
 | `/pd:slice <n>` | the audit is clean | `audited` | a verified slice graph → `sliced` → **you approve** → `slices-approved` |
-| `/pd:preflight <n>` | before every push | the slice branch cut | twenty-three checks, in two passes → `preflight-green` |
+| `/pd:preflight <n>` | before every push | the slice branch cut | twenty-four checks, in two passes → `preflight-green` |
 | `/pd:pr <n> [slice]` | preflight is green | `preflight-green` and a body | push and pull request → `pr-open`. **You confirm, per branch** |
 | `/pd:pr-status` | any time | — | CI, threads and idleness across open PRs. Read-only |
 | `/pd:pr-sync <pr>` | a reviewer answered | an open pull request | thread triage, the fixes, draft replies |
@@ -309,14 +309,17 @@ Twenty-three checks. Every one blocks except the four marked `warn`.
 | `e2e-environment` | | Notes for reviewers says what the test needs and where it will not run |
 | `validation-evidence` | | every validation step has an artefact, or the body explains |
 | `debug-leftovers` | `warn` | no `console.log`, `.only`, `.skip`, `@ts-ignore`, bare `any` in added lines |
-| `maintainer-rules` | `warn` | added lines clear of what upstream's reviewers flag: `vi.spyOn` in a new test, `as unknown as`, `../` imports, `export function` in `packages/main`, a hardcoded product name or color — see `knowledge/maintainer-rules.md` |
+| `maintainer-rules` | | added lines clear of the rules upstream's review agent applies that have no exception: `vi.spyOn` in a new test, `as unknown as`, `any`, `!`, `../` imports, `export function` in `packages/main`, a hardcoded product name or color — see `knowledge/maintainer-rules.md`. A rule with its own condition (a `vi.mock` factory) only warns, and the self-review rules on it |
+| `self-review` | | the four review axes read this commit and this body, and left nothing open (`pdkit self-review record`) |
 | `ci-blind-spots` | | build, packaging or platform behavior CI cannot judge is named in the body |
 
-**It runs twice, and the second pass is not ceremony.** Eight checks read the
+**It runs twice, and the second pass is not ceremony.** Nine checks read the
 pull request body, so on the first pass the ones that need it judge nothing.
-Draft the body, then:
+Draft the body, run the self-review on it, then:
 
 ```bash
+pdkit self-review target --issue <n> [--slice <i>]  # the diff and commit the axes read
+pdkit self-review record --issue <n> [--slice <i>] --findings <f.json> --body <file>
 pdkit preflight <n> --body-only --body <file>
 pdkit preflight <n> --body-only --body-from-pr <k>   # after a rebase or a review round:
                                                      # the body the open PR already has
@@ -358,6 +361,7 @@ issues/<n>/
   tasks/T1.md         one per task: what it owns, and when it is done
   receipts/T1.md      what the "Done when" command actually printed
   validation.json/.md the steps and their evidence; .md is rendered
+  self-review.json    what the review axes found on our own PR, per commit and body
   validation/         captures: runs, screenshots, the e2e series
   audit.md            the diff against the plan
   slices.json/.md     the graph, merge order, and what each PR body must carry

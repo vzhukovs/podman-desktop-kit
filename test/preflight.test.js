@@ -1092,10 +1092,9 @@ describe('maintainer-rules', () => {
     assert.doesNotMatch(summary, /export function/);
   });
 
-  // Warnings: upstream's review agent raises every one of these, and the
-  // point is that the implementer hears it first. A grep cannot see context,
-  // so it must never block.
-  test('warns on the patterns the maintainer rejects, citing the section', async () => {
+  // A rule with no exception blocks: upstream's review agent raises every one
+  // of these as an `issue:`, and a warning is what let them reach it before.
+  test('fails on a rule with no exception, citing the section', async () => {
     const git = (args) => execFileAsync('git', args, { cwd: repo, encoding: 'utf8' });
     await writeFile(
       join(repo, 'packages/main/src/rules.spec.ts'),
@@ -1109,14 +1108,69 @@ describe('maintainer-rules', () => {
     const report = await run(await context(), checks);
     const result = report.results[0];
 
-    assert.equal(result.status, 'warn');
-    assert.equal(report.ok, true, 'a warning must not block');
+    assert.equal(result.status, 'fail');
+    assert.equal(result.blocking, true);
+    assert.equal(report.ok, false, 'a strict hit must stop the push');
     assert.match(result.summary, /vi\.spyOn ×1 \(§2\)/);
     assert.match(result.summary, /afterEach\/afterAll\/beforeAll ×1/);
     assert.match(result.summary, /relative \.\.\/ import ×1 \(§5\)/);
     assert.match(result.summary, /node built-in without node: ×1/);
     assert.match(result.summary, /export function in packages\/main ×1 \(§6\)/);
     assert.match(result.summary, /copyright not \d{4} alone ×1 \(§1\)/);
+  });
+
+  // A rule that carries its own condition ("when automocking suffices") is
+  // one a grep cannot settle. It warns, and the self-review rules on it.
+  test('only warns on a rule whose condition a grep cannot see', async () => {
+    const root = await initRepo('pdkit-maintainer-rules-');
+    try {
+      await writeFiles(root, { 'README.md': 'base\n' });
+      await commitAll(root, 'chore: base');
+      await gitIn(['checkout', '-q', '-b', 'work'], root);
+      await writeFiles(root, { 'packages/main/src/a.spec.ts': "vi.mock(import('./electron.js'), () => ({ app: {} }));\n" });
+      await commitAll(root, 'test(main): factory');
+
+      const { run: check } = await import('../lib/preflight/checks/maintainer-rules.js');
+      const result = await check({ base: 'main', ref: 'HEAD', repoRoot: root });
+
+      assert.equal(result.status, 'warn');
+      assert.match(result.summary, /^to judge: vi\.mock with a factory ×1 \(§2\)/);
+      assert.match(result.remedy, /self-review/);
+    } finally {
+      await cleanup(root);
+    }
+  });
+
+  test('each pattern catches its line and leaves the legitimate one alone', async () => {
+    const { scan } = await import('../lib/preflight/checks/maintainer-rules.js');
+    const labels = (file, line) => scan(file, [line], 2026).map((hit) => hit.label);
+    const MAIN = 'packages/main/src/a.ts';
+    const SPEC_FILE = 'packages/main/src/a.spec.ts';
+
+    // Caught.
+    assert.deepEqual(labels(MAIN, 'const x = foo!.bar;'), ['! non-null assertion']);
+    assert.deepEqual(labels(MAIN, 'const a: any = 1;'), ['any']);
+    assert.deepEqual(labels(MAIN, '} catch {}'), ['an empty catch']);
+    assert.deepEqual(labels(MAIN, '  void this.start();'), ['void to discard a promise']);
+    assert.deepEqual(labels(MAIN, 'export const f = async (a: string): Promise<void> => {'), ['exported arrow function in packages/main']);
+    assert.deepEqual(labels(MAIN, 'function helper(): void {'), ['file-scope function in packages/main']);
+    assert.deepEqual(labels(MAIN, 'const title = app.name;'), ['Electron app.name']);
+    assert.deepEqual(labels(SPEC_FILE, 'await new Promise(resolve => setTimeout(resolve, 500));'), ['a real sleep in a unit spec']);
+    assert.deepEqual(labels(SPEC_FILE, 'expect(handler).toBeDefined();'), ['expect(…).toBeDefined() instead of assert()']);
+    assert.deepEqual(labels('packages/renderer/src/lib/A.svelte', 'let timer: NodeJS.Timeout;'), ['Node types in renderer code']);
+    assert.deepEqual(labels('packages/renderer/src/lib/a.ts', 'await tick();'), ['tick() in component code']);
+
+    // Left alone.
+    assert.deepEqual(labels(MAIN, 'if (!x) return;'), []);
+    assert.deepEqual(labels(MAIN, 'if (a !== b) {}'), []);
+    assert.deepEqual(labels(MAIN, "const s = 'hi!';"), []);
+    assert.deepEqual(labels(MAIN, 'export const LIMIT = 1;'), []);
+    assert.deepEqual(labels(MAIN, 'const company = anything;'), []);
+    assert.deepEqual(labels(SPEC_FILE, "vi.mock(import('./util.js'));"), []);
+    assert.deepEqual(labels('extensions/foo/src/a.ts', 'export function helper(): void {}'), []);
+    // The one exception section 4 names for eslint-disable.
+    assert.deepEqual(labels(MAIN, '// eslint-disable-next-line @typescript-eslint/no-empty-object-type'), []);
+    assert.deepEqual(labels(MAIN, '// eslint-disable-next-line @typescript-eslint/no-explicit-any'), ['eslint-disable']);
   });
 
   test('a copyright line is stale when it is a range or not this year', () => {

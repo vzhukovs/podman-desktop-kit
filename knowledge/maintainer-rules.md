@@ -12,21 +12,33 @@ copied**, so the rules may change before they land. Once it merges, the file is
 in every checkout under `.agents/skills/review-podman-desktop/`. Diff it against
 this one and take what changed.
 
-The rules below are copied verbatim, `issue:` and `nit:` tags included. The
-only edit is the path to the plugin index in section 6. It is written out from
-the repository root so that `pdkit knowledge check` can verify it. They are
-a reviewer's expectations, not mechanical checks. The rules that CI or a hook
-enforces are in `upstream-rules.md`. Where the two disagree, see "Where this
-differs from upstream-rules.md" at the end.
+The rules below are copied verbatim, `issue:` and `nit:` tags included. Two
+edits only: the path to the plugin index in section 6 is written out from the
+repository root so that `pdkit knowledge check` can verify it, and British
+spellings are American (`behavior`, `license`, `initialization`), as
+everything this plugin ships is. When re-copying, diff the rule lines with the
+spelling normalized; anything else that differs is a change upstream made.
+
+**They are rules, not suggestions.** The plugin applies them at every stage
+that writes or judges code. Upstream's agent will apply them to the pull
+request whichever stage misses one. The greppable part is the
+`maintainer-rules` preflight check, which blocks on a rule with no exception.
+The rest is read by the agents below, and the `self-review` check refuses a
+push until the four review axes have read the exact commit and body being
+published with nothing left open. The rules that CI or a hook enforces are in
+`upstream-rules.md`. Where the two disagree, see "Where this differs from
+upstream-rules.md" at the end.
 
 ## Who reads which section
 
 | Reader | Sections |
 |---|---|
-| `pd-implementer` | the sections for the files it owns: 2 for `*.spec.ts`, 3 for `.svelte` and renderer stores, 4 always, 5 always, 6 for `packages/main`, 7 for `packages/extension-api`, 8–12 when its files are in those areas |
+| `pd-implementer` | all of them, before writing a line, then its own diff against them before reporting |
+| `/pd:quickfix` | all of them: no implementer runs on that route |
 | `pd-plan-critic` | 1, 5, 6, 7, 9 — the rules a plan can break before any code exists |
+| `pd-auditor` | all of them, on the lines the branch added (its question 4) |
 | `pd-slicer` | 1 — most of it is a rule about how to cut |
-| review axes (`/pd:review-pr`) | all of them, plus the calibration below |
+| review axes (`/pd:review-pr`, and the self-review in `/pd:pr` and `/pd:pr-sync`) | all of them between the four axes, plus the calibration below |
 
 ## How the reviewer calibrates
 

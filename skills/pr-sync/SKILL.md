@@ -273,10 +273,20 @@ or into nothing at all.
    is on the pull request: `--body-only --body-from-pr <k>`, unless this round
    changes the body, in which case `--body <file>` with the new one.
 
-   `maintainer-rules` is advisory, but a hit that was **not** a row in step 4
-   is something a fix in this round introduced. Go back to step 4 with it.
-   Fixing it now without a decision is the unseen change step 4 exists to
-   prevent. Pushing it unread means the maintainer reads it first.
+   `maintainer-rules` blocks on a rule with no exception. A hit that was
+   **not** a row in step 4 is something a fix in this round introduced. Go
+   back to step 4 with it. Fixing it now without a decision is the unseen
+   change step 4 exists to prevent, and pushing it is impossible.
+
+   Between the two passes, **the self-review**, exactly as `/pd:pr` step 5
+   runs it: `pdkit self-review target`, the four axes and the synthesis on
+   the whole pull request, then `pdkit self-review record` with the body
+   pass two will read. When that body is the one on GitHub, write it to a file
+   first with `gh pr view <k> --json body -q .body`. Upstream's agent reads
+   the whole pull request again after every push, not only this round's
+   commits, so ours does too. An open finding is a new row for step 4, with
+   source `self (§n)`. The `self-review` check fails until a review of the
+   commit being pushed finds nothing open.
 
 9. **Publish, in this order.** First show what the push would change:
 

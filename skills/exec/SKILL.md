@@ -80,6 +80,15 @@ because it looks like nothing happened.
    the code without the rules upstream's review agent applies. That is not a
    plan problem and not a note to pass on: do not commit, find out why the
    file was unreadable, and run the task again with a fresh worker.
+
+   Then run `pdkit preflight <n> --only maintainer-rules` yourself. Do not
+   take the report's word for it. A **fail** on a line in this task's `Owns`
+   means the code breaks a rule that has no exception. Do not commit. Send
+   the task back to a fresh worker with the hits as its input. A warning on
+   this task's lines needs the sentence the worker owes for it. If that
+   sentence is missing, or it does not show the rule's own condition holds,
+   send the task back too. A report without the per-section `§n:` lines is
+   incomplete, and is treated the same way.
 6. Commit: conventional subject, one `Signed-off-by`. Squash with
    `git reset --soft <base> && git commit`, never `rebase -i`.
 7. `pdkit task stop`.

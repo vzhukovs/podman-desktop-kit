@@ -1,6 +1,6 @@
 ---
 name: pd-review-tests
-description: "Reviews someone else's PR for test coverage and quality."
+description: "Reviews a pull request, someone else's or our own before it is published, for test coverage and quality."
 model: sonnet
 tools: Read, Grep, Glob
 ---

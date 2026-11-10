@@ -40,7 +40,7 @@ This command reports and never decides. It exits zero whatever it finds.
 every task and every changed file, and that belongs in the context that reads
 the diff.
 
-## 2. The three questions
+## 2. The four questions
 
 Dispatch `pd-auditor` with the issue number and the base, and nothing else.
 It runs `pdkit audit` and reads `git diff main...HEAD` and the plan in its own
@@ -57,6 +57,11 @@ evidential.
    the code under a task actually implements the requirement is the question.)
 2. Which code answers no requirement?
 3. What changed inside `Owns` that the task never asked for?
+4. Which added lines break a rule in
+   `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md`? Upstream's review
+   agent will ask this about every pull request. Here, the fix is still one
+   task away. Once the change is sliced, every fix means verifying the slice
+   again.
 
 ## 3. The verdict
 
@@ -67,13 +72,18 @@ here after all; a finding you doubt goes back to `pd-auditor` as a question.
 
 Two disciplines, both from the same failure mode. An auditor told to find
 problems will find them in correct code, so: an empty findings section is a
-valid result, and style is not a finding. And where you are uncertain, say
+valid result, and formatting the linter enforces is not a finding. The
+maintainer's rules are not formatting, and a Q4 finding is never waved off as
+style. And where you are uncertain, say
 uncertain — fresh context catches drift from the plan, not blind spots shared
 with the model that wrote the code.
 
 ## Then
 
 `pdkit state <n> --to audited` when the findings are addressed or accepted.
+A Q4 `issue:` or a Q4 `nit:` on new code is addressed. It is not accepted: the
+task goes back to `/pd:exec` with the finding as its input. A rule the
+maintainer's agent will raise on the pull request cannot be accepted here.
 Unaddressed findings are not a reason to skip the transition quietly — they go
 in `audit.md` and the state stays where it is.
 

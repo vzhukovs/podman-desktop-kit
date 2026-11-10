@@ -22,7 +22,7 @@ reflex it exists to prevent. The token is per branch for the same reason.
 Step 1 becomes `pdkit slice materialize --issue <n> --slice <i> --subject
 "<type>(<scope>): <description>"`, which cuts the branch from the slice's base,
 applies the slice and makes the single commit — no squash needed, and the
-working branch is left where it was. Steps 3 and 5 take `--slice <i>`, or infer
+working branch is left where it was. Steps 3, 5 and 6 take `--slice <i>`, or infer
 it from the branch you are standing on.
 
 **A slice with `commits`** (`pdkit slice show` lists them) is materialized
@@ -54,6 +54,11 @@ merged together." Closing those is `/pd:pr-sync`'s job, after this one is open.
    test, lint and typecheck scripts — minutes, not seconds. Red stops
    everything. Note what `ci-blind-spots` reports: it decides whether `Notes
    for reviewers` is mandatory.
+
+   `maintainer-rules` fails on a rule from
+   `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` that has no
+   exception. The code changes; there is no way to wave a hit through. Its
+   warnings are rules with a condition of their own, and step 5 rules on each.
 
    On a slice this also reads the stored verification, and fails if the branch
    has drifted from what was verified. Re-verify rather than arguing with it:
@@ -103,21 +108,65 @@ merged together." Closing those is `/pd:pr-sync`'s job, after this one is open.
      cannot judge, and then only that plus the platform you checked on. Not the
      review history, not residual risks, not behavior nuance nobody can act on.
 
-5. **Preflight, pass two.** `pdkit preflight <n> --body-only --body <file>`.
+5. **Self-review: upstream's review agent, run by us first.** Every pull
+   request upstream is read by a review agent built from the maintainer's
+   rules. It reads the title and the body first, then every changed file,
+   section by section. Run the same reading now, on exactly what is about to
+   be published:
+
+   ```
+   pdkit self-review target --issue <n> [--slice <i>]
+   ```
+
+   It prints the diff and the commit that preflight will check. Then:
+
+   - the four `pd-review-*` axes, in parallel. Each gets the diff command, the
+     changed files, the title, the body file and the issue's text, and is told
+     this is our own pull request before publishing, so there are no threads.
+     Together they cover all twelve sections of the rules;
+   - `pd-review-synth` on the four reports. It calibrates as the maintainer's
+     agent does and ends with the findings as JSON;
+   - `pdkit self-review record --issue <n> [--slice <i>] --findings <f.json>
+     --body <file>`.
+
+   Then act on what was found. **Arguing is not one of the options:**
+
+   - `issue:` and `nit:` on code this branch wrote: fix the code. On a single
+     pull request, fix it on the branch, squash again (step 2) and go back to
+     step 3. On a slice, fix it on the working branch the slices are cut from,
+     verify the slice again (`/pd:slice`), rebuild its branch with `pdkit slice
+     materialize --force`, and go back to step 3. Either way the commit has
+     changed, so pass one, the review and the record all run again;
+   - a finding about the title or the body: fix the text, then review and
+     record again. The body is part of what was reviewed;
+   - `question:`: answer it in `Notes for reviewers` or by changing the code,
+     and put the answer in the finding's `answer` field when recording;
+   - `nit:` marked pre-existing: leave it. Fixing it here is the drive-by
+     change that section 1 rejects;
+   - a finding that looks wrong goes back to the axis that raised it, as a
+     question with the code that answers it. If the axis keeps it, it is
+     fixed.
+
+   **Never edit the findings to make the record clean.** The record is what
+   the review said. The `self-review` check in pass two fails unless that
+   record is for this commit and this body, with nothing open. A green pass
+   two therefore means the review ran clean on what is about to be pushed.
+
+6. **Preflight, pass two.** `pdkit preflight <n> --body-only --body <file>`.
    The body-dependent checks could only skip on pass one; the command says how
    many there are. **Green here is what the gate is issued from** — pass one
    alone is not enough.
 
-6. **Show the user, and stop.** The exact push command, the exact branch, and
+7. **Show the user, and stop.** The exact push command, the exact branch, and
    the full body as it will appear. Not a summary of it: the gate exists so a
    human reads the thing being published, and a summary defeats that as
    thoroughly as no gate at all.
 
-7. **Wait for explicit confirmation in this same turn.** Not implied by an
+8. **Wait for explicit confirmation in this same turn.** Not implied by an
    earlier "go ahead", not carried from another slice. Confirmation for slice
    #1 is not confirmation for #2 — the token is issued per branch.
 
-8. **Then, and only then:**
+9. **Then, and only then:**
 
    ```
    pdkit publish --issue <n> --branch <b> --title <t> --body <file> [--slice <i>]
@@ -132,7 +181,7 @@ merged together." Closing those is `/pd:pr-sync`'s job, after this one is open.
    pdkit pr create --issue <n> --branch <b> --title <t> --body <file>
    ```
 
-   `publish` asks nothing and is not consent: step 6 and 7 are, and they come
+   `publish` asks nothing and is not consent: steps 7 and 8 are, and they come
    first. It has no flag to skip preflight, force a push or stretch the token,
    and none is coming — if one seems needed, say so rather than working around
    it. The four commands still work alone; use them when `publish` stopped
@@ -204,7 +253,7 @@ gate is working. A refusal that is genuinely wrong is a bug worth a report;
 working around it by spelling the command differently is not a fix, and the
 parser was written for exactly that attempt.
 
-## Step 6 does not compress
+## Step 7 does not compress
 
 The one failure mode this whole design cannot prevent is a human pressing yes
 without reading. It is mitigated by showing something worth reading — the
@@ -214,10 +263,10 @@ be banked. Printing "ready to push?" instead would hand that mitigation back.
 ## When the phase runs long
 
 `budget.turns.pr` is the ceiling — approximate, because nothing counts turns
-and you cannot either. Steps 1 to 5 leave their results on disk: the branch,
-the squashed commit, the body file, `preflight.json`. Past the ceiling before
-step 6, stop there and ask for a restart; the new session picks up at the step
-that has no result yet. Step 6 is better shown at the start of a session than
+and you cannot either. Steps 1 to 6 leave their results on disk: the branch,
+the squashed commit, the body file, `self-review.json`, `preflight.json`. Past
+the ceiling before step 7, stop there and ask for a restart; the new session
+picks up at the step that has no result yet. Step 7 is better shown at the start of a session than
 at the end of a long one.
 
 ## Next

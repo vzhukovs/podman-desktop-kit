@@ -2,7 +2,7 @@
 
 [Workflows](../README.md) › [Reference](README.md)
 
-`pdkit preflight <issue>` runs twenty-three checks, and on podman-desktop it takes
+`pdkit preflight <issue>` runs twenty-four checks, and on podman-desktop it takes
 minutes, because it runs the repository's real scripts. Script names are resolved
 from the repository's own `package.json` — there is no `pnpm lint` there, and
 `pnpm test` drags in the e2e suite.
@@ -14,7 +14,7 @@ Four results, and the difference between them matters:
 | **pass** | the check ran and was satisfied |
 | **skip** | the check did not run, and the summary says why |
 | **warn** | an advisory check found something; it does not block |
-| **fail** | blocking, unless the check is advisory (`debug-leftovers`, `maintainer-rules`, `quickfix-size`, `pr-body-size`) |
+| **fail** | blocking, unless the check is advisory (`debug-leftovers`, `quickfix-size`, `pr-body-size`) |
 
 A skip is never a pass. `steps-to-check` skipping because no PR body exists yet
 means that check has not run at all.
@@ -26,7 +26,7 @@ diff that will not be pushed.
 
 ## The two passes
 
-Eight checks read the PR body, and the body depends on preflight — `Notes for
+Nine checks read the PR body, and the body depends on preflight — `Notes for
 reviewers` is mandatory exactly when preflight flags something CI cannot judge, and
 equally when validation could not demonstrate a step. One pass cannot close that
 loop, so:

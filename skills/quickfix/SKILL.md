@@ -25,12 +25,24 @@ did not say that, this is the wrong command — go back to `/pd:triage`.
    `preflight-green` only — so an issue left in `triaged` reaches a green
    preflight and then cannot open the gate at all. Found on the first live run,
    after both passes were green.
-2. Make the fix. Add or extend a test for it; "too small to test" is how a
+2. **Read `${CLAUDE_PLUGIN_ROOT}/knowledge/maintainer-rules.md` first, all of
+   it**: the calibration and sections 1 to 12. Upstream's review agent applies
+   every one of them to a three-line fix exactly as it would to a
+   three-hundred-line feature. No `pd-implementer` runs on this route, so the
+   discipline written in `${CLAUDE_PLUGIN_ROOT}/agents/pd-implementer.md` under
+   "Write it the way the maintainer reviews it" is this session's to follow.
+   Read that section too. If the rules file cannot be read, stop: a fix
+   written without it is the fix the review sends back.
+3. Make the fix. Add or extend a test for it; "too small to test" is how a
    reviewer's first comment gets written for them.
-3. Commit with a conventional subject and one `Signed-off-by`. Squash with
+4. `pdkit preflight <n> --only maintainer-rules`. A fail is a rule with no
+   exception: change the code. A warning is a rule with its own condition:
+   say in one sentence why the condition holds, or change the code. The
+   self-review in `/pd:pr` reads the sentence.
+5. Commit with a conventional subject and one `Signed-off-by`. Squash with
    `git reset --soft <base> && git commit` — never `rebase -i`, which the
    husky hook rejects for the duplicate sign-off it just created.
-4. `pdkit preflight <n>` → hand over to `/pd:pr`.
+6. `pdkit preflight <n>` → hand over to `/pd:pr`.
 
 ## The thresholds are the point
 
@@ -50,7 +62,8 @@ from the issue, with the code you wrote as evidence rather than as the answer.
 
 - `Steps to check` in the PR body, at least three, each with an expected
   result. Size does not make a reviewer better at guessing.
-- Every preflight check. None of them is waived by the route being small.
+- Every preflight check, `maintainer-rules` and `self-review` included. None of
+  them is waived by the route being small.
 - The PR body carries `Fixes #<n>`, and tracing goes by issue number.
 - No e2e test. It inflates both review and CI time, which contradicts the one
   thing a small PR is for.
