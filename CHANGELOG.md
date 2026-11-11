@@ -9,7 +9,17 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-11
+
 ### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing to change in your config.
 
 - `pdkit task start` now refuses a task whose `- After:` tasks are not done,
   and a task an open stop report names. Plans without `After` lines are not
@@ -17,6 +27,13 @@ fixes — see [RELEASING.md](RELEASING.md).
 - `pdkit plan check` warns about every live task whose `Done when` has not
   been run with `pdkit plan probe`. Warnings only: nothing that passed goes
   red.
+- An issue mid-exec keeps working as it is. To use the new flow on one,
+  record each stop that is waiting for an amendment with
+  `pdkit task stop --finding <values.json> --issue <n> --task <T>`, then
+  `pdkit amendment draft --issue <n>`.
+
+MINOR rather than PATCH because `task start` starts refusing tasks it used to
+start.
 
 ### Added
 
@@ -2550,7 +2567,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...v0.12.0
 [0.11.6]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.5...v0.11.6
