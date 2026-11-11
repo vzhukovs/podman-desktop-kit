@@ -169,11 +169,15 @@ pdkit packages --of <path>                 # which package and layer owns a file
 **While working**
 
 ```bash
+pdkit task list --issue <n>                # done / stopped / waiting / ready, in the plan's order; names the next task
 pdkit task start --issue <n> --task T1     # what this tree is executing; the write hook reads it
 pdkit receipt write --issue <n> --task T1  # runs "Done when" and records what it printed
 pdkit task attempts --issue <n>            # failed captures; three blocks the task
 pdkit task stop
+pdkit task stop --finding <values.json>    # the plan is wrong: write stops/<T>-<k>.md, then stop
 pdkit plan check <n>                       # the mechanical half of plan review
+pdkit plan probe <n> [--except T10]        # run every Done when on the base, before any code
+pdkit plan revised <n>                     # the review's decisions are in plan.md; next is review
 pdkit checkpoint <n> --phase exec          # before a phase that changes things;
                                            # exec, slice, pr-sync or resume
 pdkit rollback <n>                         # what that phase would give back
@@ -404,6 +408,10 @@ scope is a note rather than a failure, because commitlint does not require it.
 | the reviewer rejected the **approach**, not the diff | `pdkit issue rework <n> --reason "<what was refused>"` |
 | a quickfix outgrew its thresholds | `pdkit issue escalate <n>` |
 | something must be set aside | `pdkit defer new --issue <n> --what "<it>"` — drafts the follow-up issue |
+| a task stopped because the plan is wrong | `pdkit task stop --finding <f.json>` — what is wrong, evidence, what else it reaches, the decision, what to change |
+| what goes in the amendment after a stop | `pdkit amendment draft --issue <n> --out <f.json>` in a new opus session; finish every `[FILL IN: …]` |
+| a stop turned out not to be the plan's fault | `pdkit task clear --issue <n> --report T1-1 --reason "<why>"` |
+| the review is decided — how do I start `/pd:plan`? | `/pd:plan <n>`, nothing after it; `pdkit next <n>` says so while the decisions wait |
 | an approved plan has to change | `pdkit amendment new --issue <n> --values <f>` (requirement changes as `rows`), then `approve` — applies them to the R-IDs and plan.md |
 | an approved amendment did not reach the record, plan.md or tasks/ | `pdkit amendment sync <A> --issue <n>` — writes missing task files, withdraws replaced ones |
 | a phase went wrong and should be undone, not restarted | `pdkit rollback <n>` to see what comes back, then `--confirm`. Published work and the journal stay |

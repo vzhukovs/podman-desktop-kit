@@ -1,0 +1,181 @@
+/**********************************************************************
+ * Copyright (C) 2026 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ***********************************************************************/
+
+// The revision handoff, and the probe of every `Done when`.
+//
+// What these protect: a person asking three times how to start /pd:plan after
+// a review, and getting a paragraph to paste each time; and a plan approved
+// after four rounds whose tasks then stopped on commands nobody had run.
+
+import { test, describe, beforeEach, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { checkPlan, parsePlan } from '../lib/artefacts.js';
+import { decisionsIn, markRevised, nextContext, pending } from '../lib/plan-review.js';
+import * as probe from '../lib/probe.js';
+import { nextSkill, nextStep } from '../lib/state.js';
+
+const ISSUE = 17001;
+
+describe('decisionsIn', () => {
+  test('no decision section, nothing decided', () => {
+    assert.deepEqual(decisionsIn('# PLAN REVIEW: DESKTOP-1 — round 2\n\n## A. Must change\n### A1. x\n'), { decided: false, round: null, items: [] });
+  });
+
+  test('the round from the heading, the items from its lines', () => {
+    const text = '# PLAN REVIEW: DESKTOP-1 — round 2\n\n## A\n### A1. x\n\n## Operator decisions (round 3)\n- A1: accepted\n- B3: rejected — not now\n';
+    assert.deepEqual(decisionsIn(text), { decided: true, round: 3, items: ['A1', 'B3'] });
+  });
+
+  test('the heading the earlier reviews were written with counts, round from the title', () => {
+    const text = '# PLAN REVIEW: DESKTOP-1 — раунд 2 (2026-11-11)\n\n## Решения оператора (2026-11-11)\n- **A1.** принято\n- **B2.** принято\n\n## Что дальше\nA9 is not a decision\n';
+    assert.deepEqual(decisionsIn(text), { decided: true, round: 2, items: ['A1', 'B2'] });
+  });
+
+  test('the last of two decision sections is the one that counts', () => {
+    const text = '## Operator decisions (round 1)\n- A1: accepted\n\n## Operator decisions (round 2)\n- A4: accepted\n';
+    assert.deepEqual(decisionsIn(text), { decided: true, round: 2, items: ['A4'] });
+  });
+});
+
+describe('the next step from planned', () => {
+  const record = { issue: ISSUE, state: 'planned', route: 'standard' };
+
+  test('with no revision waiting, the review', () => {
+    assert.equal(nextStep(/** @type {any} */ (record)), `/pd:plan-review ${ISSUE}`);
+  });
+
+  test('with one waiting, the plan — with nothing to paste', () => {
+    const context = { revision: { round: 2 } };
+    assert.equal(nextSkill(/** @type {any} */ (record), context), 'plan');
+    assert.match(nextStep(/** @type {any} */ (record), context), /^\/pd:plan 17001 — applies the operator decisions of review round 2 from plan-review\.md; nothing to paste/);
+  });
+
+  test('a revision context changes nothing outside planned', () => {
+    assert.equal(nextStep(/** @type {any} */ ({ ...record, state: 'plan-approved' }), { revision: { round: 2 } }), `/pd:exec ${ISSUE}`);
+  });
+
+  describe('read from disk', () => {
+    let home;
+    const homes = [];
+    beforeEach(async () => {
+      home = await mkdtemp(join(tmpdir(), 'pdkit-review-'));
+      homes.push(home);
+      await mkdir(join(home, 'issues', String(ISSUE)), { recursive: true });
+    });
+    after(async () => {
+      for (const dir of homes) await rm(dir, { recursive: true, force: true });
+    });
+
+    test('decisions recorded and not applied are pending until plan revised marks their round', async () => {
+      await writeFile(join(home, 'issues', String(ISSUE), 'plan-review.md'), '# PLAN REVIEW — round 1\n\n## Operator decisions (round 1)\n- A1: accepted\n');
+      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), { revision: { round: 1 } });
+
+      await markRevised(ISSUE, 1, { home });
+      assert.equal((await pending(ISSUE, { home })).pending, false);
+      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), {});
+
+      // A second round of decisions is a new revision.
+      await writeFile(join(home, 'issues', String(ISSUE), 'plan-review.md'), '# PLAN REVIEW — round 2\n\n## Operator decisions (round 2)\n- A1: accepted\n');
+      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), { revision: { round: 2 } });
+    });
+
+    test('no review file, nothing pending', async () => {
+      assert.equal((await pending(ISSUE, { home })).pending, false);
+    });
+  });
+});
+
+describe('probe', () => {
+  let home;
+  const homes = [];
+  beforeEach(async () => {
+    home = await mkdtemp(join(tmpdir(), 'pdkit-probe-'));
+    homes.push(home);
+    await mkdir(join(home, 'issues', String(ISSUE)), { recursive: true });
+  });
+  after(async () => {
+    for (const dir of homes) await rm(dir, { recursive: true, force: true });
+  });
+
+  /** A capture that fails for a command mentioning `tsc`, and passes otherwise. */
+  const capture = async ({ command }) => ({
+    command,
+    exitCode: command.includes('tsc') ? 2 : 0,
+    stdout: command.includes('tsc') ? 'compiling\nerror TS6059: playwright.config.ts is not under rootDir\n' : 'ok\n',
+    stderr: '',
+    durationMs: 5,
+    at: '2026-11-11T00:00:00.000Z',
+    complete: true,
+  });
+
+  test('records one run per task, and keeps the newest', async () => {
+    const runs = await probe.run({ issue: ISSUE, cwd: home, home, capture, tasks: [{ id: 'T1', command: 'npx vitest run a' }, { id: 'T2', command: 'npx tsc -p x' }] });
+    assert.deepEqual(runs.map((run) => [run.task, run.exitCode]), [['T1', 0], ['T2', 2]]);
+    assert.equal(runs[1].tail.at(-1), 'error TS6059: playwright.config.ts is not under rootDir');
+
+    const stored = JSON.parse(await readFile(join(home, 'issues', String(ISSUE), 'probe.json'), 'utf8'));
+    assert.deepEqual(Object.keys(stored.runs), ['T1', 'T2']);
+    assert.deepEqual(Object.keys(await probe.read(ISSUE, { home })), ['T1', 'T2']);
+  });
+
+  test('plan check says what was measured: never run, another command, a red exit with its last line', async () => {
+    const plan = parsePlan(
+      [
+        '# PLAN: DESKTOP-17001',
+        '- Requirements: R1',
+        '- e2e coverage: no — x',
+        '## Context',
+        '- `a:1` — a',
+        '## Tasks',
+        '### T1: a',
+        '- Satisfies: R1',
+        '- Owns: a.ts',
+        '- Done when: `npx vitest run a`',
+        '### T2: b',
+        '- Satisfies: R1',
+        '- Owns: b.ts',
+        '- Done when: `npx tsc -p x --rootDir .`',
+        '### T3: c',
+        '- Satisfies: R1',
+        '- Owns: c.ts',
+        '- Done when: `npx tsc -p y`',
+        '### T4: d',
+        '- Satisfies: R1',
+        '- Owns: d.ts',
+        '- Done when: `npx vitest run d`',
+        '## Slice hypothesis',
+        'one',
+      ].join('\n'),
+    );
+    await probe.run({ issue: ISSUE, cwd: home, home, capture, tasks: [{ id: 'T1', command: 'npx vitest run a' }, { id: 'T2', command: 'npx tsc -p x' }, { id: 'T3', command: 'npx tsc -p y' }] });
+
+    const result = await checkPlan({ plan, probe: await probe.read(ISSUE, { home }) });
+    const warnings = result.warnings.filter((warning) => warning.check === 'done-when-run').map((warning) => warning.detail);
+    assert.equal(warnings.length, 3);
+    assert.match(warnings[0], /^T2's Done when changed since it was run; the run on record is of `npx tsc -p x`/);
+    assert.match(warnings[1], /^T3's Done when exited 2 on .* — last line: error TS6059/);
+    assert.match(warnings[2], /^T4's Done when has never been run/);
+
+    // Without a probe record handed in, nothing is said about it either way.
+    assert.equal((await checkPlan({ plan })).warnings.some((warning) => warning.check === 'done-when-run'), false);
+  });
+});

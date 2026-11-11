@@ -26,4 +26,8 @@ Cite the rule by section. Do not raise the code-level rules (mocks, casts, runes
 
 Then the judgments the checks cannot make: whether the ownership split matches how the code is actually shaped, whether a `Done when` command would pass while the requirement stays unmet, whether the slice hypothesis survives contact with the file layout, and whether the plan solves the issue that was filed rather than the one it is easier to solve.
 
+Two of those have evidence in the report, and they are where approved plans have failed in exec:
+- **The probe.** Each `Done when` that did not exit 0 on the base commit comes with its last line. Decide, per task, whether it fails because the code is not written yet — a spec file that does not exist — or because the command can never pass: a config error on the base branch, a lint finding on lines the task may not touch, a build step that needs an artefact nothing builds, a typecheck the task needs and does not run. The second kind is a must-change. A task with no probe on record is a gap to name, not a pass.
+- **The order.** `- After:` is the only order exec follows; prose in a step ("run only after T20") is read by nobody who picks a task. A task whose `Done when` needs another task's code — a binding, a type, a helper — and does not name it in `After` will run on a tree it cannot pass on. So will a task meant to run on the untouched tree that is not written first, or that the tasks changing its behavior do not wait on.
+
 Do not soften the verdict. A plan approved to be agreeable is worse than no review.

@@ -8,7 +8,37 @@ effort: high
 ---
 
 The plan is the only artefact that carries intent to the implementer. Three
-phases, in order.
+phases, in order — unless a review is waiting to be applied, which is phase 0
+and replaces them.
+
+## Phase 0 — a revision, when the review has been decided
+
+`pdkit next <n>` says it: from `planned`, when `plan-review.md` has a
+`## Operator decisions (round N)` section that `pdkit plan revised` has not
+marked applied, the next step is this skill again, not another review. The
+decisions are read from that file. Nothing has to be pasted after the command,
+and anything pasted is read as one more decision, not a substitute for them.
+
+What a revision is:
+
+1. Read `plan-review.md` — the findings and the latest `## Operator decisions`
+   section — then `plan.md`, `tasks/` and `research.md`. Earlier rounds are in
+   `plan-review.r<k>.md`; their decisions stand and are not reopened.
+2. Apply what was accepted, item by item, and nothing else. A rejected item is
+   left alone; an item with no decision is left alone and named at the end. A
+   decision that needs a code fact `research.md` does not hold gets one
+   `pd-scout` for that fact, not a new reconnaissance.
+3. Edit `plan.md` and the task files in place. Task IDs never change; a task
+   the revision drops is deleted from both before approval, which is the only
+   time that is allowed. Then `pdkit task sync --issue <n>` and
+   `pdkit plan check <n>`.
+4. `pdkit plan probe <n> --task <every task whose Done when changed>`, from
+   the main checkout.
+5. `pdkit plan revised <n>`, which records that the round is in the plan. Then
+   `/pd:plan-review <n>` in a new session reviews the revised plan.
+
+Say to the person, at the end, which items were applied, where, and which
+were left for lack of a decision.
 
 ## Phase 1 — reconnaissance
 
@@ -74,7 +104,17 @@ misses one gets redone rather than patched:
 8. **`e2e coverage:` is decided here** — `required`, `optional` or `no` with a
    reason. Deciding afterwards produces a test for what was built rather than
    for what was required.
-9. **`Slice hypothesis` is written.** Not the final graph, but tasks are
+9. **The order is written down, as `- After:`.** A task that cannot start
+   until another is done says so: `- After: T4, T6`. A task written ahead of
+   others because it has to run on the untouched tree — a safety-net test of
+   current behavior — goes first in `## Tasks`, and every task that changes
+   that behavior names it in `After`. Among tasks free to start, exec runs them
+   in the order the blocks are written, so write them in the order they should
+   run. `pdkit task start` enforces `After`; prose in a step ("run only after
+   T20") enforces nothing and is read by nobody who picks a task. A task in a
+   slice carries `- Slice: S<k>`, which is what `pdkit task list` shows beside
+   it.
+10. **`Slice hypothesis` is written.** Not the final graph, but tasks are
    ordered so cutting is possible later. Planning without it produces an
    interleaved diff that cannot be split without redoing the work.
 
@@ -103,6 +143,23 @@ comes from the task files rather than from anyone's memory of them.
 is something `/pd:plan-review` would find anyway, and finding it here costs one
 command instead of a review round.
 
+Then **run every `Done when`**, from the main checkout, which is on the base
+branch:
+
+```
+pdkit plan probe <n>                      every live task
+pdkit plan probe <n> --except T10,T12     leave out what takes an hour; say so
+```
+
+Read each command before it runs: the probe runs what the plan says. A plan
+was approved after four review rounds and then stopped five times in exec on
+commands that could never pass: a typecheck that fails on the base branch with
+a config error, a lint on lines the task may not touch, a docs build that needs
+an artefact nothing builds. Each was one run away. A red run here is often
+expected — the spec file is not written yet — and that is fine; a red run for
+any other reason is a `Done when` to fix now. `pdkit plan check` then lists
+every task whose command was never run or did not exit 0, for the review.
+
 Then `pdkit state <n> --to planned`.
 
 Approval is a human action. On approval — and only then — `pdkit ids freeze
@@ -124,6 +181,10 @@ nothing in it depends on having watched the scouts work.
 `/pd:plan-review <issue>` — before approval, not after. On approval, and only
 then, freeze and move to `plan-approved`; what runs from there is
 `/pd:exec <issue>`.
+
+After the review, when the person has decided its findings: the review
+records the decisions in `plan-review.md`, and the next step is this skill
+again, in phase 0 — `pdkit next <issue>` says so. No context to pass.
 
 **In a new session**, and the reason is sharper here than anywhere: the review
 is meant to be read cold. A session that wrote the plan and then reviews it

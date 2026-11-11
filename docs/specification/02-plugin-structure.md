@@ -139,9 +139,11 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 │   ├── archaeology.json / .md   # facts about a previous attempt, and their reading
 │   ├── research.md              # the scouts' compressed map, file:line only
 │   ├── plan.md                  # the plan; R-IDs are frozen here
-│   ├── plan-review.md
+│   ├── plan-review.md           # latest round; earlier ones in plan-review.r<k>.md
+│   ├── probe.json               # each task's Done when, run on the base before any code
 │   ├── tasks/T1.md …
 │   ├── receipts/T1.md …         # real command output
+│   ├── stops/T1-1.md …          # why a task stopped on the plan; input to the amendment
 │   ├── validation.json / .md    # steps, evidence, e2e run series; .md is rendered
 │   ├── validation/V1.md …       # raw run output, receipt format
 │   ├── audit.md

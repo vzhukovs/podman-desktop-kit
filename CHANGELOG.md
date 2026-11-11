@@ -9,6 +9,53 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Upgrading
+
+- `pdkit task start` now refuses a task whose `- After:` tasks are not done,
+  and a task an open stop report names. Plans without `After` lines are not
+  affected.
+- `pdkit plan check` warns about every live task whose `Done when` has not
+  been run with `pdkit plan probe`. Warnings only: nothing that passed goes
+  red.
+
+### Added
+
+- **The order is part of the plan.** A task block may carry `- After: T4, T6`
+  and `- Slice: S2`. `plan check` refuses an `After` naming a task the plan
+  does not have, a task waiting on itself, and a loop; an `After` naming a
+  withdrawn task means its replacement. Among tasks free to start, the one
+  written first runs first, and a replacement stands where the task it
+  replaced stood. Before this the order lived in prose and in chat, and an
+  exec session started at T1 while the plan wrote its safety-net task first.
+- `pdkit task list --issue <n>`: every task as done, running, stopped,
+  blocked, waiting (and on what), ready or withdrawn (and by what), and the
+  task to run next. `/pd:exec` shows it at the start and after every task.
+- **Stop reports.** `pdkit task stop --finding <values.json>` writes
+  `stops/<task>-<k>.md` — what is wrong, the evidence, what else it reaches,
+  the decision a person must take, and what the amendment should change — and
+  stops the task until an amendment replaces it or `pdkit task clear` sets the
+  report aside with a reason. It refuses a report that leaves out a live task
+  running the same command or owning a file the report names: an amendment
+  once fixed the stopped task and left its neighbor on the same broken command.
+- `pdkit amendment draft --issue <n> [--out <f>]`: the values for `amendment
+  new`, drafted from the open stop reports, with a replacement block per task
+  they name and `[FILL IN: …]` where only the report and a person can say.
+  `amendment new` refuses a values file with one left in, and `amendment
+  approve` refuses one that replaces a task a stop report names while leaving
+  another task the same report names untouched.
+- `pdkit plan probe <n>`: runs each live task's `Done when` on the base
+  branch before any code exists and records the exit code and the tail of the
+  output in `probe.json`. `plan check` lists every task never run, run as
+  another command, or not exiting 0, and the critic judges which failures are
+  "not written yet" and which are commands that can never pass. A plan
+  approved after four review rounds stopped five times in exec on commands of
+  the second kind.
+- **Revising a plan after review takes no pasted context.** `/pd:plan-review`
+  records the decisions as `## Operator decisions (round N)`; while they wait,
+  `pdkit next` and `pdkit state` name `/pd:plan <n>`, which starts in a
+  revision phase, applies the accepted items, and ends with `pdkit plan
+  revised <n>`.
+
 ## [0.13.0] - 2026-11-10
 
 ### Upgrading

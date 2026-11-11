@@ -25,8 +25,15 @@
        - Satisfies: R1, R3
        - Owns: packages/main/src/plugin/exec.ts
        - Done when: `pnpm test:main -- exec.spec.ts`
+       - After: T4                (optional: tasks that must be done first)
+       - Slice: S2                (optional: the slice it is meant for)
        - Steps:
          1. <step>
+
+     Write the blocks in the order they should run. `After` is the order exec
+     cannot break: `pdkit task start` refuses a task whose After is not done,
+     and among tasks free to start, the one written first runs first. An order
+     stated only in a step's prose is an order nobody picking a task reads.
 
      Owns is exclusive: two tasks sharing a file is a planning error, not a
      coordination problem, and the pre-write hook enforces it. Done when is an

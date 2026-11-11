@@ -2,6 +2,13 @@
 
 [Specification](../README.md) › [4. Contracts](README.md) › `/pd:plan`
 
+**Phase 0, a revision.** When `plan-review.md` holds `## Operator decisions
+(round N)` that `pdkit plan revised` has not marked applied, `pdkit next` names
+`/pd:plan <n>`, and the skill starts here instead of at phase 1: it applies the
+accepted items to `plan.md` and the task files, scouts only for a fact a
+decision needs, re-probes the commands it changed, and ends with
+`pdkit plan revised <n>`. Nothing is pasted after the command.
+
 **Phase 1, reconnaissance.** At least three `pd-scout` runs **in parallel**, on
 different questions: where the logic is, which reusable patterns exist, how the
 area's tests are built. The scout's response format is strict — ≤ 40 lines, every
@@ -11,7 +18,7 @@ claim carrying `file:line`. The host does not read files broadly itself.
 the human. A question not asked becomes `[NEEDS DECISION]` in the plan, and that
 blocks approval.
 
-**Phase 3, the plan** by `templates/plan.md`. Eight requirements; a breach means
+**Phase 3, the plan** by `templates/plan.md`. Nine requirements; a breach means
 a rewrite:
 
 1. Each task owns its files **exclusively**. Overlap is a planning error. A task
@@ -28,9 +35,16 @@ a rewrite:
 6. Every task declares `satisfies: [R1, R3]`. A requirement with no task and a
    task with no requirement are both errors.
 7. `Upstream compliance` is filled in from `knowledge/upstream-rules.md`.
-8. `Slice hypothesis` — a preliminary guess at the cut.
+8. The order is written down: `- After: T4` on a task that cannot start
+   before another is done, and the blocks in the order they should run.
+   `pdkit task start` enforces `After`; `pdkit task list` shows the queue.
+9. `Slice hypothesis` — a preliminary guess at the cut.
 
-Item 8 is the non-obvious one and it is critical. Plan without slicing in mind
+Then `pdkit plan probe <n>` runs every `Done when` on the base branch and
+records what each printed, so the review sees which commands fail for want of
+code and which can never pass.
+
+Item 9 is the non-obvious one and it is critical. Plan without slicing in mind
 and the diff comes out interleaved, and cutting it into atomic pull requests
 afterwards is impossible without rewriting the work.
 

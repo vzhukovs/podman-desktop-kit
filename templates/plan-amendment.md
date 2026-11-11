@@ -32,8 +32,13 @@
        - Satisfies: R1, R7
        - Owns: packages/main/src/index.ts
        - Done when: `npx vitest run packages/main/src/index.spec.ts` -> exit 0
+       - After: T4
        - Steps:
          1. <step>
+
+     A replacement takes the place in the order of the first task it replaces,
+     and an `After` elsewhere that names a replaced task means its replacement.
+     `pdkit amendment draft` writes these blocks from the open stop reports.
 
      New tasks take the next free T-ID. `(replaces …)` withdraws the tasks it
      names: their files are marked `withdrawn by A<k>`, they lose their Owns,

@@ -56,11 +56,34 @@ what the pre-write hook enforces. Skip it and the hook has nothing to enforce:
 it allows every write and says so, which is a worse failure than a refusal
 because it looks like nothing happened.
 
+## The queue, and the order
+
+```
+pdkit task list --issue <n>
+```
+
+Show its output to the person **first**, at the start of every exec session,
+and again after every `task stop`. It is the answer to "what is done and what
+is waiting", in one shape, from the receipts, the attempt counts, the stop
+reports and the plan — not from this session's memory of what it did.
+
+The order is the plan's, not yours: the `After` lines first, then the order the
+blocks are written in. The last line names the task to run next. Run that one.
+Do not pick by task number, by slice, or by what looks independent: a plan's
+safety-net task written first exists to run on the untouched tree, and a
+session that started at T1 instead ran it fourth, on a tree it could not pass
+on. `pdkit task start` refuses a task whose `After` is not done, and one an open
+stop report names; the refusal says what it waits on.
+
+When the person names a different task, run it if `task start` accepts it, and
+say what the queue had next. If the order in the plan is wrong, that is a
+finding about the plan, like any other.
+
 ## Per task
 
-1. `pdkit task start --issue <n> --task T1` in the issue's tree. From here
-   until `task stop`, writes outside `T1`'s files are refused and
-   completing the task requires its receipt.
+1. `pdkit task start --issue <n> --task <the task task list names>` in the
+   issue's tree. From here until `task stop`, writes outside its files are
+   refused and completing the task requires its receipt.
 2. Give the worker the task, its `Owns` list, its `Done when` command, and the
    frozen interfaces. Nothing else — not the whole plan, not the issue thread.
 
@@ -91,10 +114,12 @@ because it looks like nothing happened.
    incomplete, and is treated the same way.
 6. Commit: conventional subject, one `Signed-off-by`. Squash with
    `git reset --soft <base> && git commit`, never `rebase -i`.
-7. `pdkit task stop`.
+7. `pdkit task stop`, then `pdkit task list --issue <n>` to the person: what is
+   done now, and what runs next.
 
-Tasks that share no files may run in parallel. Tasks that do share files were
-mis-planned — say so instead of serializing around it.
+Tasks that share no files and that `task list` shows ready together may run in
+parallel. Tasks that do share files were mis-planned — say so instead of
+serializing around it.
 
 ## Follow the plan literally
 
@@ -126,17 +151,67 @@ The rule between them: **if an amendment creates a task, it goes through what
 a plan goes through.** A task written into an amendment has otherwise seen
 neither the plan checks nor `pd-plan-critic`.
 
-1. **Here: stop and report, do not write.** The finding should be an artefact
-   on disk, such as a reproduction, a receipt or a captured run, not a
-   paragraph in chat. Then `pdkit task stop` and end the session. Capture
-   nothing for that task after the stop: `pdkit receipt write` does not check
-   that the task is still running. Do not draft the amendment from the context
-   that produced the finding: the finding fits on a screen, and that context is
-   tens of thousands of tokens nobody needs to state a requirement.
-2. **New session, on opus: write it.** `pdkit amendment new --issue <n>
-   --values <f>`, written from the artefact and `plan.md`. Requirement changes
-   go in `rows`. A task the amendment adds goes under `Slices affected` in
-   exactly a plan's shape, and its heading names what it replaces:
+1. **Here: record the stop, do not write the amendment.** The finding is a
+   stop report, not a paragraph in chat and not a file in this session's
+   scratch directory, which nothing else reads:
+
+   ```
+   pdkit task stop --finding <values.json>
+   ```
+
+   The values file has five parts, and each is something the amendment will
+   need:
+   - `wrong` — the defect in the plan, with `file:line`;
+   - `evidence` — the command and what it printed, pasted. If it fails on the
+     base branch too, show that run: it is what makes this the plan's problem;
+   - `command` and `files` — the failing command as `Done when` has it, and the
+     paths the finding is about. `task stop` searches the plan for every other
+     live task that runs the same command or owns one of those files, and
+     refuses the report until each one is under `affects` or excused under
+     `unaffected` with a sentence. An amendment that fixed one task and left its
+     neighbor running the same broken command cost a third round;
+   - `decision` — what only the person can decide, with the options and their
+     cost, or `—`;
+   - `proposal` — what the amendment should change, per task: same Owns with a
+     new `Done when`, a new step, a new task, a requirement reworded.
+
+   It writes `stops/<task>-<k>.md` and stops the task, which will not start
+   again until an amendment replaces it or a person clears the report. Show the
+   person the report path and `pdkit task list`. Tasks that do not wait on the
+   stopped one can still run in this session; say which. Capture nothing for
+   the stopped task: `pdkit receipt write` does not check that a task is still
+   running.
+
+   Then, when nothing else can run, end the session. Do not draft the amendment
+   from the context that produced the finding: the report fits on a screen, and
+   that context is tens of thousands of tokens nobody needs to state a
+   requirement.
+
+   **What to tell the person**, every time a task stops: which task, the one
+   sentence from `wrong`, the report path, what `decision` asks of them, and
+   the next command — the amendment, in a new session on opus, starting with
+   `pdkit amendment draft --issue <n>`.
+2. **New session, on opus: write it.**
+
+   ```
+   pdkit amendment draft --issue <n> --out amendment-values.json
+   ```
+
+   drafts the values from every open stop report: the trigger, and a
+   replacement block for each task the reports name — same Satisfies, Owns,
+   After and Slice, `Done when` copied, a first step saying to continue from
+   what the task left in the tree. What only the report and the person can say
+   is marked `[FILL IN: …]`: the corrected command, the change itself, the
+   rationale. Finish those from `stops/*.md`, `plan.md` and the person's
+   answer to each report's `decision`; `amendment new` refuses a file with one
+   left in. Delete the block of a task that should stay as it is, and clear its
+   report instead (`pdkit task clear`). Then `pdkit plan probe <n> --amendment
+   A<k>` after `amendment new`, so the corrected commands have been run before
+   anyone approves them.
+
+   `pdkit amendment new --issue <n> --values <f>`. Requirement changes go in
+   `rows`. A task the amendment adds goes under `Slices affected` in exactly a
+   plan's shape, and its heading names what it replaces:
 
    ```
    ### T5 (replaces T2 and T3): <title>
@@ -158,7 +233,9 @@ neither the plan checks nor `pd-plan-critic`.
    mechanical checks on the new tasks — an executable `Done when`, a live
    R-ID, no `Owns` shared with a task that stays, no reused ID — and refuses
    on any of them, leaving the amendment `proposed` with the line to fix.
-   It also refuses an amendment that leaves an R-ID with no live task.
+   It also refuses an amendment that leaves an R-ID with no live task, and
+   one that replaces a task an open stop report names while leaving another
+   task that report names as it is.
    **A refusal is an answer.** Fix the line it names. If the fix would mean
    two tasks owning one file, the work does not belong to this issue: bring
    that to the person as `pdkit issue draft-blocker` and `pdkit issue block`.
@@ -171,7 +248,9 @@ neither the plan checks nor `pd-plan-critic`.
    now reads the plan with them in it. If an amendment was approved but did
    not fully apply, `pdkit amendment sync A<k> --issue <n>` finishes it.
 5. **New session, on sonnet: back to `/pd:exec <n>`.** The issue's state never
-   moved; the plan did.
+   moved; the plan did. The stop reports the amendment settled are resolved by
+   it, and `pdkit task list` shows the replacement tasks where the withdrawn
+   ones stood in the order.
 
 Never write a task file by hand to get past a missing one. A task the plan
 names with no file in `tasks/`, or one `pdkit task start` reports with no
@@ -224,6 +303,7 @@ the only record of why anyone expected a fourth attempt to differ.
 
 ## Then
 
+When `pdkit task list` says every task has a passing receipt:
 `pdkit state <n> --to implemented`.
 
 ## When the phase runs long
@@ -233,8 +313,8 @@ the length of the plan. Treat it as a rough mark — the count you would keep of
 your own turns is not a precise one. The place to stop is between tasks: after
 `task stop`, the next task needs only its task file, and the last one left its
 receipt and its commit. Past the mark, take the task in hand to its receipt,
-stop it, and ask for a restart; `/pd:exec <issue> T<k>` in the new session
-continues from the next task.
+stop it, and ask for a restart; `/pd:exec <issue>` in the new session starts
+from `pdkit task list`, which knows where this one stopped.
 
 ## Next
 
