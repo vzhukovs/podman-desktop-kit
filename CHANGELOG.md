@@ -9,6 +9,18 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-12
+
+### Upgrading
+
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Nothing to change: the release only adds lines to two refusals.
+
 ### Changed
 
 - A refused move back to planning names the way back. `pdkit issue rework`
@@ -2577,7 +2589,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.11.6...v0.12.0
