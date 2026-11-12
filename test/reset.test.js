@@ -281,3 +281,43 @@ describe('which working trees belong to an issue', () => {
     assert.equal(belongsTo({ path: '/w/scratch', branch: 'DESKTOP-18549/2-fix', head: null, main: false }, 18548), false);
   });
 });
+
+// A session at plan-approved tried `issue rework`, then `state --to triaged`,
+// and was told twice that the edge did not exist — never which command does go
+// back. The refusal names rollback and reset now; these hold that.
+describe('a refused move back names the way back', () => {
+  test('wayBack: an edge refusal toward planning names rollback and reset', async () => {
+    const { wayBack } = await import('../lib/commands/support.js');
+    const refused = { ok: false, from: 'plan-approved', to: 'triaged', error: 'plan-approved -> triaged is not an allowed transition (from plan-approved: implemented)' };
+    const text = wayBack(17001, refused);
+    assert.match(text, /pdkit rollback 17001 .*the state stays plan-approved/);
+    assert.match(text, /pdkit reset 17001 .*\/pd:reset 17001/);
+  });
+
+  test('wayBack: nothing for a forward move, an entry rule, or an accepted move', async () => {
+    const { wayBack } = await import('../lib/commands/support.js');
+    assert.equal(wayBack(1, { ok: false, from: 'triaged', to: 'pr-open', error: 'triaged -> pr-open is not an allowed transition (from triaged: planned)' }), '');
+    assert.equal(wayBack(1, { ok: false, from: 'pr-open', to: 'triaged', error: 'issue 1: a rework needs --reason "<what the review rejected>".' }), '');
+    assert.equal(wayBack(1, { ok: true, from: 'planned', to: 'triaged' }), '');
+  });
+
+  test('issue rework outside a pull request says what rework is for, and where the way back is', async () => {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const { fileURLToPath } = await import('node:url');
+    const { dirname } = await import('node:path');
+    const bin = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
+    const home = await mkdtemp(join(tmpdir(), 'pdkit-wayback-'));
+    try {
+      await transition(17002, 'triaged', { home, route: 'standard' });
+      const run = promisify(execFile)(process.execPath, [bin, 'issue', 'rework', '17002', '--reason', 'start over'], { cwd: home, env: { ...process.env, PDKIT_HOME: home } });
+      const error = await run.then(() => null, (failure) => failure);
+      assert.notEqual(error, null);
+      assert.match(error.stderr, /triaged -> triaged is not an allowed transition/);
+      assert.match(error.stderr, /rework is for a pull request the review rejected/);
+      assert.match(error.stderr, /pdkit reset 17002 /);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+});

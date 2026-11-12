@@ -9,6 +9,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+
+- A refused move back to planning names the way back. `pdkit issue rework`
+  and `pdkit state --to triaged|planned|new` used to say only that the edge
+  did not exist, and a session at `plan-approved` went on trying other
+  backward edges. The refusal now names `pdkit rollback <n>` (back to a
+  checkpoint, same state) and `pdkit reset <n>` (`/pd:reset`: start the issue
+  over from `new`), and `issue rework` says it is for a pull request the
+  review rejected.
+
 ## [0.14.0] - 2026-11-11
 
 ### Upgrading
