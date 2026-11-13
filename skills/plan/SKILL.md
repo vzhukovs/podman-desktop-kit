@@ -34,9 +34,17 @@ What a revision is:
    `pdkit plan check <n>`. The review already copied the plan it read into
    `reviews/r<k>/`, and the next review compares with it: leave `reviews/` alone.
 4. `pdkit plan probe <n> --task <every task whose Done when changed>`, from
-   the main checkout.
-5. `pdkit plan revised <n>`, which records that the round is in the plan. Then
-   `/pd:plan-review <n>` in a new session reviews the revised plan.
+   the main checkout. Before step 5, whatever step 5 then prints.
+5. `pdkit plan revised <n>`, which records that the round is in the plan and
+   prints the step after it, `next:`, with the reason, `why:`. Follow that
+   line, not this one. It is `/pd:plan-review <n>`, in a new session, when an
+   A item was accepted or left with no decision, when the revision changed a
+   task's Owns, After, Done when, Satisfies or Slice, the set of tasks, Frozen
+   interfaces or the slice hypothesis, or when there is no snapshot to compare
+   with. Otherwise it is the approval — `pdkit ids freeze <n> && pdkit state
+   <n> --to plan-approved` — and that is the person's to run: put the line and
+   its `why:` in front of them, and do not run it. They can still ask for a
+   round.
 
 Say to the person, at the end, which items were applied, where, and which
 were left for lack of a decision.

@@ -67,6 +67,19 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ### Changed
 
+- After `pdkit plan revised`, another review round is no longer the step
+  whatever the revision was. It is when an A item was accepted, left with no
+  decision, or decided in words with no verdict, when `plan diff` against the
+  snapshot of the round calls the change structural, when a task's `Owns`,
+  `After`, `Done when`, `Satisfies` or `Slice` changed, or when the round has
+  no snapshot. Otherwise `pdkit next` and `plan revised` name the approval —
+  `pdkit ids freeze <n> && pdkit state <n> --to plan-approved` — which stays
+  the person's to run, and `plan revised` says why on a `why:` line. A round
+  that found nothing that must change, with three B items accepted, was
+  followed by two more full rounds and two more sets of decisions; a B item
+  that changes what execution reads still gets a round over the change.
+  `/pd:plan-review` tells the person this when a report has no A item, and a
+  round can still be asked for.
 - `pd-plan-critic` checks three things a plan inherits from where it lands:
   the `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`/`README.md` rules of the
   directories it touches ("update X in the same change"), every mode the

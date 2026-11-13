@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { checkPlan, parsePlan } from '../lib/artefacts.js';
-import { decisionsIn, markRevised, nextContext, pending, reviewIn } from '../lib/plan-review.js';
+import { decisionsIn, markRevised, pending, reviewIn } from '../lib/plan-review.js';
 import * as probe from '../lib/probe.js';
 import { nextSkill, nextStep } from '../lib/state.js';
 
@@ -37,22 +37,72 @@ const ISSUE = 17001;
 
 describe('decisionsIn', () => {
   test('no decision section, nothing decided', () => {
-    assert.deepEqual(decisionsIn('# PLAN REVIEW: DESKTOP-1 — round 2\n\n## A. Must change\n### A1. x\n'), { decided: false, round: null, items: [] });
+    assert.deepEqual(decisionsIn('# PLAN REVIEW: DESKTOP-1 — round 2\n\n## A. Must change\n### A1. x\n'), {
+      decided: false,
+      round: null,
+      items: [],
+      decisions: [],
+      accepted: { A: 0, B: 0 },
+    });
   });
 
   test('the round from the heading, the items from its lines', () => {
     const text = '# PLAN REVIEW: DESKTOP-1 — round 2\n\n## A\n### A1. x\n\n## Operator decisions (round 3)\n- A1: accepted\n- B3: rejected — not now\n';
-    assert.deepEqual(decisionsIn(text), { decided: true, round: 3, items: ['A1', 'B3'] });
+    assert.deepEqual(decisionsIn(text), {
+      decided: true,
+      round: 3,
+      items: ['A1', 'B3'],
+      decisions: [
+        { id: 'A1', letter: 'A', decision: 'accepted' },
+        { id: 'B3', letter: 'B', decision: 'rejected' },
+      ],
+      accepted: { A: 1, B: 0 },
+    });
   });
 
   test('the heading the earlier reviews were written with counts, round from the title', () => {
     const text = '# PLAN REVIEW: DESKTOP-1 — раунд 2 (2026-11-11)\n\n## Решения оператора (2026-11-11)\n- **A1.** принято\n- **B2.** принято\n\n## Что дальше\nA9 is not a decision\n';
-    assert.deepEqual(decisionsIn(text), { decided: true, round: 2, items: ['A1', 'B2'] });
+    const found = decisionsIn(text);
+    assert.deepEqual([found.decided, found.round, found.items], [true, 2, ['A1', 'B2']]);
+    assert.deepEqual(found.accepted, { A: 1, B: 1 });
   });
 
   test('the last of two decision sections is the one that counts', () => {
     const text = '## Operator decisions (round 1)\n- A1: accepted\n\n## Operator decisions (round 2)\n- A4: accepted\n';
-    assert.deepEqual(decisionsIn(text), { decided: true, round: 2, items: ['A4'] });
+    const found = decisionsIn(text);
+    assert.deepEqual([found.decided, found.round, found.items], [true, 2, ['A4']]);
+    assert.deepEqual(found.decisions, [{ id: 'A4', letter: 'A', decision: 'accepted' }]);
+  });
+
+  // What the step after a revision reads: whether any A was accepted. An A
+  // counted as not accepted when it was is a revision sent to approval with a
+  // must-change finding nobody reviewed the fix of.
+  test('one decision per item, by its letter, and the A and B accepted counted', () => {
+    const text = [
+      '# PLAN REVIEW: DESKTOP-1 — round 4',
+      '',
+      '## Operator decisions (round 4)',
+      '- A1: rejected — the critic misread the order',
+      '- B1: accepted',
+      '- B2: accepted, variant (b) — one helper',
+      '- B3: no decision',
+      '- B1 (amended during revision): the helper goes in the shared module',
+      '- C1: accepted',
+      '- A2: variant (a), as recommended',
+      '',
+    ].join('\n');
+    const found = decisionsIn(text);
+    assert.deepEqual(found.decisions, [
+      { id: 'A1', letter: 'A', decision: 'rejected' },
+      // The amendment opens with no verdict; the first line's stands.
+      { id: 'B1', letter: 'B', decision: 'accepted' },
+      { id: 'B2', letter: 'B', decision: 'accepted' },
+      { id: 'B3', letter: 'B', decision: 'undecided' },
+      { id: 'C1', letter: 'C', decision: 'accepted' },
+      // No verdict word at all: read, and not guessed to be either.
+      { id: 'A2', letter: 'A', decision: 'other' },
+    ]);
+    assert.deepEqual(found.accepted, { A: 0, B: 2 });
   });
 });
 
@@ -144,19 +194,22 @@ describe('the next step from planned', () => {
 
     test('decisions recorded and not applied are pending until plan revised marks their round', async () => {
       await writeFile(join(home, 'issues', String(ISSUE), 'plan-review.md'), '# PLAN REVIEW — round 1\n\n## Operator decisions (round 1)\n- A1: accepted\n');
-      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), { revision: { round: 1 } });
+      const waiting = await pending(ISSUE, { home });
+      assert.deepEqual([waiting.pending, waiting.round, waiting.accepted], [true, 1, { A: 1, B: 0 }]);
 
       await markRevised(ISSUE, 1, { home });
-      assert.equal((await pending(ISSUE, { home })).pending, false);
-      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), {});
+      const applied = await pending(ISSUE, { home });
+      // Applied, and still read: the step after the revision needs them.
+      assert.deepEqual([applied.pending, applied.round, applied.decisions], [false, 1, [{ id: 'A1', letter: 'A', decision: 'accepted' }]]);
 
       // A second round of decisions is a new revision.
       await writeFile(join(home, 'issues', String(ISSUE), 'plan-review.md'), '# PLAN REVIEW — round 2\n\n## Operator decisions (round 2)\n- A1: accepted\n');
-      assert.deepEqual(await nextContext(/** @type {any} */ (record), { home }), { revision: { round: 2 } });
+      assert.deepEqual([(await pending(ISSUE, { home })).pending, (await pending(ISSUE, { home })).round], [true, 2]);
     });
 
     test('no review file, nothing pending', async () => {
-      assert.equal((await pending(ISSUE, { home })).pending, false);
+      const found = await pending(ISSUE, { home });
+      assert.deepEqual([found.pending, found.round], [false, null]);
     });
   });
 });

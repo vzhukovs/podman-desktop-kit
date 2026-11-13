@@ -89,6 +89,13 @@ The human's decisions go into `plan-review.md` as `## Operator decisions
 decisions itself, applies the accepted ones, and closes the round with
 `pdkit plan revised <n>`.
 
+What follows a revision is a rule of the state machine, not a habit. Another
+round when an A item was accepted or left with no decision, when the revision
+changed a task's `Owns`, `After`, `Done when`, `Satisfies` or `Slice`, or when
+`plan diff` calls the change structural — and when the round has no snapshot,
+since then nothing says what changed. Otherwise `pdkit next` names the
+approval, which stays a human action; a round can still be asked for.
+
 ---
 
 **In practice** — [`workflows/`](../../workflows/README.md):

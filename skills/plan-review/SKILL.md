@@ -184,6 +184,15 @@ One line per item, every item in the report, the person's own qualifiers kept.
 Nothing here edits the plan: applying the decisions is `/pd:plan`'s, in a new
 session, with nothing to paste after the command.
 
+When the report has no A item, or the person rejects every one, tell them
+before they decide the B items: the ones they accept will be applied and go to
+approval without another round, unless applying them changes a task's Owns,
+After, Done when, Satisfies or Slice, the set of tasks, Frozen interfaces or
+the slice hypothesis. `pdkit plan revised` measures that against this round's
+snapshot once the revision is done. An A item left with no decision sends the
+plan to another round as an accepted one does. A round can still be asked for:
+`/pd:plan-review <n>` runs whenever it is invoked.
+
 ## State
 
 None. `plan check` failing is not a state transition — it is a plan that goes
@@ -195,10 +204,12 @@ back to `/pd:plan`. Approval stays a human action, and only after it:
 `/pd:plan <issue>`, in a new session, and nothing after the issue number. With
 the decisions in `plan-review.md`, `pdkit next <issue>` prints exactly that,
 and `/pd:plan` starts in its revision phase: it reads the decisions, applies
-the accepted ones, re-probes what changed, and runs `pdkit plan revised`. Then
-`/pd:plan-review` again. Do not compose a paragraph of context for the person
-to paste: it is a second, unreviewed copy of the decisions, with line numbers
-the next edit moves.
+the accepted ones, re-probes what changed, and runs `pdkit plan revised`. That
+prints what follows: `/pd:plan-review` again when an A item was accepted or
+left undecided, or the revision changed what execution reads — the fields named
+in section 4 — and otherwise the approval, which stays the person's. Do not
+compose a paragraph of context for the person to paste: it is a second,
+unreviewed copy of the decisions, with line numbers the next edit moves.
 
 ## Next, on approval
 
