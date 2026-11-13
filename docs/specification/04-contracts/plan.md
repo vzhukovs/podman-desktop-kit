@@ -9,10 +9,15 @@ accepted items to `plan.md` and the task files, scouts only for a fact a
 decision needs, re-probes the commands it changed, and ends with
 `pdkit plan revised <n>`. Nothing is pasted after the command.
 
-**Phase 1, reconnaissance.** At least three `pd-scout` runs **in parallel**, on
-different questions: where the logic is, which reusable patterns exist, how the
-area's tests are built. The scout's response format is strict — ≤ 40 lines, every
-claim carrying `file:line`. The host does not read files broadly itself.
+**Phase 1, reconnaissance.** First what is already known: when the issue was
+reset or rolled back before, `pdkit plan lessons <n>` prints what the archived
+reviews raised and what was decided, and `research.md` opens with it under
+`## From earlier attempts`. Then at least three `pd-scout` runs **in
+parallel**, on different questions: where the logic is, which reusable
+patterns exist, how the area's tests are built. Each is handed the entries of
+`knowledge/pitfalls.md` and of the earlier attempts that bear on its region.
+The scout's response format is strict — ≤ 40 lines, every claim carrying
+`file:line`. The host does not read files broadly itself.
 
 **Phase 2, forks in the road.** Anything the scouts flagged as a choice goes to
 the human. A question not asked becomes `[NEEDS DECISION]` in the plan, and that

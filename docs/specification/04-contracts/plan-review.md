@@ -87,7 +87,9 @@ The human's decisions go into `plan-review.md` as `## Operator decisions
 (round N)`, one line per item. While that round has not been applied,
 `pdkit next` names `/pd:plan <n>` with nothing after it: `/pd:plan` reads the
 decisions itself, applies the accepted ones, and closes the round with
-`pdkit plan revised <n>`.
+`pdkit plan revised <n>`. An accepted A item that states a fact about the
+repository rather than about the plan is proposed to the human as a candidate
+for `knowledge/`, one line each; nothing records the candidate yet.
 
 What follows a revision is a rule of the state machine, not a habit. Another
 round when an A item was accepted or left with no decision, when the revision

@@ -3,7 +3,7 @@
 Traps that cost time once and should not cost it twice. Each entry says what it
 looks like, why it is a trap, and how it is now caught.
 
-> Seven entries so far, and it grows one issue at a time: `/pd:close` proposes
+> Thirteen entries so far, and it grows one issue at a time: `/pd:close` proposes
 > additions from what a finished issue actually cost. Short is the intended
 > state, not an unfinished one — see "What to add here".
 
@@ -178,6 +178,137 @@ second is someone else's.
 is needed or should be added as a claim that it is absent, and checks the name
 against podman-desktop. It does not see a premise that names nothing in
 backticks, or one asked in another language, so the rule holds without it.
+
+## A file under the e2e tree that eslint cannot parse
+
+**Looks like:** a fixture for an e2e test, such as a small CommonJS extension,
+goes beside the other test resources under `tests/playwright/`, and its `Done
+when` runs `npx eslint` on it.
+
+**Actually:** eslint lints every file with type information (`projectService`
+in `eslint.config.mjs`, with `allowDefaultProject` covering only
+`types/*.d.ts`), and `tests/playwright/tsconfig.json` includes only `src/**/*.ts`
+and the scripts. Any other `.js` or `.ts` file under `tests/playwright/` that
+eslint does not ignore fails with "was not found by the project service",
+whatever it contains.
+`pnpm lint:check` lints the whole tree and lint-staged lints every staged
+`.js` and `.ts`, so CI and the commit hook fail the same way. A path inside a
+directory named `test-resources` matches the global `ignores` entry
+`**/test-resources`: eslint reports it as ignored and exits 0.
+
+**Why it matters:** no edit to the file makes it pass, and the ways around it
+are a disable comment the maintainer's rules forbid (section 4 of
+`maintainer-rules.md`) or a change to a shared config.
+
+**Caught by:** nothing mechanical. `/pd:plan` gives this file to its scouts,
+and `pd-plan-critic` reads it.
+
+## An extension manifest the loader drops
+
+**Looks like:** a test extension whose `package.json` has what running it
+needs (`name`, `publisher`, `version`, `main`, `engines`), with a `Done when`
+that checks the manifest parses.
+
+**Actually:** `analyzeExtension` in
+`packages/main/src/plugin/extension/extension-analyzer.ts` marks a manifest
+missing any of `name`, `displayName`, `version`, `publisher` or `description`
+as an error; the schema in
+`packages/main/src/plugin/extension/extension-manifest-schema.ts` requires the
+same five. A development folder the application finds in its configuration at
+startup is then left out (`loadDevelopmentFolderExtensions` in
+`packages/main/src/plugin/extension/extension-loader.ts`), with one
+`console.error` in the main process log. Adding the folder through the UI
+throws the same message instead.
+
+**Why it matters:** the e2e test fails later and somewhere else, because the
+extension is simply not there, and nothing in the UI says why.
+
+**The rule:** a check on a manifest that a loader reads asserts the fields the
+loader requires, not only that the file parses.
+
+**Caught by:** nothing mechanical. `pd-plan-critic` reads the loader's
+contract for every artifact a task creates; this entry names the fields.
+
+## Two e2e runners
+
+**Looks like:** an e2e spec that reaches into the main process through
+`runner.getElectronApp()`, or launches the application with an extra argument.
+
+**Actually:** `tests/playwright/src/runner/runner-factory.ts` picks one of two
+runners. With `PODMAN_DESKTOP_BINARY` and `DEBUGGING_PORT` both set, it is
+`ChromeDevToolsProtocolRunner`, which spawns the binary with
+`--remote-debugging-port` as its only argument and connects over CDP;
+otherwise it is `ElectronRunner`. Only `ElectronRunner` has `getElectronApp()`,
+and the `runner` fixture is typed as the base `Runner`, which does not. Specs
+that evaluate in the main process skip under CDP, either for the whole file on
+the two variables
+(`tests/playwright/src/specs/navigation-context-menu.spec.ts`) or in the test
+with `test.skip(!(runner instanceof ElectronRunner))`
+(`tests/playwright/src/specs/help-menu-smoke.spec.ts`).
+
+**Why it matters:** a spec written for one runner fails, or does not
+type-check, in the other mode, and an argument meant for the launch never
+reaches the application under CDP.
+
+**Caught by:** nothing mechanical. `pd-plan-critic` lists the modes of the
+component a task touches; this entry says which two the e2e suite has.
+
+## The e2e inventory changes with the spec
+
+**Looks like:** a new spec under `tests/playwright/src/specs/`, or a changed
+skip condition or runner option, planned as a change to the spec file alone.
+
+**Actually:** `tests/playwright/AGENTS.md` requires
+`tests/playwright/TESTS_SPECIFICATION.md` to be updated in the same change
+when a spec is added, renamed, moved or removed; when its coverage, tags,
+platforms, skip conditions, environment variables or runner settings change;
+and when shared fixtures, helpers or runner configuration change in a way that
+affects documented suites.
+
+**Why it matters:** the obligation is the directory's own and nothing in the
+plan points at it, so a task that owns only the spec cannot meet it.
+
+**Caught by:** nothing mechanical. `pd-plan-critic` reads the `AGENTS.md` of
+every directory a task owns.
+
+## One e2e runner, whatever the options
+
+**Looks like:** two `test.use({ runnerOptions })` in one spec file, one per
+`describe`, to start the application two ways.
+
+**Actually:** `RunnerFactory.getInstance` in
+`tests/playwright/src/runner/runner-factory.ts` keeps one runner in a static
+field and returns it whatever options it is called with; only closing the
+runner clears it. The e2e suite runs with one worker (`playwright.config.ts`),
+so options take effect only when no runner is open. Every spec that sets
+runner options does it with a single `test.use` for the whole file.
+
+**Why it matters:** unless the first runner was closed in between, the second
+set of options is ignored without a word, and the tests under it run against
+an application started the first way.
+
+**Caught by:** nothing mechanical.
+
+## A format gate that checks files git ignores
+
+**Looks like:** `pnpm format:check`, or `biome format` with no paths, as the
+gate in a `Done when`. It is green on CI, so it should be green here.
+
+**Actually:** `biome.jsonc` has no `vcs` section, so Biome reads no ignore
+file, neither `.gitignore` nor git's global excludes, and only
+`files.includes` decides what it checks. On the whole tree it checks every
+local or generated file git ignores: a local settings file an editor or an
+agent keeps under `.claude/`, JSON generated under `website/static/`. A clean
+CI checkout has none of them; a working machine usually has some.
+
+**Why it matters:** the gate fails on files the change never touched and
+`git status` does not show, on one machine and not on another.
+
+**The rule:** a format gate names its files: `biome format <files>`, for the
+files the task owns.
+
+**Caught by:** `pdkit plan probe`, on a machine that has such a file: the
+gate is red on the base, with the ignored file's name in its output.
 
 ## What to add here
 

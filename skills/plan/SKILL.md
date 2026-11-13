@@ -51,9 +51,34 @@ were left for lack of a decision.
 
 ## Phase 1 — reconnaissance
 
-At least three `pd-scout` agents **in parallel**, each with a different
+First, what is already known, so the scouts do not find it again.
+
+**Earlier attempts.** An issue that was reset or rolled back has its earlier
+reviews archived, and nothing else reads them:
+
+```
+pdkit plan lessons <n>
+```
+
+It prints every archived round's A and B items with the decision lines
+recorded on them, or that there is no archive. Write what was decided to
+`research.md` under `## From earlier attempts`, one line per item: an accepted
+item as what it established about the repository, with its `file:line`; a
+rejected one with the reason given. An item with no decision line is left out,
+and the section says how many were. A review printed as the same text as
+another archive's is read there.
+
+**The traps.** `${CLAUDE_PLUGIN_ROOT}/knowledge/pitfalls.md` holds traps this
+repository has set before, each with where it lives.
+
+Then at least three `pd-scout` agents **in parallel**, each with a different
 question: where the logic lives, which existing pattern the fix should follow,
-how this area is tested.
+how this area is tested. Each scout's prompt carries, with its question, the
+`pitfalls.md` entries that bear on the region it maps (the whole file, while
+it stays near 300 lines and the region is unclear) and the lines of
+`## From earlier attempts` that touch it. A scout handed an entry checks it
+against the code it reads and cites the current `file:line`; one the code no
+longer bears out is a finding, not a premise.
 
 Their format is fixed: ≤ 40 lines, every claim with `file:line`, no
 recommendations. A scout that proposes a solution has exceeded its brief, and

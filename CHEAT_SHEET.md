@@ -184,6 +184,7 @@ pdkit plan brief <n>                       # the critic's brief: paths, check re
 pdkit plan brief <n> --area <a>,<b>        # ... narrowed to those areas; --axis duplication: across the plan
 pdkit plan brief <n> --mode delta          # ... narrowed to what changed since the last round, with the diff
 pdkit plan revised <n>                     # the review's decisions are in plan.md; says if another round or approval is next
+pdkit plan lessons <n>                     # what earlier, archived attempts' reviews raised, and what was decided
 pdkit checkpoint <n> --phase exec          # before a phase that changes things;
                                            # exec, slice, pr-sync or resume
 pdkit rollback <n>                         # what that phase would give back

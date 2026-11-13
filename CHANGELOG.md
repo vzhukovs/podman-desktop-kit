@@ -64,8 +64,39 @@ fixes — see [RELEASING.md](RELEASING.md).
   checked. The brief prints the table for the critic to fill in, and every `?`
   left after the merge is a C item: what nobody read is in the report, not in
   a later round.
+- `pdkit plan lessons <n> [--json]`: what the plan reviews of earlier attempts
+  at an issue raised. For every archive under `archive/<n>/` — a reset or a
+  rollback, oldest first, with when it was archived — each review round's A
+  and B items under their headings, with the decision lines recorded on them.
+  A review a rollback archived and the reset archive also holds is listed once.
+  Reviews written before the decision format was fixed are read too: bold and
+  numbered items, Russian headings, and a heading such as "accepted" above a
+  list of items. Nothing read the archive: an attempt after a reset planned
+  from nothing, and its review found again, round by round, facts the first
+  attempt's review had established.
+- Six entries in `knowledge/pitfalls.md`, each checked against the current
+  upstream code: a file under `tests/playwright/` that eslint cannot parse
+  whatever it contains, and the ignored `test-resources` path; the five
+  manifest fields without which the loader drops an extension from a
+  development folder; the two e2e runners, and what the CDP one cannot do;
+  the e2e inventory that changes with a spec; one runner per worker whatever
+  the options; a format gate that checks files git ignores.
 
 ### Changed
+
+- `/pd:plan` starts its reconnaissance with what is already known: when the
+  issue has an archive, `pdkit plan lessons` goes into `research.md` under
+  `## From earlier attempts`, accepted items as what they established and
+  rejected ones with the reason. Each scout is handed the `pitfalls.md`
+  entries and the earlier findings that bear on its region, and
+  `pd-plan-critic` reads the entries for the areas in its scope. Neither read
+  `pitfalls.md` before.
+- `/pd:plan-review` proposes, after the decisions, each accepted A item that
+  states a fact about the repository as a one-line knowledge candidate.
+- A decision line that opens with a plural or negated Russian verdict
+  ("приняты", "не принято") is read as accepted or rejected; it was read as no
+  verdict, so a rejection written that way was in no list of the critic's
+  brief.
 
 - After `pdkit plan revised`, another review round is no longer the step
   whatever the revision was. It is when an A item was accepted, left with no

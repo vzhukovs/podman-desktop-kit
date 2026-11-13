@@ -104,6 +104,16 @@ describe('decisionsIn', () => {
     ]);
     assert.deepEqual(found.accepted, { A: 0, B: 2 });
   });
+
+  // Plural and negated Russian forms. Read as `other` before, a rejection
+  // written as «не принято» was in no list of the brief, and was raised again.
+  test('plural and negated forms are verdicts too', () => {
+    const text = '## Решения оператора (раунд 2)\n- A1: приняты оба варианта\n- B1: не принято — не сейчас\n- B2: Not accepted\n';
+    assert.deepEqual(
+      decisionsIn(text).decisions.map((item) => [item.id, item.decision]),
+      [['A1', 'accepted'], ['B1', 'rejected'], ['B2', 'rejected']],
+    );
+  });
 });
 
 // The critic's brief lists every round's rejections and the last round's

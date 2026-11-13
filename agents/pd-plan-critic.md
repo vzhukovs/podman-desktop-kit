@@ -16,7 +16,7 @@ Your brief's `## Scope` says which part of the plan is yours. A large plan is sp
 
 Something wrong outside your scope is not an item of yours. Write it under `## Outside my scope`, three lines at most, each with `file:line`, for the critic whose scope it is to weigh.
 
-Start from the over-engineering checklist in `${CLAUDE_PLUGIN_ROOT}/knowledge/review-expectations.md`.
+Start from the over-engineering checklist in `${CLAUDE_PLUGIN_ROOT}/knowledge/review-expectations.md`. Read the entries of `${CLAUDE_PLUGIN_ROOT}/knowledge/pitfalls.md` that bear on the areas in your scope: traps this repository has set before, each with where it lives.
 
 `pdkit plan check <n>` has already run, and its report is in your brief. It has found the mechanical failures: tasks sharing files, `Done when` written as prose, requirements with no task, tasks with no requirement, a missing slice hypothesis, an unanswered `[NEEDS DECISION]`. Do not go looking for those again — they are grep results, and rediscovering them is the cheapest thing you could be doing with an expensive context.
 

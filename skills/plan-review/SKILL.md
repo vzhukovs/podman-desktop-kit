@@ -184,6 +184,15 @@ One line per item, every item in the report, the person's own qualifiers kept.
 Nothing here edits the plan: applying the decisions is `/pd:plan`'s, in a new
 session, with nothing to paste after the command.
 
+Then the accepted A items that state a fact about the repository rather than
+about this plan: what a loader requires, which modes a suite runs in, what a
+directory's `AGENTS.md` obliges — not "T4 runs before T6". Propose each to the
+person as a knowledge candidate, in one line: the fact as an entry would state
+it, with its `file:line`, and the file of `${CLAUDE_PLUGIN_ROOT}/knowledge/`
+whose `## What to add here` it meets. Check the line against the code first: an
+item accepted for this plan is not yet a verified fact. Nothing records a
+candidate; the ones the person wants are theirs to take to `/pd:knowledge`.
+
 When the report has no A item, or the person rejects every one, tell them
 before they decide the B items: the ones they accept will be applied and go to
 approval without another round, unless applying them changes a task's Owns,
