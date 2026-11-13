@@ -9,13 +9,35 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-13
+
 ### Upgrading
 
-An issue is approved only on a plan that passes `pdkit plan check`: on one
-standing at `planned`, run `pdkit plan check <n>` before
-`pdkit ids freeze <n> && pdkit state <n> --to plan-approved`, and fix what it
-names first. `pdkit cost` refuses outside the podman-desktop clone: run it there,
-or pass `--repo <clone>`, set `repo.path`, or name `--transcripts <dir>`.
+```
+/plugin marketplace update podman-desktop-kit
+/plugin update pd@podman-desktop-kit
+/reload-plugins
+```
+
+Then `pdkit doctor --gate-selftest`. Nothing to change in your config.
+
+- An issue is approved only on a plan that passes `pdkit plan check`: on one
+  standing at `planned`, run `pdkit plan check <n>` before
+  `pdkit ids freeze <n> && pdkit state <n> --to plan-approved`, and fix what
+  it names first. `pdkit ids freeze` refuses that plan too, so nothing is
+  frozen on it.
+- `pdkit task start` refuses an issue whose plan is not approved. Issues
+  already in exec, or later, are not affected.
+- `pdkit cost` refuses outside the podman-desktop clone: run it there, or pass
+  `--repo <clone>`, set `repo.path`, or name `--transcripts <dir>`.
+- An issue already under review has no snapshot of the plan its last round
+  read, so its next round is a full one; rounds are compared from the one
+  after. A plan in the earlier shape, with Steps in `plan.md`, parses as
+  before.
+
+MINOR rather than PATCH because the move to `plan-approved`, `pdkit ids
+freeze`, `pdkit task start` and `pdkit cost` start refusing what they used to
+accept.
 
 ### Added
 
@@ -2811,7 +2833,8 @@ found by a unit test.
   gate strips wrapper programs because hooks on the Bash tool are global, not
   because any particular tool exists.
 
-[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/vzhukovs/podman-desktop-kit/compare/v0.12.0...v0.13.0
