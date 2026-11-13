@@ -14,6 +14,11 @@ pdkit knowledge check --json     dead paths, drifted layer order, entry shape
 pdkit knowledge export --json    the base, for a one-way push to an external store
 ```
 
+Dead paths are checked against the podman-desktop clone, so run it there or pass
+`--repo <clone>`. From anywhere else, this plugin's own checkout included, the
+paths are not checked and the report says so and why, rather than listing every
+file the base cites as dead; the other checks read only the base, and still run.
+
 The check earns its keep immediately: on the machine this was written on it found
 `slicing.layer_order` in `$PDKIT_HOME/config.yaml` still pinned to the value
 `pdkit init` copied at stage 0, so three layers added two stages later had never

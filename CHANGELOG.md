@@ -14,7 +14,8 @@ fixes — see [RELEASING.md](RELEASING.md).
 An issue is approved only on a plan that passes `pdkit plan check`: on one
 standing at `planned`, run `pdkit plan check <n>` before
 `pdkit ids freeze <n> && pdkit state <n> --to plan-approved`, and fix what it
-names first.
+names first. `pdkit cost` refuses outside the podman-desktop clone: run it there,
+or pass `--repo <clone>`, set `repo.path`, or name `--transcripts <dir>`.
 
 ### Added
 
@@ -112,6 +113,14 @@ names first.
 
 ### Fixed
 
+- `pdkit cost` run outside the podman-desktop clone read the transcripts of the
+  directory it was run in and attributed them to the home's issues by time:
+  from this plugin's own checkout, planning showed no calls at all, and exec
+  the plugin's own sessions. It refuses there now, naming the remote that says
+  it is another repository. `pdkit knowledge check` from there listed every
+  file the base cites as dead; it no longer checks them against another
+  repository, and says so and why, while the checks that read only the base
+  still run. A remote not configured yet counts as neither.
 - `pdkit plan lessons` read a numbered list inside an item — `1. **S1.** …`
   under `### A1.` — as items of their own, so the A2 and A3 headings after it
   were listed with the titles "S2." and "S3.". A numbered line is an item only

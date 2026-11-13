@@ -44,6 +44,7 @@ import {
   packageFor,
   parseTrailers,
   pickScript,
+  notTheClone,
   remoteSlug,
   resolveRepoRoot,
   resolveBase,
@@ -459,5 +460,35 @@ describe('a fork slug that has not been set yet', () => {
     assert.deepEqual(result.unset, []);
     // What init reads to fill the key.
     assert.equal(result.remotes.origin, 'jdoe/podman-desktop');
+  });
+
+  // `pdkit cost` and `pdkit knowledge check` read what is keyed by the clone.
+  // Run from another repository, they read that one's and reported it as the
+  // clone's: no planning calls at all, and real files listed as dead.
+  describe('whether this is the configured clone', () => {
+    test('an unset key says nothing either way', async () => {
+      const result = await resolveRepoRoot({ cwd: repo, config: CONFIG('') });
+      assert.deepEqual(result.mismatches, []);
+      assert.equal(notTheClone(result), null);
+    });
+
+    test('a remote that disagrees says it is another one, and which', async () => {
+      const result = await resolveRepoRoot({ cwd: repo, config: CONFIG('someone-else/podman-desktop') });
+      assert.deepEqual(result.mismatches, ['remote "origin" is jdoe/podman-desktop, expected someone-else/podman-desktop']);
+      assert.match(notTheClone(result) ?? '', /is not the configured clone: remote "origin" is jdoe\/podman-desktop, expected someone-else/);
+    });
+
+    test('a remote that is missing says so', async () => {
+      const result = await resolveRepoRoot({ cwd: repo, config: { repo: { ...CONFIG('jdoe/podman-desktop').repo, upstream_remote: 'canonical' } } });
+      assert.match(notTheClone(result) ?? '', /remote "canonical" is missing \(expected podman-desktop\/podman-desktop\)/);
+    });
+
+    test('the matching clone is the clone', async () => {
+      assert.equal(notTheClone(await resolveRepoRoot({ cwd: repo, config: CONFIG('jdoe/podman-desktop') })), null);
+    });
+
+    test('outside a repository there is no clone', () => {
+      assert.equal(notTheClone({ root: null, problems: ['/tmp/x is not inside a git repository'], mismatches: [] }), '/tmp/x is not inside a git repository');
+    });
   });
 });

@@ -136,6 +136,24 @@ describe('references that stopped being true', () => {
 
     assert.deepEqual((await collect({ repoRoot: null })).findings, []);
   });
+
+  // A skip is never a pass: with nothing checked, the report used to read as a
+  // base with no dead reference.
+  test('references not checked are said to be, and why', async () => {
+    await base({
+      'notes.md': ['# Notes', '', 'See `packages/gone/src/x.ts`.', '', '## What to add here', '- things', ''].join('\n'),
+    });
+
+    const elsewhere = await collect({ unchecked: '/somewhere is not the configured clone' });
+    assert.deepEqual(elsewhere.findings, [], 'not checked against another repository');
+    assert.deepEqual(elsewhere.references, { checked: false, reason: '/somewhere is not the configured clone' });
+    const text = knowledge.format(elsewhere);
+    assert.match(text, /The file:line references were not checked: \/somewhere is not the configured clone\./);
+    assert.match(text, /Nothing mechanical to fix among what was checked\./);
+
+    assert.deepEqual((await collect({ repoRoot: null })).references, { checked: false, reason: 'no repository to check them against' });
+    assert.deepEqual((await collect()).references, { checked: true, reason: null });
+  });
 });
 
 describe('the layer chain', () => {

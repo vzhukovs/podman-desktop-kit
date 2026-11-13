@@ -535,9 +535,9 @@
     "stderr": "pdkit stats: unknown flag --definitely-unknown-flag\n  stats takes --author, --json, --limit, --repo\n"
   },
   "pdkit cost": {
-    "exitCode": 0,
-    "stdout": "cost: every issue in the journal\n\n  skip: no transcripts at <CLAUDE_CONFIG_DIR>/projects/<CWD_SLUG> — another machine, a cleared cache or a different CLAUDE_CONFIG_DIR; pass --transcripts <dir> if they are elsewhere\n",
-    "stderr": ""
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "pdkit cost: <CWD> is not inside a git repository\n  Transcripts are found by the path of the clone, so from another directory every figure would be the sessions opened there.\n  Run it inside the clone, pass --repo <clone>, set repo.path, or name the directory with --transcripts <dir>.\n"
   },
   "pdkit cost --definitely-unknown-flag": {
     "exitCode": 1,
@@ -545,9 +545,9 @@
     "stderr": "pdkit cost: unknown flag --definitely-unknown-flag\n  cost takes --compare, --issue, --json, --json, --planning, --repo, --since, --snapshot, --transcripts\n"
   },
   "pdkit cost no-such-action": {
-    "exitCode": 0,
-    "stdout": "cost: every issue in the journal\n\n  skip: no transcripts at <CLAUDE_CONFIG_DIR>/projects/<CWD_SLUG> — another machine, a cleared cache or a different CLAUDE_CONFIG_DIR; pass --transcripts <dir> if they are elsewhere\n",
-    "stderr": ""
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "pdkit cost: <CWD> is not inside a git repository\n  Transcripts are found by the path of the clone, so from another directory every figure would be the sessions opened there.\n  Run it inside the clone, pass --repo <clone>, set repo.path, or name the directory with --transcripts <dir>.\n"
   },
   "pdkit version": {
     "exitCode": 0,

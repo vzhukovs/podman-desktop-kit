@@ -15,10 +15,12 @@ pdkit cost --compare 2026-10-16     # that snapshot beside the issues journaled 
 pdkit cost --planning --issue 12345 # planning, round by round (below)
 ```
 
-Run it from the podman-desktop clone, or pass `--repo`: the transcripts are found
-under `~/.claude/projects/` by the repository's path (and under
-`$CLAUDE_CONFIG_DIR/projects` when that is set), worktrees included.
-`--transcripts <dir>` names the directory outright.
+Run it from the podman-desktop clone, pass `--repo`, or set `repo.path`: the
+transcripts are found under `~/.claude/projects/` by the repository's path (and
+under `$CLAUDE_CONFIG_DIR/projects` when that is set), worktrees included.
+Anywhere else it refuses and names the remote that says so, since every figure
+would be the sessions of the directory it was run in. `--transcripts <dir>`
+names the directory outright.
 
 What it prints, per issue: API calls (parent session and subagents apart), the
 four token counters, cost units, average and peak context, sessions,

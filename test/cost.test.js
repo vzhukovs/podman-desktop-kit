@@ -31,9 +31,12 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import {
   ATTRIBUTION_WINDOW_MS,
@@ -359,5 +362,54 @@ describe('reading transcripts', () => {
     assert.match(report.skip.reason, /no transcripts at .*does-not-exist/);
     assert.equal(report.coverage, null);
     assert.match(format(report), /skip: no transcripts/);
+  });
+});
+
+// Transcripts are found by the path of the clone. Run from another repository
+// — this plugin's own checkout, say — the report read that one's sessions,
+// attributed them to the home's issues by time alone, and showed planning with
+// no calls at all. Refused there, and said why.
+describe('run outside the configured clone', () => {
+  const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
+  let root;
+  let repo;
+
+  /** @param {string[]} args */
+  async function pdkit(args) {
+    try {
+      const { stdout, stderr } = await promisify(execFile)(process.execPath, [BIN, ...args], {
+        cwd: repo,
+        env: { ...process.env, PDKIT_HOME: join(root, 'home'), CLAUDE_CONFIG_DIR: join(root, 'claude') },
+      });
+      return { code: 0, stdout, stderr };
+    } catch (error) {
+      return { code: error.code, stdout: error.stdout, stderr: error.stderr };
+    }
+  }
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'pdkit-cost-clone-'));
+    repo = join(root, 'elsewhere');
+    await mkdir(repo);
+    await promisify(execFile)('git', ['init', '-q', '-b', 'main'], { cwd: repo });
+    await promisify(execFile)('git', ['remote', 'add', 'origin', 'https://github.com/someone/another-project.git'], { cwd: repo });
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  test('is refused, with which remote says so and the ways to name the clone', async () => {
+    const out = await pdkit(['cost', '--planning']);
+
+    assert.equal(out.code, 1);
+    assert.match(out.stderr, /^pdkit cost: .*elsewhere is not the configured clone: remote "upstream" is missing \(expected podman-desktop\/podman-desktop\)/);
+    assert.match(out.stderr, /--repo <clone>, set repo\.path, or name the directory with --transcripts <dir>/);
+    assert.equal(out.stdout, '');
+  });
+
+  test('runs when the transcripts are named', async () => {
+    const out = await pdkit(['cost', '--transcripts', join(root, 'claude', 'projects', 'x')]);
+    assert.equal(out.code, 0, out.stderr);
   });
 });
