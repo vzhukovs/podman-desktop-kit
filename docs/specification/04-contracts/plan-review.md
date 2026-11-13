@@ -5,6 +5,10 @@
 Fresh context, through `pd-plan-critic`. **The ordering matters more than the
 content: machine first, then model.**
 
+0. `pdkit plan snapshot <n>` — the plan this round reads, copied to
+   `reviews/r<k>/` before anything reads it. A revision edits `plan.md` and
+   `tasks/` in place, so without the copy the next round has nothing to
+   compare with.
 1. `pdkit plan check <n> [--json]` — mechanical failures. Template sections
    present; `Owns` exclusive between tasks; `Done when` a command in backticks
    rather than prose; every R-ID closed by at least one task and every task
@@ -35,12 +39,31 @@ content: machine first, then model.**
    (`--axis duplication`). A scoped brief lists its tasks whole, with each edge
    that leaves the scope; what a critic sees outside its scope is a line for
    the critic whose scope it is, not an item.
-4. The orchestrator merges the reports: one item per defect, a disagreement
+4. A repeat round is a **delta** when the plan the last round read was kept
+   and the change since is not structural: `pdkit plan diff <n>` names the
+   tasks added and removed, the parts of each task that changed and in which
+   file, whether `Frozen interfaces`, `Slice hypothesis` or `Upstream
+   compliance` changed, and calls the change structural when tasks were added
+   or removed or the first two changed. One critic gets
+   `pdkit plan brief <n> --mode delta`: the diff, the last round's decisions,
+   and each changed task with its neighbors — its `After` both ways and the
+   frozen interfaces it shares. It checks that the decisions were applied,
+   then the changed tasks and their neighbors, and outside the change raises
+   only a defect that would stop exec, marked as outside the delta. A
+   structural change gets a full round, and the brief refuses a delta for it.
+   The report says under its title which mode the round ran in, and why.
+5. The orchestrator merges the reports: one item per defect, a disagreement
    shown with both positions and left to the person, and a `## Coverage map` —
    every live task against seven checks (order, `Done when` runs on the base,
    `Done when` fails while the requirement is unmet, the neighbor's pattern,
    local directory rules, environment modes, duplication), each cell `✓`, `—`
    or `?`. Every `?` is a C item.
+
+Why a delta: a repeat round reviewed whole cost about what the first did,
+and most of what it read had been read the round before; a round narrowed to
+the decisions and the change cost about a third. What changed is a fact
+`lib/plan-rounds.js` computes; whether a round reviews the change or the whole
+plan is the skill's call, and a structural change is never a delta.
 
 Why several critics, and why a map: one critic on a plan of a dozen tasks
 reached the ceiling of its context every round and read a different part of
@@ -57,7 +80,8 @@ fail to.
 
 The output is `plan-review.md`, and the state does not move: a red `plan check`
 means the plan is rewritten, not that approval is refused, and the human decides.
-An earlier round's file is kept as `plan-review.r<k>.md`.
+An earlier round's file is kept as `plan-review.r<k>.md`, and the plan it
+read as `reviews/r<k>/`.
 
 The human's decisions go into `plan-review.md` as `## Operator decisions
 (round N)`, one line per item. While that round has not been applied,

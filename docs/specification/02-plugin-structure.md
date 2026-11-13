@@ -140,6 +140,7 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 │   ├── research.md              # the scouts' compressed map, file:line only
 │   ├── plan.md                  # the plan; R-IDs are frozen here
 │   ├── plan-review.md           # latest round; earlier ones in plan-review.r<k>.md
+│   ├── reviews/r1/ …            # plan.md and tasks/ as review round k read them
 │   ├── probe.json               # each task's Done when, run on the base before any code
 │   ├── tasks/T1.md …
 │   ├── receipts/T1.md …         # real command output

@@ -35,6 +35,7 @@ import { promisify } from 'node:util';
 import { parsePlan } from '../lib/artefacts.js';
 import { AXES, COVERAGE_CHECKS, brief } from '../lib/critic-brief.js';
 import { allocateRequirement, freezeRequirements } from '../lib/ids.js';
+import { diff, snapshot } from '../lib/plan-rounds.js';
 import * as probe from '../lib/probe.js';
 import { transition } from '../lib/state.js';
 
@@ -207,17 +208,87 @@ describe('brief', () => {
     assert.match(delta.error, /needs an earlier round/);
   });
 
-  test('a delta round with no diff recorded reviews the last round\'s decisions', async () => {
-    await writeFile(join(dir(), 'plan-review.md'), ROUND_2);
+  // A delta round is handed the change since the plan the last round read:
+  // what changed in each task and where, its neighbors, and the diff. Without
+  // a snapshot of that plan, or over a structural change, it would claim the
+  // rest of the plan was reviewed when nothing measured that.
+  describe('delta', () => {
+    /** Round 1 on disk, the plan snapshotted for round 2, round 2 written, then the plan revised. */
+    async function revise(revised) {
+      await writeFile(join(dir(), 'plan.md'), PLAN);
+      await writeFile(join(dir(), 'plan-review.r1.md'), ROUND_1);
+      await snapshot(ISSUE, { home });
+      await writeFile(join(dir(), 'plan-review.md'), ROUND_2);
+      await writeFile(join(dir(), 'plan.md'), revised);
+      const found = await diff(ISSUE, { home });
+      assert.equal(found.ok, true);
+      return found.ok ? found : null;
+    }
 
-    const result = await render({ mode: 'delta' });
-    assert.equal(result.ok, true);
-    if (!result.ok) return;
-    assert.match(result.text, /^Delta: what changed in the scope below since round 2\./m);
-    assert.match(result.text, /## Changes since the last round\n\nNo diff is recorded\. The change under review is round 2's accepted decisions/);
+    /** T1's Done when changed, and a fenced step added to it. */
+    const REVISED = PLAN.replace(
+      '- Done when: `npx vitest run src/a.spec.ts`',
+      '- Done when: `npx vitest run src/a.spec.ts --run`\n- Steps:\n  ```bash\n  npx vitest run src/a.spec.ts\n  ```',
+    );
 
-    const full = await render();
-    assert.match(full.ok ? full.text : '', /## Changes since the last round\n\nNone: a full round reviews the whole scope\./);
+    test('its scope is the changed tasks with their neighbors, and its changes the diff', async () => {
+      const delta = await revise(REVISED);
+      const result = await render({ mode: 'delta', plan: parsePlan(REVISED), delta });
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+
+      assert.match(result.text, /^Delta: what changed since round 2 read the plan, and its neighbors\. The change is not structural/m);
+      assert.match(result.text, /## Scope\n\nThe tasks changed since round 2 read the plan: T1 — 1 of 2 live task\(s\)\./);
+      assert.match(result.text, /- T1 — a\n {2}Changed: Done when \(plan\.md\); Steps \(plan\.md\)\n {2}After: none\. Waited on by: none\./);
+      assert.match(result.text, /Compared with `[^`]*reviews[/\\]r2`, the plan round 2 read\./);
+      assert.match(result.text, /- Frozen interfaces: unchanged\. Slice hypothesis: unchanged\. Upstream compliance: unchanged\./);
+      // Longer than the fence the diff carries, so that one does not close it.
+      assert.match(result.text, /^````diff\n--- r2\/plan\.md\n\+\+\+ plan\.md\n[\s\S]*^\+ {2}```bash$[\s\S]*^````$/m);
+      assert.deepEqual(coverageRows(result.text), ['T1']);
+      // The decisions to check are listed in a delta round as in a full one.
+      assert.match(result.text, /- A1 \(round 2\) — The fixture lacks a field its loader requires/);
+    });
+
+    test('is refused without a snapshot of the plan the last round read', async () => {
+      await writeFile(join(dir(), 'plan-review.md'), ROUND_2);
+      const result = await render({ mode: 'delta', delta: null });
+      assert.equal(result.ok, false);
+      assert.match(result.ok ? '' : result.error, /no snapshot of that plan \(reviews\/r2\/\): this round is a full one/);
+
+      const full = await render({ delta: null });
+      assert.match(full.ok ? full.text : '', /^Full: the whole scope below — the plan round 2 read has no snapshot in `reviews\/`/m);
+    });
+
+    test('is refused over a structural change, and the full brief says why it is full', async () => {
+      const added = `${REVISED}### T4: c\n- Satisfies: R1\n- Owns: src/c.ts\n- Done when: \`true\`\n`;
+      const delta = await revise(added);
+      const result = await render({ mode: 'delta', plan: parsePlan(added), delta });
+      assert.equal(result.ok, false);
+      assert.match(result.ok ? '' : result.error, /structural — tasks added: T4: a delta round does not cover it/);
+
+      const full = await render({ plan: parsePlan(added), delta });
+      assert.match(full.ok ? full.text : '', /^Full: the whole scope below — the change since round 2 is structural: tasks added: T4\.$/m);
+      assert.match(full.ok ? full.text : '', /## Changes since the last round\n\nNone: a full round reviews the whole scope\./);
+    });
+
+    test('takes no area and no axis: it is one critic over what changed', async () => {
+      const delta = await revise(REVISED);
+      for (const extra of [{ area: ['src'] }, { axis: 'duplication' }]) {
+        const result = await render({ mode: 'delta', plan: parsePlan(REVISED), delta, ...extra });
+        assert.match(result.ok ? '' : result.error, /takes no --area or --axis/);
+      }
+    });
+
+    test('a full round that could have been a delta says so, and a first round says it is the first', async () => {
+      const delta = await revise(REVISED);
+      const full = await render({ plan: parsePlan(REVISED), delta });
+      assert.match(full.ok ? full.text : '', /^Full: the whole scope below — the change since round 2 is not structural, and a full round was asked for\.$/m);
+
+      await rm(join(dir(), 'plan-review.md'));
+      await rm(join(dir(), 'plan-review.r1.md'));
+      const first = await render();
+      assert.match(first.ok ? first.text : '', /^Full: the whole scope below — this is the first round\.$/m);
+    });
   });
 
   test('with no area, the scope is the whole plan, its live tasks named, each a row of the coverage map', async () => {

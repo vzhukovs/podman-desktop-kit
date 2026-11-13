@@ -22,9 +22,11 @@
 
 <!-- The tasks this critic reviews: the whole plan; the tasks of some of its
      areas (`pdkit plan areas`), each with its Owns and the edges that leave
-     the scope; or one axis across the whole plan. A large plan is split
-     because one critic's context does not hold it, and a critic that read
-     part of a plan without knowing which part reports a sample as a review. -->
+     the scope; one axis across the whole plan; or, in a delta round, the
+     tasks changed since the last round, each with its neighbors. A large plan
+     is split because one critic's context does not hold it, and a critic that
+     read part of a plan without knowing which part reports a sample as a
+     review. -->
 {{scope}}
 
 ## Where things are
@@ -59,20 +61,26 @@ A finding about a change made since it was rejected is a new item, not one of th
 
 ## Changes since the last round
 
-<!-- A delta round reviews what changed: the diff of plan.md and tasks/ since
-     the last round goes here. Until one is recorded, the change is the last
-     round's accepted decisions. A full round has nothing here. -->
+<!-- A delta round reviews what changed: plan.md and tasks/ against the
+     snapshot of the plan the last round read (`pdkit plan diff`), part by
+     part, then the diff cut to a number of lines. A full round has nothing
+     here. -->
 {{changes}}
 
 ## The report
 
 Language: (the orchestrator writes the language the person reads on this line)
 
-Title it `# PLAN REVIEW: DESKTOP-{{issue}} — round {{round}}`, then these
-sections, in this order. Each item is a `### A1. <the finding in one line>`
-heading, and every claim in it carries a `file:line`.
+Title it `# PLAN REVIEW: DESKTOP-{{issue}} — round {{round}}`. Under the
+title, one line: `Mode: full` or `Mode: delta`, and why, in the words of the
+Mode section above. Then these sections, in this order. Each item is a
+`### A1. <the finding in one line>` heading, and every claim in it carries a
+`file:line`.
 
-- `## A — must change before approval`: A1, A2…
+- `## A — must change before approval`: A1, A2… In a delta round, an item
+  about something outside the changes and their neighbors is an A or nothing:
+  a defect that would stop exec, with the evidence that it would, headed
+  `### A<k>. Outside the delta: <the finding>`.
 - `## B — worth discussing`: B1…
 - `## C — cannot be judged from the plan alone`: C1…, each with what would decide it.
 - `## Decisions of the last round`: one line per item under "Accepted in the
@@ -87,7 +95,8 @@ heading, and every claim in it carries a `file:line`.
   items: no A, B or C. Left out when the scope is the whole plan.
 - `## Coverage map`, last: the table below, a row per task in your scope. Turn
   a cell into `✓` for a check you made on that task and `—` for one that does
-  not apply to it; leave `?` where you did not check. A `?` is an answer; a `✓`
-  over something you did not read is the one wrong answer.
+  not apply to it — in a delta round, also for one the change cannot reach;
+  leave `?` where you did not check. A `?` is an answer; a `✓` over something
+  you did not read is the one wrong answer.
 
 {{coverage}}

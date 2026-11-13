@@ -31,7 +31,8 @@ What a revision is:
 3. Edit `plan.md` and the task files in place. Task IDs never change; a task
    the revision drops is deleted from both before approval, which is the only
    time that is allowed. Then `pdkit task sync --issue <n>` and
-   `pdkit plan check <n>`.
+   `pdkit plan check <n>`. The review already copied the plan it read into
+   `reviews/r<k>/`, and the next review compares with it: leave `reviews/` alone.
 4. `pdkit plan probe <n> --task <every task whose Done when changed>`, from
    the main checkout.
 5. `pdkit plan revised <n>`, which records that the round is in the plan. Then

@@ -12,6 +12,18 @@ of it.
 
 Machine first, then the model. In that order, and the order is the point.
 
+## 0. The plan this round reads
+
+```
+pdkit plan snapshot <n>
+```
+
+Before anything reads the plan: it copies `plan.md` and `tasks/` to
+`reviews/r<k>/`, `k` being this round, and the next round compares the plan
+with that copy. Nothing else writes under `reviews/`. Run again in the same
+round it changes nothing, unless the plan changed before this round's report
+was written — then the copy is of the plan as it is now.
+
 ## 1. The mechanical failures
 
 ```
@@ -44,6 +56,32 @@ What it is for: **is this task necessary at all, and does something already do
 it?** podman-desktop is large, utilities get duplicated between `packages/main`
 and `packages/renderer`, and reviewers push back on it. Catching that here costs
 a conversation; catching it in review costs a rewrite.
+
+### Full or delta
+
+```
+pdkit plan diff <n> --json
+```
+
+It compares the plan with the snapshot of the plan the last round read.
+
+- **Delta** when `base.round` equals `lastRound` — the plan the last round
+  read was kept — and `structural` is `false`: one critic, with
+  `pdkit plan brief <n> --mode delta`. Its brief carries the diff, the last
+  round's decisions, and each changed task with its neighbors: its `After`
+  both ways and the frozen interfaces it shares. The critic checks that each
+  accepted decision is in the plan, with `file:line`; then the changed blocks
+  and their neighbors — `Owns`, `After`, `Done when`, requirement coverage;
+  and outside the change, only a defect that would stop exec, as an A item
+  headed `Outside the delta:` with its evidence.
+- **Full** otherwise: the first round; a last round whose plan was not kept;
+  or a structural change — a task added or removed, `Frozen interfaces` or
+  `Slice hypothesis` changed. A delta there would say the rest of the plan was
+  reviewed when what it rests on has changed, and the brief refuses it.
+
+A repeat round reviewed whole costs about what the first did, and most of what
+it reads it read last time; a full round where a delta is possible is the
+person's call, not yours.
 
 ### One critic or several
 
@@ -92,7 +130,10 @@ before the review; its checklist is in its own definition.
 `plan-review.md` under the issue. If one is already there from an earlier
 round, move it to `plan-review.r<k>.md` first, `k` being its round, so every
 round keeps its own file and `plan-review.md` is always the latest. Title it
-`# PLAN REVIEW: DESKTOP-<n> — round <k>`. Structure it as: what must change
+`# PLAN REVIEW: DESKTOP-<n> — round <k>`, and under the title write the mode,
+full or delta, and why, as the brief's Mode section gives it. In a delta
+round, an item outside the delta keeps that mark in the merged report.
+Structure it as: what must change
 before approval (A1, A2…), what is worth discussing (B1…), and what the
 reviewer could not judge from the plan alone (C1…), then the sections the
 brief asks of a critic.
@@ -112,12 +153,14 @@ them, then merge their reports into one:
   dropped. One it did not raise is a C item naming the critic that saw it.
 - **Probes, decisions of the last round, checked without findings**: the union.
 
-Then `## Coverage map`, after C and before any decisions: a row per live task,
-the columns of the critics' maps. A cell is `✓` when any critic made the check,
-`—` when none did and one found it does not apply, and `?` otherwise. Every `?`
-is a C item of its own, `### C<k>. <T-ID> — <column>: not checked`, with one
-critic as with several: a part of the plan nobody read is then a line the
-person decides on, not a finding a later round turns up.
+Then `## Coverage map`, after C and before any decisions: a row per task in
+the round's scope — every live task in a full round, the changed ones in a
+delta — the columns of the critics' maps. A cell is `✓` when any critic made
+the check, `—` when none did and one found it does not apply, and `?`
+otherwise. Every `?` is a C item of its own,
+`### C<k>. <T-ID> — <column>: not checked`, with one critic as with several:
+a part of the plan nobody read is then a line the person decides on, not a
+finding a later round turns up.
 
 An empty "must change" section is a valid result. A critic that finds something
 wrong with every plan is one nobody reads by the third time.

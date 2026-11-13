@@ -20,8 +20,7 @@ fixes — see [RELEASING.md](RELEASING.md).
   hand each round, the critic's prompt varied in what it hinted at, and what
   the critic found followed the hints. The skill now passes the brief as it is;
   the orchestrator fills in the report's language and may append verified
-  facts under `## Orchestrator facts`, never a hint on where to look. A delta
-  round with no diff recorded reviews the last round's accepted decisions.
+  facts under `## Orchestrator facts`, never a hint on where to look.
 - `pdkit plan areas <n> [--json]`: the plan's live tasks by area, from the
   paths in their `Owns` — `packages/<x>` and `extensions/<x>`, else the first
   directory, `root` for a file at the top, `gate` for a task that owns nothing —
@@ -38,6 +37,26 @@ fixes — see [RELEASING.md](RELEASING.md).
   what a critic sees outside its scope is a line for the critic whose scope it
   is, not an item. The orchestrator merges the reports — one item per defect,
   a disagreement shown with both positions rather than settled.
+- `pdkit plan snapshot <n>` and `pdkit plan diff <n> [--json]`, and a delta
+  round of `/pd:plan-review`. Each review now starts by copying `plan.md` and
+  `tasks/` to `reviews/r<k>/`, the plan that round reads. `plan diff` compares
+  the plan with the copy the last round read: tasks added and removed, the
+  parts of each task that changed (`Satisfies`, `Owns`, `Done when`, `After`,
+  `Slice`, `Context`, `Steps`, `Notes`) and in which file, whether `Frozen
+  interfaces`, `Slice hypothesis` or `Upstream compliance` changed, whether
+  that is structural, and a diff cut to 150 lines. A revision edited the plan
+  in place and nothing kept the version the last round read, so every repeat
+  round reviewed the whole plan again at about the cost of the first; one
+  narrowed to the decisions and the change cost about a third. When the
+  change is not structural, the repeat round is one critic with
+  `pdkit plan brief <n> --mode delta`: the diff, the last round's decisions,
+  and each changed task with its `After` edges both ways and the frozen
+  interfaces it shares. It checks that the decisions were applied, then the
+  changed tasks and their neighbors, and outside the change raises only a
+  defect that would stop exec, marked as outside the delta. A task added or
+  removed, or a change to `Frozen interfaces` or `Slice hypothesis`, gets a
+  full round, and the brief refuses a delta for it. Every report says under
+  its title whether the round was full or a delta, and why.
 - Every plan review ends with `## Coverage map`: each live task against seven
   checks (order, `Done when` runs on the base, `Done when` fails while the
   requirement is unmet, the neighbor's pattern, local directory rules,
