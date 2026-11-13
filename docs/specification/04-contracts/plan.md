@@ -16,9 +16,15 @@ reviews raised and what was decided, and `research.md` opens with it under
 `## From earlier attempts`. Then at least three `pd-scout` runs **in
 parallel**, on different questions: where the logic is, which reusable
 patterns exist, how the area's tests are built. Each is handed the entries of
-`knowledge/pitfalls.md` and of the earlier attempts that bear on its region.
-The scout's response format is strict — ≤ 40 lines, every claim carrying
-`file:line`. The host does not read files broadly itself.
+`knowledge/pitfalls.md` and of the earlier attempts that bear on its region,
+and asked, besides its question, for two sections: the **local rules** of the
+directories the change will likely touch and of those above them — the
+obligations in their `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING*` and `README*`,
+quoted — and the **modes of the environment** its component runs in, with how
+the neighbors handle each. `research.md` merges both into sections of those
+names. The scout's response format is strict — ≤ 50 lines with those two
+sections, every claim carrying `file:line`. The host does not read files
+broadly itself.
 
 **Phase 2, forks in the road.** Anything the scouts flagged as a choice goes to
 the human. A question not asked becomes `[NEEDS DECISION]` in the plan, and that

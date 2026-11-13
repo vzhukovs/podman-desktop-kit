@@ -91,6 +91,19 @@ fixes — see [RELEASING.md](RELEASING.md).
   entries and the earlier findings that bear on its region, and
   `pd-plan-critic` reads the entries for the areas in its scope. Neither read
   `pitfalls.md` before.
+- Every `pd-scout` of `/pd:plan` is asked, besides its question, for two
+  sections: **Local rules**, the obligations in the `AGENTS.md`, `CLAUDE.md`,
+  `CONTRIBUTING*` and `README*` of the directories the change will likely
+  touch and of those above them, quoted with `file:line`; and **Modes of the
+  environment**, the operating systems, builds, runners, providers and flags
+  the mapped component runs in, with how its neighbors handle each.
+  `research.md` merges them under `## Local rules` and
+  `## Modes of the environment`. A scout answered what it was asked and no
+  more: a test directory's rule to update its spec inventory in the same
+  change, and a second runner that does not pass extra arguments to the
+  application, each reached the plan through a later review round. A scout
+  asked for the two sections answers in 50 lines rather than 40; the triage
+  scouts keep 40.
 - `/pd:plan-review` proposes, after the decisions, each accepted A item that
   states a fact about the repository as a one-line knowledge candidate. The
   person's yes is written on the item's decision line as

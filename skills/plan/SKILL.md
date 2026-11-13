@@ -91,15 +91,40 @@ it stays near 300 lines and the region is unclear) and the lines of
 against the code it reads and cites the current `file:line`; one the code no
 longer bears out is a finding, not a premise.
 
-Their format is fixed: ≤ 40 lines, every claim with `file:line`, no
-recommendations. A scout that proposes a solution has exceeded its brief, and
-its proposal has not been checked against the other two.
+Every scout's prompt also names the directories of its region the change will
+likely touch, and asks for two sections after its answer:
+
+- **Local rules** — the `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING*` and
+  `README*` in those directories and in each one above them, with every
+  obligation a change there is held to ("in the same change, update X", "do
+  not do Y") quoted word for word with `file:line`; none found, the search.
+  The root's files are the same for every scout, so only the scout asked
+  where the logic lives goes up to the root; the others stop below it.
+- **Modes of the environment** — the modes the component it maps runs in
+  (the operating system, a packaged or a development build, more than one
+  runner or provider, a flag) and how the neighboring code handles each, a
+  skip or a branch, with `file:line`.
+
+A scout answers what it is asked and nothing beside it. A directory's rule
+about what else changes with the code, or a runner that drops what the others
+pass, reaches the plan from reconnaissance only when a brief asks for it;
+otherwise a plan review finds it, one round at a time.
+
+Their format is fixed: ≤ 50 lines with those two sections, every claim with
+`file:line`, no recommendations. A scout that proposes a solution has exceeded
+its brief, and its proposal has not been checked against the other two.
 
 Do not read the code broadly yourself. Scouts exist so you read 40 lines
 instead of 4000; reading both is the failure mode this structure was built
 against.
 
-Write the compressed map to `research.md`.
+Write the compressed map to `research.md`, and after it two sections that
+merge what the scouts returned: `## Local rules`, one line per obligation with
+its `file:line` and the directory it binds, the same rule from two scouts
+once; and `## Modes of the environment`, one line per mode with how the
+neighbors handle it and where. A section with nothing in it keeps its heading
+and the searches that came back empty, so a reader can tell "none" from "not
+asked".
 
 ## Phase 2 — the choices
 

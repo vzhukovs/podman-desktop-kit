@@ -4,7 +4,7 @@
 
 | Agent | Model | Tools | Role |
 |---|---|---|---|
-| `pd-scout` | sonnet | Read, Grep, Glob, Bash (ro) | reconnaissance, ≤ 40 lines, every claim `file:line`, proposes nothing |
+| `pd-scout` | sonnet | Read, Grep, Glob, Bash (ro) | reconnaissance, ≤ 40 lines (50 with local rules and modes of the environment), every claim `file:line`, proposes nothing |
 | `pd-implementer` | sonnet | everything except push/gh | one task, only files from `Owns`, a receipt with real output |
 | `pd-auditor` | opus | Read, Grep, Glob, Bash (ro) | diff against plan, fresh context |
 | `pd-plan-critic` | opus | Read, Grep, Glob | adversarial review of the **plan**, before code: the whole plan, some of its areas, or one axis across it |
