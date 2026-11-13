@@ -42,7 +42,7 @@ fixes — see [RELEASING.md](RELEASING.md).
   `tasks/` to `reviews/r<k>/`, the plan that round reads. `plan diff` compares
   the plan with the copy the last round read: tasks added and removed, the
   parts of each task that changed (`Satisfies`, `Owns`, `Done when`, `After`,
-  `Slice`, `Context`, `Steps`, `Notes`) and in which file, whether `Frozen
+  `Slice`, `Intent`, `Context`, `Steps`, `Notes`) and in which file, whether `Frozen
   interfaces`, `Slice hypothesis` or `Upstream compliance` changed, whether
   that is structural, and a diff cut to 150 lines. A revision edited the plan
   in place and nothing kept the version the last round read, so every repeat
@@ -124,6 +124,37 @@ fixes — see [RELEASING.md](RELEASING.md).
   runner) against how its neighbors handle each, and whether an artifact a task
   creates — a fixture, a manifest, a config — is accepted by what loads it,
   rather than only parsing.
+- **A task's body is written in its task file only.** In `templates/plan.md`
+  a task block is its header — `Satisfies`, `Owns`, `Done when`, `After`,
+  `Slice` — and one `- Intent:` sentence; its Context, Steps and Notes are in
+  `tasks/T<k>.md` and nowhere else. Written in both, every revision edited
+  two places and every review checked that they agreed, and on a large issue
+  `plan.md` with its task files came to nine times the size of the
+  reconnaissance it was drawn from. `/pd:plan` now plans the index, the
+  contracts and the slices, and leaves to the implementer what it will read
+  in its own files: a step names the file and the requirement. `/pd:exec`
+  hands the worker its task file; `pd-auditor` reads the task files beside
+  `plan.md`; an approved amendment's block reaches `plan.md` without its
+  Steps and Context, which go, with its Notes, to the task file it renders;
+  `plan diff` reports `Intent` as a part of its own, and finds the tasks that
+  use a frozen interface by their task files as well as their blocks.
+  **Compatibility:** a plan in the earlier shape, with Steps and Context in
+  `plan.md`, reads as it did — `plan check`, the order exec follows, the
+  ownership map and amendments see the same header — and needs nothing done
+  to it. Leave a plan already in work as it is; a revision of one applies a
+  change to Steps in both places.
+- `pd-plan-critic` writes a detail the implementer will learn from the files
+  its task owns, or from the first run of its `Done when`, as a line under
+  `## Notes for exec` rather than an A or B item, and `/pd:plan` appends those
+  lines to the tasks' Notes in its revision phase, without a decision. Notes
+  is not a part execution reads, so notes alone never send the plan to
+  another round. A gap with which `Done when` would pass while the requirement is
+  unmet, or whose fix needs a file outside the task's `Owns`, stays an item.
+  In the repeat rounds of one large plan, five items in seventeen were such a
+  line, and each took a share of a round and a decision.
+- `pdkit plan check` states the size of `plan.md`, of the files under
+  `tasks/` and of `research.md`, and `--json` carries them as `sizes`. Facts
+  with no threshold: the check passes or fails as it did.
 
 ## [0.14.1] - 2026-11-12
 

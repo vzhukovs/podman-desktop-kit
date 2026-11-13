@@ -5,9 +5,10 @@
 **Phase 0, a revision.** When `plan-review.md` holds `## Operator decisions
 (round N)` that `pdkit plan revised` has not marked applied, `pdkit next` names
 `/pd:plan <n>`, and the skill starts here instead of at phase 1: it applies the
-accepted items to `plan.md` and the task files, scouts only for a fact a
-decision needs, re-probes the commands it changed, and ends with
-`pdkit plan revised <n>`. Nothing is pasted after the command.
+accepted items to `plan.md` and the task files, appends the review's
+`## Notes for exec` to the Notes of the tasks they name without a decision,
+scouts only for a fact a decision needs, re-probes the commands it changed,
+and ends with `pdkit plan revised <n>`. Nothing is pasted after the command.
 
 **Phase 1, reconnaissance.** First what is already known: when the issue was
 reset or rolled back before, `pdkit plan lessons <n>` prints what the archived
@@ -23,8 +24,12 @@ The scout's response format is strict — ≤ 40 lines, every claim carrying
 the human. A question not asked becomes `[NEEDS DECISION]` in the plan, and that
 blocks approval.
 
-**Phase 3, the plan** by `templates/plan.md`. Nine requirements; a breach means
-a rewrite:
+**Phase 3, the plan** by `templates/plan.md`, and a task file per task by
+`templates/task.md`. The plan is the index, the contracts and the slices: in
+`plan.md` a task is its header and one `Intent:` sentence, and its Context,
+Steps and Notes are in its task file only. A plan written before that split,
+with Steps in `plan.md`, is still read as it was. Nine requirements; a breach
+means a rewrite:
 
 1. Each task owns its files **exclusively**. Overlap is a planning error. A task
    that writes nothing — a whole-suite gate, a measurement — declares

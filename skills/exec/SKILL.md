@@ -84,8 +84,10 @@ finding about the plan, like any other.
 1. `pdkit task start --issue <n> --task <the task task list names>` in the
    issue's tree. From here until `task stop`, writes outside its files are
    refused and completing the task requires its receipt.
-2. Give the worker the task, its `Owns` list, its `Done when` command, and the
-   frozen interfaces. Nothing else — not the whole plan, not the issue thread.
+2. Give the worker its task file, `tasks/T<k>.md` — `Owns`, `Done when`,
+   Context, Steps and Notes — and the frozen interfaces from `plan.md`. Nothing
+   else — not the whole plan, not the issue thread. The task's block in
+   `plan.md` is its header and one line of intent; the steps are in the file.
 
    The worker is a `pd-implementer`, not this session working through the same
    list. This is arithmetic, not taste: the subagent's context dies with it, and
@@ -243,7 +245,8 @@ neither the plan checks nor `pd-plan-critic`.
    out of the way. That buys an approval, and the gap comes back as a refused
    `slice set` after the work is done.
    Then it applies the requirement table and materializes the tasks: it
-   renders `tasks/T<k>.md`, adds the blocks to `plan.md`, marks the replaced
+   renders `tasks/T<k>.md` from each block, adds the block to `plan.md` without
+   its Steps and Context, marks the replaced
    tasks `withdrawn by A<k>` and re-runs `task sync`. `pdkit plan check <n>`
    now reads the plan with them in it. If an amendment was approved but did
    not fully apply, `pdkit amendment sync A<k> --issue <n>` finishes it.

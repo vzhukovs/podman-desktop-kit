@@ -362,6 +362,27 @@ describe('plan rounds', () => {
       );
     });
 
+    // In a plan written to the template now, the block in plan.md is a header
+    // and an intent, and what a task consumes is named in its task file. Read
+    // from plan.md alone, T2 dropped out of the entry it uses, and a delta
+    // round was handed a changed task without the contract it shares.
+    test('a task that names an interface only in its task file is in its entry; an intent is its own part', async () => {
+      await writeFile(
+        join(dir(), 'plan.md'),
+        PLAN.replace(/- Steps:\n {2}1\. [^\n]*\n/g, '').replace('- After: T1\n', '- After: T1\n- Intent: wire the registry in at start.\n'),
+      );
+      await edit('tasks/T2.md', '1. Do it.', '1. Call `Registry.register` at start.');
+      await reviewed();
+      await edit('plan.md', '- Intent: wire the registry in at start.', '- Intent: wire the registry in once, at start.');
+
+      const result = await diff(ISSUE, { home });
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      const [wiring] = result.tasks.changed;
+      assert.deepEqual(wiring.parts, [{ part: 'Intent', in: ['plan.md'] }]);
+      assert.deepEqual(wiring.neighbors.interfaces, [{ line: 13, head: '// src/registry.ts (T1)', declares: ['Registry'], with: ['T1'] }]);
+    });
+
     test('compares with the plan the last review read, not the snapshot taken for the round under way', async () => {
       await reviewed();
       await edit('tasks/T3.md', '- another at `src/a.ts:2`', '- another at `src/a.ts:3`');
@@ -394,7 +415,7 @@ describe('plan rounds', () => {
     });
   });
 
-  describe('pdkit plan snapshot and plan diff', () => {
+  describe('pdkit plan snapshot, plan diff and plan check', () => {
     async function pdkit(...args) {
       try {
         const { stdout, stderr } = await exec(process.execPath, [BIN, ...args], { cwd: home, env: { ...process.env, PDKIT_HOME: home }, encoding: 'utf8' });
@@ -428,6 +449,27 @@ describe('plan rounds', () => {
       const result = await pdkit('plan', 'diff', String(ISSUE));
       assert.equal(result.code, 0, result.stderr);
       assert.match(result.stdout, /no snapshot to compare with/);
+    });
+
+    // What a round reads, as numbers: a plan many times the size of its
+    // reconnaissance is mostly claims about the code nobody has checked yet.
+    // Facts only — the check passes or fails exactly as it did without them.
+    test('plan check states the size of plan.md, tasks/ and research.md, and judges none of them', async () => {
+      const tasks = Object.keys(OWNS).reduce((sum, id) => sum + Buffer.byteLength(taskFile(id, OWNS[id])), 0);
+      const kb = (bytes) => `${(bytes / 1000).toFixed(1)} KB`;
+
+      const before = await pdkit('plan', 'check', String(ISSUE));
+      assert.match(before.stdout, new RegExp(`^ {2}size {2}plan\\.md ${kb(Buffer.byteLength(PLAN))}; tasks/ ${kb(tasks)} in 4 file\\(s\\); research\\.md absent$`, 'm'));
+
+      await writeFile(join(dir(), 'research.md'), 'x'.repeat(1500));
+      const after = await pdkit('plan', 'check', String(ISSUE));
+      assert.equal(after.code, before.code);
+      assert.match(after.stdout, /; research\.md 1\.5 KB$/m);
+      assert.deepEqual(JSON.parse((await pdkit('plan', 'check', String(ISSUE), '--json')).stdout).sizes, {
+        plan: Buffer.byteLength(PLAN),
+        tasks: { bytes: tasks, files: 4 },
+        research: 1500,
+      });
     });
   });
 });

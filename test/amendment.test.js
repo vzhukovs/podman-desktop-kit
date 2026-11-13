@@ -406,6 +406,8 @@ describe('the tasks an amendment writes', () => {
 
     const text = await readFile(issueFile('plan.md'), 'utf8');
     assert.match(text, /### T2: close handler[\s\S]*### T3 \(replaces T2\): a second before-quit is vetoed[\s\S]*\n\n## Upstream compliance/);
+    // Its steps are in tasks/T3.md, the one place a task's body is written.
+    assert.doesNotMatch(text, /add the four tests/);
     const check = await pdkit('plan', 'check', String(ISSUE));
     assert.equal(check.code, 0, check.stdout);
   });

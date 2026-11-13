@@ -31,6 +31,7 @@ import {
   addPlanTasks,
   amendmentCoverageProblems,
   amendmentTaskProblems,
+  amendmentTaskValues,
   checkPlan,
   parseAmendment,
   parsePlan,
@@ -145,6 +146,85 @@ describe('parsePlan', () => {
 
     assert.equal(parsed.issue, null);
     assert.deepEqual(parsed.tasks, []);
+  });
+});
+
+// A task's Context, Steps and Notes moved out of plan.md into its task file:
+// written in both, every revision edited two places and every review compared
+// them. Plans approved before the move keep the old shape until they are done,
+// and nothing that reads the header may tell the two apart — not plan check,
+// not the order exec follows, not the ownership a stop report is checked
+// against.
+describe('the two shapes of a task block', () => {
+  /** The header both shapes share. */
+  const HEADER = [
+    '### T1: join the command arguments',
+    '- Satisfies: R1',
+    '- Owns: packages/main/src/plugin/container-registry.ts',
+    '- Done when: `pnpm test:main -- container-registry.spec.ts`',
+  ];
+  const T2 = ['### T2: cover it with a test', '- Satisfies: R2', '- Owns: packages/main/src/plugin/container-registry.spec.ts', '- Done when: `pnpm test:main -- container-registry.spec.ts`', '- After: T1', '- Slice: S1'];
+
+  /** What the template writes now: the header and one sentence. */
+  const INDEX = [
+    ...HEADER,
+    '- Slice: S1',
+    '- Intent: run the command a container was created with, not only its first word (R1).',
+    '',
+    ...T2,
+    '- Intent: pin R1 with a three-argument case.',
+  ].join('\n');
+
+  /**
+   * What it wrote before: Steps and Context in the block, an indented line in
+   * each shaped like a field — which belongs to the step or the context it is
+   * in, not to the task.
+   */
+  const INLINE = [
+    ...HEADER,
+    '- Slice: S1',
+    '- Steps:',
+    '  1. Replace Command[0] with Command.join(" ")',
+    '     - Owns: nothing new, the line is already T1\'s',
+    '- Context:',
+    '  - `packages/main/src/plugin/container-registry.ts:559` — the offending line',
+    '  - Done when: is read off the spec, see `container-registry.spec.ts:40`',
+    '',
+    ...T2,
+    '- Steps:',
+    '  1. Add a case with three arguments',
+  ].join('\n');
+
+  const header = (task) => [task.id, task.title, task.satisfies, task.owns, task.command, task.after, task.slice];
+
+  test('read the same header, and the same order', () => {
+    const index = parsePlan(plan({ tasks: INDEX })).tasks;
+    const inline = parsePlan(plan({ tasks: INLINE })).tasks;
+
+    assert.deepEqual(index.map(header), inline.map(header));
+    assert.deepEqual(index.map(header), [
+      ['T1', 'join the command arguments', ['R1'], ['packages/main/src/plugin/container-registry.ts'], 'pnpm test:main -- container-registry.spec.ts', [], 'S1'],
+      ['T2', 'cover it with a test', ['R2'], ['packages/main/src/plugin/container-registry.spec.ts'], 'pnpm test:main -- container-registry.spec.ts', ['T1'], 'S1'],
+    ]);
+  });
+
+  test('the index carries the intent and no body; the inline shape carries its body', () => {
+    const [index] = parsePlan(plan({ tasks: INDEX })).tasks;
+    const [inline] = parsePlan(plan({ tasks: INLINE })).tasks;
+
+    assert.equal(index.intent, 'run the command a container was created with, not only its first word (R1).');
+    assert.deepEqual([index.steps, index.context, index.notes], ['', '', '']);
+
+    assert.equal(inline.intent, '');
+    assert.equal(inline.steps, '1. Replace Command[0] with Command.join(" ")\n   - Owns: nothing new, the line is already T1\'s');
+    assert.match(inline.context, /^- `packages\/main\/src\/plugin\/container-registry\.ts:559`[^\n]*\n- Done when: is read off the spec/);
+  });
+
+  test('plan check passes on both', async () => {
+    for (const tasks of [INDEX, INLINE]) {
+      const result = await checkPlan({ plan: parsePlan(plan({ tasks })), content: plan({ tasks }) });
+      assert.deepEqual(result.problems, [], tasks.slice(0, 40));
+    }
   });
 });
 
@@ -809,6 +889,30 @@ describe('a plan with replaced tasks', () => {
     assert.deepEqual(parsePlan(result.text).tasks.map((task) => task.id), ['T2', 'T5', 'T6']);
     assert.deepEqual(addPlanTasks(result.text, tasks).added, []);
     assert.equal(addPlanTasks('# PLAN: DESKTOP-1\n', tasks), null);
+  });
+
+  // The task file is rendered from the same block; a second copy of the steps
+  // in plan.md is one more place the next revision has to keep in step.
+  test('addPlanTasks adds a block\'s header and leaves its Steps and Context to the task file', () => {
+    const tasks = parseAmendment(A1_TASKS.replace('  2. index.spec.ts: add the four R8 tests.', '  2. index.spec.ts: add the four R8 tests.\n- Context:\n  - `index.ts:65` — the handler')).tasks;
+    const result = addPlanTasks(PLAN.replace(/### T5[\s\S]*?\n\n## Slice/, '## Slice'), tasks);
+
+    assert.deepEqual(result.added, ['T5', 'T6']);
+    assert.doesNotMatch(result.text, /- Steps:|- Context:|app\.once|index\.ts:65/);
+    assert.match(result.text, /### T5 \(replaces T2 and T3\): the before-quit handler outlives the first quit request\n- Satisfies: R1, R7, R8\n- Owns: [^\n]+\n- Done when: [^\n]+\n\n### T6/);
+    const [, t5] = parsePlan(result.text).tasks;
+    assert.deepEqual([t5.id, t5.replaces, t5.command], ['T5', ['T2', 'T3'], 'npx vitest run packages/main/src/index.spec.ts && npx eslint packages/main/src/index.ts']);
+  });
+
+  test('the task file an amendment\'s block renders carries the block\'s Steps, Context and Notes', () => {
+    const [t5] = parseAmendment(
+      A1_TASKS.replace('  2. index.spec.ts: add the four R8 tests.', '  2. index.spec.ts: add the four R8 tests.\n- Context:\n  - `index.ts:65` — the handler\n- Notes:\n  The spec already loads the fixture.'),
+    ).tasks;
+    const values = amendmentTaskValues(t5, { issue: 18915, amendment: 'A1' });
+
+    assert.match(String(values.steps), /^1\. index\.ts \(:65-82\)/);
+    assert.equal(values.context, 'From A1 (amendments/A1.md; replaces T2, T3). See plan.md Context; frozen interfaces in plan.md are binding.\n- `index.ts:65` — the handler');
+    assert.equal(values.notes, 'The spec already loads the fixture.\nRendered from A1\'s "Slices affected" when it was approved.');
   });
 });
 

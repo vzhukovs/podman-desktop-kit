@@ -151,7 +151,8 @@ them, then merge their reports into one:
   more severe section. Which one is right is the person's call, not yours.
 - **Outside a critic's scope.** A line the critic of that scope also raised is
   dropped. One it did not raise is a C item naming the critic that saw it.
-- **Probes, decisions of the last round, checked without findings**: the union.
+- **Probes, decisions of the last round, checked without findings, notes for
+  exec**: the union, a note two critics wrote once.
 
 Then `## Coverage map`, after C and before any decisions: a row per task in
 the round's scope — every live task in a full round, the changed ones in a
@@ -181,6 +182,9 @@ last section, in exactly this shape — `pdkit next` reads the heading, and
 ```
 
 One line per item, every item in the report, the person's own qualifiers kept.
+`## Notes for exec` gets no line: a note is not an item, and `/pd:plan`
+appends each to its task's Notes without a decision. Show them to the person
+with the report all the same, and a note they want decided becomes a B item.
 Nothing here edits the plan: applying the decisions is `/pd:plan`'s, in a new
 session, with nothing to paste after the command.
 

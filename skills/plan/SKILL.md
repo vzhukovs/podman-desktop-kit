@@ -21,21 +21,32 @@ and anything pasted is read as one more decision, not a substitute for them.
 
 What a revision is:
 
-1. Read `plan-review.md` — the findings and the latest `## Operator decisions`
-   section — then `plan.md`, `tasks/` and `research.md`. Earlier rounds are in
-   `plan-review.r<k>.md`; their decisions stand and are not reopened.
+1. Read `plan-review.md` — the findings, its `## Notes for exec` and the
+   latest `## Operator decisions` section — then `plan.md`, `tasks/` and
+   `research.md`. Earlier rounds are in `plan-review.r<k>.md`; their decisions
+   stand and are not reopened.
 2. Apply what was accepted, item by item, and nothing else. A rejected item is
    left alone; an item with no decision is left alone and named at the end. A
    decision that needs a code fact `research.md` does not hold gets one
    `pd-scout` for that fact, not a new reconnaissance.
-3. Edit `plan.md` and the task files in place. Task IDs never change; a task
-   the revision drops is deleted from both before approval, which is the only
-   time that is allowed. Then `pdkit task sync --issue <n>` and
-   `pdkit plan check <n>`. The review already copied the plan it read into
-   `reviews/r<k>/`, and the next review compares with it: leave `reviews/` alone.
-4. `pdkit plan probe <n> --task <every task whose Done when changed>`, from
-   the main checkout. Before step 5, whatever step 5 then prints.
-5. `pdkit plan revised <n>`, which records that the round is in the plan and
+3. Append each line of `## Notes for exec` to `## Notes` in the task file of
+   the task it names, as the critic wrote it. No decision is asked for and
+   none is recorded: a note is what the implementer would learn from its own
+   files or the first run of its `Done when`, and Notes is not a part
+   execution reads, so it does not send the plan to another round. A note
+   naming a task the plan no longer has is left out and named at the end.
+4. Edit `plan.md` and the task files in place. A task's header and its
+   `Intent:` are in `plan.md`; its Context, Steps and Notes are in its task
+   file, and a decision about them is applied there. A plan written before
+   that split also has Steps, and often Context, in `plan.md`: change both
+   copies. Task IDs never change; a task the revision drops is deleted from
+   both files before approval, which is the only time that is allowed. Then
+   `pdkit task sync --issue <n>` and `pdkit plan check <n>`. The review
+   already copied the plan it read into `reviews/r<k>/`, and the next review
+   compares with it: leave `reviews/` alone.
+5. `pdkit plan probe <n> --task <every task whose Done when changed>`, from
+   the main checkout. Before step 6, whatever step 6 then prints.
+6. `pdkit plan revised <n>`, which records that the round is in the plan and
    prints the step after it, `next:`, with the reason, `why:`. Follow that
    line, not this one. It is `/pd:plan-review <n>`, in a new session, when an
    A item was accepted or left with no decision, when the revision changed a
@@ -47,7 +58,7 @@ What a revision is:
    round.
 
 Say to the person, at the end, which items were applied, where, and which
-were left for lack of a decision.
+were left for lack of a decision; and how many notes went to which tasks.
 
 ## Phase 1 — reconnaissance
 
@@ -101,8 +112,28 @@ it becomes an assumption nobody agreed to and nobody can find later.
 
 ## Phase 3 — the plan
 
-Fill `${CLAUDE_PLUGIN_ROOT}/templates/plan.md`. Every one of these is a requirement, and a plan that
-misses one gets redone rather than patched:
+Fill `${CLAUDE_PLUGIN_ROOT}/templates/plan.md`, and one `${CLAUDE_PLUGIN_ROOT}/templates/task.md` per task.
+
+**The plan is the index, the contracts and the slices.** In `plan.md` a task
+is its header — Satisfies, Owns, Done when, After, Slice — and one `Intent:`
+sentence. Its Context, Steps and Notes are written in `tasks/T<k>.md` and
+nowhere else: written twice, every revision edits two places and every review
+compares them. What `plan.md` holds beyond the headers is what tasks share —
+the requirements, the plan's Context, the frozen interfaces, the slice
+hypothesis, upstream compliance.
+
+**Do not plan what the implementer will see in its own files.** A step names
+the file and the requirement that has to hold in it; the implementer reads
+the file. The argument order of a helper the owned file already calls, the
+fixture a spec already loads, a flag the first run of `Done when` asks for —
+written into the plan, each is a claim about code that every review round
+then checks, and when it is wrong it costs exec one attempt. Write a detail
+down when the implementer cannot learn it that way: a fact in a file the
+task does not own, or one without which `Done when` would pass while the
+requirement is unmet.
+
+Every one of these is a requirement, and a plan that misses one gets redone
+rather than patched:
 
 1. **Every task owns its files exclusively.** Two tasks sharing a file is a
    planning error, not a coordination problem. A task that writes nothing — a
@@ -169,7 +200,8 @@ misses one gets redone rather than patched:
 ## Then
 
 `pdkit render plan --issue <n> --values <f> --path plan.md`, one
-`pdkit render task --issue <n> --values <f> --path tasks/T<k>.md` per task, then
+`pdkit render task --issue <n> --values <f> --path tasks/T<k>.md` per task —
+the task's values carry its Context, Steps and Notes — then
 `pdkit task sync --issue <n>` so the ownership map the pre-write hook enforces
 comes from the task files rather than from anyone's memory of them.
 

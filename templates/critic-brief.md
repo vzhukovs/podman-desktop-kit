@@ -83,6 +83,10 @@ Mode section above. Then these sections, in this order. Each item is a
   `### A<k>. Outside the delta: <the finding>`.
 - `## B — worth discussing`: B1…
 - `## C — cannot be judged from the plan alone`: C1…, each with what would decide it.
+- `## Notes for exec`: what the implementer will learn from the files its task
+  owns or from the first run of its `Done when`, one line each,
+  `- T<k>: <the detail>, with file:line`. Not items: no A, B or C, and no
+  decision. Left out when there is none.
 - `## Decisions of the last round`: one line per item under "Accepted in the
   last round" above: in the plan, or not, with `file:line`. Left out when that
   list is empty.

@@ -27,8 +27,12 @@
        - Done when: `pnpm test:main -- exec.spec.ts`
        - After: T4                (optional: tasks that must be done first)
        - Slice: S2                (optional: the slice it is meant for)
-       - Steps:
-         1. <step>
+       - Intent: <one sentence: what the task changes, and for which requirement>
+
+     That is the whole block. A task's Context, Steps and Notes are written in
+     tasks/T1.md and nowhere else: this file is the index and the contracts,
+     the task file is what the implementer is handed, and a step written in
+     both is two places every revision edits and every review compares.
 
      Write the blocks in the order they should run. `After` is the order exec
      cannot break: `pdkit task start` refuses a task whose After is not done,
