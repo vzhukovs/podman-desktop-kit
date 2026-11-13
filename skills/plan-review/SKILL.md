@@ -130,8 +130,8 @@ before the review; its checklist is in its own definition.
 `plan-review.md` under the issue. If one is already there from an earlier
 round, move it to `plan-review.r<k>.md` first, `k` being its round, so every
 round keeps its own file and `plan-review.md` is always the latest. Title it
-`# PLAN REVIEW: DESKTOP-<n> — round <k>`, and under the title write the mode,
-full or delta, and why, as the brief's Mode section gives it. In a delta
+`# PLAN REVIEW: DESKTOP-<n> — round <k>`, and under the title write the line
+`Mode: full` or `Mode: delta`, and why, as the brief's Mode section gives it. In a delta
 round, an item outside the delta keeps that mark in the merged report.
 Structure it as: what must change
 before approval (A1, A2…), what is worth discussing (B1…), and what the
@@ -165,6 +165,20 @@ finding a later round turns up.
 
 An empty "must change" section is a valid result. A critic that finds something
 wrong with every plan is one nobody reads by the third time.
+
+Once the report is written, merged or not, record the round:
+
+```
+pdkit plan reviewed <n>
+```
+
+It reads the round from the title, the `Mode:` line under it, and the items
+under `## A`, `## B` and `## C`, and writes them to the journal as
+`plan-reviewed`. That entry is where this round's review ends and its revision
+begins, and `pdkit cost --planning` measures both by it. It refuses a report
+whose title names no round or that leaves out one of the three sections: an
+empty section is written, not left out. If the report changes before the
+decisions, run it again; over the same report it writes nothing.
 
 ## 4. The decisions
 

@@ -81,7 +81,11 @@ fail to.
 The output is `plan-review.md`, and the state does not move: a red `plan check`
 means the plan is rewritten, not that approval is refused, and the human decides.
 An earlier round's file is kept as `plan-review.r<k>.md`, and the plan it
-read as `reviews/r<k>/`.
+read as `reviews/r<k>/`. Once the report is written, `pdkit plan reviewed <n>`
+journals the round — `plan-reviewed round-<k> mode=<full|delta|unknown> A=<n>
+B=<m> C=<l>`, read from the title, the `Mode:` line and the letter sections —
+which is where the round's review ends and its revision begins for
+`pdkit cost --planning`.
 
 The human's decisions go into `plan-review.md` as `## Operator decisions
 (round N)`, one line per item. While that round has not been applied,

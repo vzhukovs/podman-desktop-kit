@@ -81,6 +81,35 @@ fixes — see [RELEASING.md](RELEASING.md).
   development folder; the two e2e runners, and what the CDP one cannot do;
   the e2e inventory that changes with a spec; one runner per worker whatever
   the options; a format gate that checks files git ignores.
+- `pdkit plan reviewed <n> [--json]`, run by `/pd:plan-review` once the
+  round's report is written: a `plan-reviewed` journal entry,
+  `round-<k> mode=<full|delta|unknown> A=<n> B=<m> C=<l>`, read from the
+  report's title, its `Mode:` line and its `## A`, `## B` and `## C` sections.
+  It is the line between a round's review and its revision, which nothing
+  recorded: `plan-revised` says when a revision ended, not when it began. The
+  same report again writes nothing; a report without a round in its title or
+  without one of the three sections is refused, as is a round already marked
+  revised.
+- `pdkit cost --planning [--issue <n>] [--snapshot] [--json]`: planning in an
+  issue's current cycle. The first plan, then each review round with what its
+  review and its revision cost — the windows the `plan-reviewed` and
+  `plan-revised` entries cut, attributed as `pdkit cost` attributes —, its
+  mode, its A, B and C items, and the decisions accepted, rejected and
+  neither. After approval, counts only: amendments, stop reports, tasks with a
+  failed capture, findings in `audit.md`. A round with no `plan-reviewed`
+  entry, which is every round before this release, costs `unknown`: the
+  windows `plan-revised` alone closes are one sum, not divided by a guess.
+  `--snapshot` writes `cost/planning/<date>.json`. `pdkit cost` put a plan's
+  reviews and revisions into one phase, and the number of rounds and the cost
+  of each had to be rebuilt by hand from transcripts.
+
+### Fixed
+
+- `pdkit plan lessons` read a numbered list inside an item — `1. **S1.** …`
+  under `### A1.` — as items of their own, so the A2 and A3 headings after it
+  were listed with the titles "S2." and "S3.". A numbered line is an item only
+  in a letter section with no item heading above it. Items written as list
+  lines, `- **C1.** …`, are read inside their own letter section.
 
 ### Changed
 

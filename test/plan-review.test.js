@@ -29,7 +29,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { checkPlan, parsePlan } from '../lib/artefacts.js';
-import { decisionsIn, markRevised, pending, reviewIn } from '../lib/plan-review.js';
+import { decisionsIn, markReviewed, markRevised, pending, reportIn, reviewIn, reviewedDetail, reviewedFrom, roundOf, summaryIn } from '../lib/plan-review.js';
+import { append, read as readJournal } from '../lib/journal.js';
 import * as probe from '../lib/probe.js';
 import { nextSkill, nextStep } from '../lib/state.js';
 
@@ -297,5 +298,129 @@ describe('probe', () => {
 
     // Without a probe record handed in, nothing is said about it either way.
     assert.equal((await checkPlan({ plan })).warnings.some((warning) => warning.check === 'done-when-run'), false);
+  });
+});
+
+// What `pdkit plan reviewed` writes and `pdkit cost --planning` reads back: a
+// round's number, mode and items by letter. A count that read a step of an item
+// as an item, or a review it could not read as one that found nothing, would
+// put a wrong number on exactly the rounds the metric is about.
+describe('a review counted', () => {
+  const REPORT = [
+    '# PLAN REVIEW: DESKTOP-1 — round 3',
+    '',
+    'Mode: delta — only T4 changed since round 2',
+    '',
+    '## A — must change before approval',
+    '### A1. The slices are wrong',
+    'Split it three ways:',
+    '1. **S1.** the refactor',
+    '2. **S2.** the feature',
+    '3. **S3.** the docs',
+    '### A2. Done when cannot fail',
+    '## B — worth discussing',
+    '## C — cannot be judged from the plan alone',
+    '- **C1.** Whether CI runs the tag',
+    '- **C2. Flatpak.** Nothing here refers to it',
+    '## Decisions of the last round',
+    '- **A1.** in the plan, plan.md:12',
+    '## Coverage map',
+    '',
+  ].join('\n');
+
+  test('the round from the title, the mode from the line under it, the items by letter', () => {
+    assert.deepEqual(summaryIn(REPORT), { round: 3, mode: 'delta', items: { A: 2, B: 0, C: 2 }, decisions: null });
+  });
+
+  test('a numbered step under an item heading is not an item, and does not take its title', () => {
+    const items = reportIn(REPORT).items;
+    assert.deepEqual(
+      items.map((item) => [item.id, item.title]),
+      [
+        ['A1', 'The slices are wrong'],
+        ['A2', 'Done when cannot fail'],
+        ['C1', 'Whether CI runs the tag'],
+        ['C2', 'Flatpak.'],
+      ],
+    );
+  });
+
+  test('a letter the review has no section for is not counted, rather than counted as zero', () => {
+    const older = '# PLAN REVIEW: 1\n\n## Must change before approval\n### M1 — x\n## Worth discussing\n### W1 — y\n';
+    assert.deepEqual(summaryIn(older).items, { A: null, B: null, C: null });
+  });
+
+  test('no Mode line is an unknown mode, and the label is read in Russian too', () => {
+    assert.equal(summaryIn('# PLAN REVIEW: DESKTOP-1 — round 1\n\n## A\n').mode, 'unknown');
+    assert.equal(summaryIn('# PLAN REVIEW: DESKTOP-1 — round 1\n\n- **Режим:** full — первый раунд\n\n## A\n').mode, 'full');
+    // Only above the first section: a finding that quotes the line is not the mode.
+    assert.equal(summaryIn('# PLAN REVIEW: DESKTOP-1 — round 1\n\n## A\n### A1. x\nMode: delta\n').mode, 'unknown');
+  });
+
+  test('decisions one per item, by the first verdict among its lines', () => {
+    const decided = `${REPORT}\n## Operator decisions (round 3)\n- A1: accepted\n- A1: rejected — amended later\n- A2: rejected — no\n- C1: no decision\n- C2: later, maybe\n`;
+    assert.deepEqual(summaryIn(decided).decisions, { accepted: 1, rejected: 1, undecided: 1, unread: 1, missing: 0 });
+  });
+
+  test('the entry detail is the documented one, and reads back', () => {
+    const detail = reviewedDetail({ round: 3, mode: 'delta', items: { A: 2, B: 0, C: 2 } });
+    assert.equal(detail, 'round-3 mode=delta A=2 B=0 C=2');
+    assert.deepEqual(reviewedFrom(detail), { round: 3, mode: 'delta', items: { A: 2, B: 0, C: 2 } });
+    assert.equal(reviewedFrom('round-3 applied to plan.md'), null);
+    assert.deepEqual([roundOf(detail), roundOf('round-12 applied to plan.md'), roundOf('round-x')], [3, 12, null]);
+  });
+
+  describe('recorded in the journal', () => {
+    let home;
+    const homes = [];
+    const path = () => join(home, 'issues', String(ISSUE), 'plan-review.md');
+    const entries = async () => (await readJournal({ issue: ISSUE, event: 'plan-reviewed' }, { home })).map((entry) => entry.detail);
+    beforeEach(async () => {
+      home = await mkdtemp(join(tmpdir(), 'pdkit-reviewed-'));
+      homes.push(home);
+      await mkdir(join(home, 'issues', String(ISSUE)), { recursive: true });
+    });
+    after(async () => {
+      for (const dir of homes) await rm(dir, { recursive: true, force: true });
+    });
+
+    test('once per report: the same report again writes nothing, a changed one writes the new counts', async () => {
+      await writeFile(path(), REPORT);
+      assert.equal((await markReviewed(ISSUE, { home })).ok && (await entries()).length, 1);
+      const again = await markReviewed(ISSUE, { home });
+      assert.deepEqual([again.ok && again.outcome, (await entries()).length], ['unchanged', 1]);
+
+      await writeFile(path(), REPORT.replace('## B — worth discussing', '## B — worth discussing\n### B1. a merged critic found this'));
+      const changed = await markReviewed(ISSUE, { home });
+      assert.equal(changed.ok && changed.outcome, 'recorded again');
+      assert.deepEqual(await entries(), ['round-3 mode=delta A=2 B=0 C=2', 'round-3 mode=delta A=2 B=1 C=2']);
+    });
+
+    test('refused once the round is revised: the review would end after its revision', async () => {
+      await writeFile(path(), REPORT);
+      await markRevised(ISSUE, 3, { home });
+      const late = await markReviewed(ISSUE, { home });
+      assert.equal(late.ok, false);
+      assert.deepEqual(await entries(), []);
+    });
+
+    test("a round recorded before a reset is another plan's", async () => {
+      await writeFile(path(), REPORT);
+      await markReviewed(ISSUE, { home });
+      await markRevised(ISSUE, 3, { home });
+      await append({ issue: ISSUE, event: 'reset', detail: 'was planned' }, { home });
+      const fresh = await markReviewed(ISSUE, { home });
+      assert.equal(fresh.ok && fresh.outcome, 'recorded');
+    });
+
+    test('refused without a round in the title, without a letter section, or without a report', async () => {
+      assert.equal((await markReviewed(ISSUE, { home })).ok, false);
+      await writeFile(path(), REPORT.replace(' — round 3', ''));
+      assert.equal((await markReviewed(ISSUE, { home })).ok, false);
+      await writeFile(path(), REPORT.replace('## B — worth discussing\n', ''));
+      const result = await markReviewed(ISSUE, { home });
+      assert.match(result.ok ? '' : result.error, /"## B"/);
+      assert.deepEqual(await entries(), []);
+    });
   });
 });

@@ -33,7 +33,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DEFAULT_MAX, all, blockedMessage, ceiling, passed, record, status, taskOf, unblock } from '../lib/attempts.js';
+import { DEFAULT_MAX, all, blockedMessage, ceiling, failures, passed, record, status, taskOf, unblock } from '../lib/attempts.js';
 import { append } from '../lib/journal.js';
 
 const ISSUE = 18248;
@@ -199,5 +199,27 @@ describe('reporting', () => {
   test('an issue nobody has tried reports zero rather than failing', async () => {
     assert.deepEqual(await all({ issue: 999, config: CONFIG, home }), []);
     assert.equal((await of('T1')).attempts, 0);
+  });
+});
+
+// What the planning report counts after approval: the tasks whose Done when
+// failed at least once. status() restarts at a receipt, which is right for
+// blocking and would report a task that failed twice and then passed as never
+// having failed.
+describe('failures over the cycle', () => {
+  test('a receipt does not restart the count, and a reset does', async () => {
+    await append({ issue: ISSUE, event: 'reset', detail: 'was planned' }, { home });
+    await fail(2, 'T10');
+    await passed({ issue: ISSUE, taskId: 'T10', home });
+    await fail(1, 'T2');
+
+    assert.deepEqual(await failures({ issue: ISSUE, home }), [
+      { taskId: 'T2', failed: 1 },
+      { taskId: 'T10', failed: 2 },
+    ]);
+    assert.equal((await of('T10')).attempts, 0);
+
+    await append({ issue: ISSUE, event: 'reset', detail: 'was plan-approved' }, { home });
+    assert.deepEqual(await failures({ issue: ISSUE, home }), []);
   });
 });

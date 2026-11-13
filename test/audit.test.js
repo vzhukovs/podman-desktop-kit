@@ -31,7 +31,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { collect, format } from '../lib/audit.js';
+import { collect, findingsIn, format } from '../lib/audit.js';
 import { issueDir } from '../lib/config.js';
 import { writeReceipt } from '../lib/evidence.js';
 import { append } from '../lib/journal.js';
@@ -358,5 +358,27 @@ describe('a withdrawn task and a forgotten one', () => {
     assert.match(text, /– T2 {2}withdrawn by A1 \(amendments\/A1\.md\), replaced by T5 {2}receipt not owed/);
     assert.match(text, /– T3 {2}withdrawn by A1/);
     assert.match(text, /✘ T1 .*receipt missing/);
+  });
+});
+
+// The count the planning report sets beside a plan's review rounds. Audits have
+// been written in three shapes, and "none" in a fourth; a shape this does not
+// read must come back as no count, not as an audit that found nothing.
+describe('findings counted in audit.md', () => {
+  test('the return shape: one finding per [Q] line, and the lines that are not findings are not', () => {
+    const text = '## Findings\n- [Q1] a.ts:1 — R1 — x — amend the plan\n- [Q4] b.ts:2 — T1 — nit: y (§3)\n\nNo Q2 findings:\n- Q2: checked a.ts:4\n\n## Could not verify\n- [Q3] not a finding here\n';
+    assert.deepEqual(findingsIn(text), { count: 2, reason: null });
+  });
+
+  test('earlier shapes: F headings and F table rows, each counted once', () => {
+    assert.equal(findingsIn('## Findings\n### F1 — x\ntext\n### F2 — y\n### Re-checked by the orchestrator\n').count, 2);
+    assert.equal(findingsIn('## Findings\n\n| # | Severity |\n|---|---|\n| F1 | note |\n| F2 | note |\n| F2 | note, again |\n').count, 2);
+  });
+
+  test('"none" is zero; a section in no shape, or no section, is no count', () => {
+    assert.deepEqual(findingsIn('## Findings\nnone\n\n- R1: holds, a.ts:3\n'), { count: 0, reason: null });
+    assert.deepEqual(findingsIn('## Findings\n\n**None.** Every requirement has code.\n'), { count: 0, reason: null });
+    assert.equal(findingsIn('## Findings\nThe code is close to the plan, with two differences.\n').count, null);
+    assert.equal(findingsIn('# AUDIT\n\n## Does the code do what was asked\n').count, null);
   });
 });

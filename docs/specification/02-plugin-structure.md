@@ -157,6 +157,7 @@ $PDKIT_HOME/                     # default: ~/.pdkit/podman-desktop
 ├── archive/12345/2026-08-20-1114/   # what `pdkit reset` moved out of the way
 ├── journal/YYYY-MM.md           # global, append-only, sliced by month
 ├── cost/YYYY-MM-DD.json         # `pdkit cost --snapshot`: the baseline a later run compares to
+├── cost/planning/YYYY-MM-DD.json # `pdkit cost --planning --snapshot`: planning, round by round
 └── reviews/2903.md              # reviews of other people's PRs, tied to no issue
 ```
 

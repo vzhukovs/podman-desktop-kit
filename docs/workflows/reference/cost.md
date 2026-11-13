@@ -12,6 +12,7 @@ pdkit cost --issue 12345            # one cycle, split by phase
 pdkit cost --since 2026-10-01       # only calls in a window
 pdkit cost --snapshot               # also write $PDKIT_HOME/cost/<date>.json
 pdkit cost --compare 2026-10-16     # that snapshot beside the issues journaled since
+pdkit cost --planning --issue 12345 # planning, round by round (below)
 ```
 
 Run it from the podman-desktop clone, or pass `--repo`: the transcripts are found
@@ -43,6 +44,38 @@ Read the caveats it prints:
 
 It recommends nothing and exits 0: what the numbers mean for how to work is your
 call.
+
+## Planning, round by round
+
+The phase split puts everything between `planned` and `plan-approved` into one
+figure, reviews and revisions together. `pdkit cost --planning` cuts it by the
+journal entries each round leaves: `plan-reviewed`, which `/pd:plan-review`
+writes with `pdkit plan reviewed` once the round's report is written, and
+`plan-revised`, which `/pd:plan` writes when the decisions reached the plan. A
+call belongs to the first of them at or after it — up to `plan-reviewed
+round-k`, the review of round k; from there up to `plan-revised round-k`, its
+revision.
+
+```
+pdkit cost --planning                       # every issue with a plan in its current cycle
+pdkit cost --planning --issue 12345         # one issue, by round
+pdkit cost --planning --snapshot            # also write $PDKIT_HOME/cost/planning/<date>.json
+```
+
+Per issue: the first plan and the whole phase after it; per round, its mode,
+its A, B and C items, the decisions accepted, rejected and neither, and what
+its review and its revision cost. After approval, counts only: amendments,
+stop reports, tasks with a failed capture, and findings in `audit.md`.
+
+- **A round with no `plan-reviewed` entry costs `unknown`.** Every round from
+  before the entry existed has none. Its cost is not divided by a guess: the
+  windows `plan-revised` alone closes are printed as one sum.
+- **The decisions fall in the revision's window**, since the review session
+  writes them after its report.
+- **Only the current cycle.** After `pdkit reset`, rounds and windows start
+  again.
+- **A letter or a decision section a review does not have is `—`, not 0.**
+  Reviews from before the template was fixed have their own shapes.
 
 ---
 

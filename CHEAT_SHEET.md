@@ -183,6 +183,7 @@ pdkit plan diff <n>                        # what changed since the last round r
 pdkit plan brief <n>                       # the critic's brief: paths, check report, earlier decisions
 pdkit plan brief <n> --area <a>,<b>        # ... narrowed to those areas; --axis duplication: across the plan
 pdkit plan brief <n> --mode delta          # ... narrowed to what changed since the last round, with the diff
+pdkit plan reviewed <n>                    # the round's report is written: journal its round, mode and A/B/C counts
 pdkit plan revised <n>                     # the review's decisions are in plan.md; says if another round or approval is next
 pdkit plan lessons <n>                     # what earlier, archived attempts' reviews raised, and what was decided
 pdkit checkpoint <n> --phase exec          # before a phase that changes things;
@@ -361,6 +362,7 @@ active/               which task each working tree is executing
 checkpoints/<n>/      what pdkit rollback goes back to
 archive/<n>/          what pdkit reset moved out of the way
 cost/YYYY-MM-DD.json  pdkit cost --snapshot, the baseline a later run compares to
+cost/planning/        pdkit cost --planning --snapshot: rounds, their cost, and the counts after approval
 reviews/<k>.md        reviews of other people's pull requests
 issues/<n>/
   state.json          the machine: state, route, who approved what. Only pdkit writes it
