@@ -75,9 +75,12 @@ It compares the plan with the snapshot of the plan the last round read.
   and outside the change, only a defect that would stop exec, as an A item
   headed `Outside the delta:` with its evidence.
 - **Full** otherwise: the first round; a last round whose plan was not kept;
-  or a structural change — a task added or removed, `Frozen interfaces` or
-  `Slice hypothesis` changed. A delta there would say the rest of the plan was
-  reviewed when what it rests on has changed, and the brief refuses it.
+  or a structural change — a task added or removed, `Slice hypothesis`
+  changed, or a `Frozen interfaces` entry changed that no task is in. A delta
+  there would say the rest of the plan was reviewed when what it rests on has
+  changed, and the brief refuses it. An entry that names its tasks is not
+  structural: every task in it, as it was and as it is, is a changed task of
+  the delta, with `Frozen interfaces` among its changed parts.
 
 A repeat round reviewed whole costs about what the first did, and most of what
 it reads it read last time; a full round where a delta is possible is the

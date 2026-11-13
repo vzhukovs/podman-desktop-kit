@@ -34,7 +34,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-import { diff, snapshot, snapshots } from '../lib/plan-rounds.js';
+import { INTERFACE_PART, diff, snapshot, snapshots } from '../lib/plan-rounds.js';
 
 const exec = promisify(execFile);
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -286,7 +286,7 @@ describe('plan rounds', () => {
       ]);
     });
 
-    test('a task added or removed, a frozen interface or the slice hypothesis changed: structural, and why', async () => {
+    test('a task added or removed, or the slice hypothesis changed: structural, and why', async () => {
       await reviewed();
       await edit('plan.md', '## Upstream compliance', '### T5: docs\n- Satisfies: R1\n- Owns: docs/a.md\n- Done when: `test -f docs/a.md`\n\n## Upstream compliance');
       const added = await diff(ISSUE, { home });
@@ -303,16 +303,62 @@ describe('plan rounds', () => {
 
       await writeFile(join(dir(), 'plan.md'), PLAN);
       await writeFile(join(dir(), 'tasks', 'T4.md'), taskFile('T4', OWNS.T4));
-      await edit('plan.md', 'register(name: string): void;', 'register(name: string): Disposable;');
-      const frozen = await diff(ISSUE, { home });
-      assert.deepEqual(frozen.ok && frozen.because, ['Frozen interfaces changed']);
-      assert.deepEqual(frozen.ok && frozen.tasks.changed, []);
-
-      await writeFile(join(dir(), 'plan.md'), PLAN);
       await edit('plan.md', '- Slice hypothesis: 2 slices', '- Slice hypothesis: 3 slices');
       const count = await diff(ISSUE, { home });
       assert.deepEqual(count.ok && count.because, ['Slice hypothesis changed']);
       assert.deepEqual(count.ok && count.other, ['header'], 'the header line changed too, and is said');
+    });
+
+    // The section compared whole made any edit to any entry structural, and a
+    // contract between two late tasks sent the whole plan to a full round.
+    test('a frozen interface entry that changed is a change to every task in it, and not structural', async () => {
+      await reviewed();
+      await edit('plan.md', 'register(name: string): void;', 'register(name: string): Disposable;');
+
+      const result = await diff(ISSUE, { home });
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      assert.equal(result.structural, false);
+      assert.deepEqual(result.because, []);
+      assert.equal(result.plan?.frozenInterfaces, true, 'the section changed, and is said');
+      // T1 is named in the entry; T2 is in it by using what it declares.
+      assert.deepEqual(
+        result.tasks.changed.map((task) => [task.id, task.parts]),
+        [
+          ['T1', [{ part: INTERFACE_PART, in: ['plan.md'] }]],
+          ['T2', [{ part: INTERFACE_PART, in: ['plan.md'] }]],
+        ],
+      );
+    });
+
+    test('the tasks of an entry count as it was and as it is', async () => {
+      await reviewed();
+      await edit('plan.md', '// fixture contract (T3 ↔ T4)', '// fixture contract (T3 ↔ T2)');
+
+      const result = await diff(ISSUE, { home });
+      assert.equal(result.ok && result.structural, false);
+      assert.deepEqual(result.ok && result.tasks.changed.map((task) => task.id), ['T2', 'T3', 'T4']);
+    });
+
+    test('an entry no task is in is structural when it changes, and not when it goes', async () => {
+      const unowned = '// shared timeout: thirty seconds';
+      await reviewed();
+      await edit('plan.md', '// fixture contract (T3 ↔ T4): the status text is `ready`', `// fixture contract (T3 ↔ T4): the status text is \`ready\`\n\n${unowned}`);
+
+      const added = await diff(ISSUE, { home });
+      assert.equal(added.ok && added.structural, true);
+      assert.deepEqual(added.ok && added.because, [`a frozen interface entry no task is in changed: plan.md:20 \`${unowned}\``]);
+      assert.deepEqual(added.ok && added.tasks.changed, []);
+
+      // Reviewed with it, then removed: nothing rested on it.
+      await snapshot(ISSUE, { home });
+      await review(2);
+      await edit('plan.md', `\n\n${unowned}`, '');
+      const removed = await diff(ISSUE, { home });
+      assert.equal(removed.ok && removed.base?.round, 2);
+      assert.equal(removed.ok && removed.structural, false);
+      assert.equal(removed.ok && removed.plan?.frozenInterfaces, true);
+      assert.deepEqual(removed.ok && removed.tasks.changed, []);
     });
 
     test('Upstream compliance and the other sections are reported, and are not structural', async () => {

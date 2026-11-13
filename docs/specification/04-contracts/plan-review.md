@@ -44,7 +44,10 @@ content: machine first, then model.**
    tasks added and removed, the parts of each task that changed and in which
    file, whether `Frozen interfaces`, `Slice hypothesis` or `Upstream
    compliance` changed, and calls the change structural when tasks were added
-   or removed or the first two changed. One critic gets
+   or removed, the slice hypothesis changed, or a frozen interface entry no
+   task is in changed. Interfaces are compared entry by entry: every task in
+   an entry that changed, before or after the edit, is a changed task with
+   `Frozen interfaces` among its parts. One critic gets
    `pdkit plan brief <n> --mode delta`: the diff, the last round's decisions,
    and each changed task with its neighbors — its `After` both ways and the
    frozen interfaces it shares. It checks that the decisions were applied,

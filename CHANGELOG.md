@@ -214,6 +214,13 @@ names first.
   settled. It accepts `plan-approved` and every state after it up to review,
   where an amendment's tasks run; until now a sentence in `/pd:exec` was all
   that kept exec off a `planned` issue.
+- `pdkit plan diff` compares `## Frozen interfaces` entry by entry. Every task
+  in an entry that changed, as it was and as it is, is a changed task with
+  `Frozen interfaces` among its parts, so a delta round reviews it with its
+  neighbors, and a revision that changed it still goes to review. The change
+  is structural only when an entry no task is in changed: compared whole, an
+  edit to a contract between two late tasks sent the whole plan to a full
+  round.
 
 ## [0.14.1] - 2026-11-12
 

@@ -36,7 +36,7 @@ import { promisify } from 'node:util';
 import { TASK_PARTS } from '../lib/artefacts.js';
 import { markRevised } from '../lib/plan-review.js';
 import { nextContext } from '../lib/plan-revision.js';
-import { snapshot } from '../lib/plan-rounds.js';
+import { INTERFACE_PART, snapshot } from '../lib/plan-rounds.js';
 import { EXECUTION_PARTS, afterRevision, nextSkill, nextStep, transition } from '../lib/state.js';
 
 const exec = promisify(execFile);
@@ -91,10 +91,20 @@ describe('the rule', () => {
   // A part renamed in artefacts.js and not here would never send a revision to
   // review again, and nothing would say so.
   test('every execution part is a part plan diff reports', () => {
-    for (const part of EXECUTION_PARTS) assert.ok(TASK_PARTS.includes(part), part);
+    for (const part of EXECUTION_PARTS) assert.ok([...TASK_PARTS, INTERFACE_PART].includes(part), part);
   });
 
   const base = { round: 4, accepted: { A: [], B: ['B1', 'B2'] }, undecided: [], unread: [], snapshot: '/r4', structural: [], tasks: [], sections: [] };
+
+  // Not structural any more, so a delta round reviews it; still a contract
+  // execution reads, so it is not sent to approval as text.
+  test('a frozen interface entry that changed goes to review, named by its tasks', () => {
+    const tasks = [
+      { id: 'T1', parts: [INTERFACE_PART] },
+      { id: 'T2', parts: ['Context', INTERFACE_PART] },
+    ];
+    assert.deepEqual(afterRevision({ ...base, tasks }), { review: true, because: 'Frozen interfaces changed in T1, T2' });
+  });
 
   test('says what it measured, in one line', () => {
     assert.deepEqual(afterRevision({ ...base, accepted: { A: ['A1'], B: [] } }), { review: true, because: 'A1 accepted' });
