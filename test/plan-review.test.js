@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { checkPlan, parsePlan } from '../lib/artefacts.js';
-import { decisionsIn, markRevised, nextContext, pending } from '../lib/plan-review.js';
+import { decisionsIn, markRevised, nextContext, pending, reviewIn } from '../lib/plan-review.js';
 import * as probe from '../lib/probe.js';
 import { nextSkill, nextStep } from '../lib/state.js';
 
@@ -53,6 +53,63 @@ describe('decisionsIn', () => {
   test('the last of two decision sections is the one that counts', () => {
     const text = '## Operator decisions (round 1)\n- A1: accepted\n\n## Operator decisions (round 2)\n- A4: accepted\n';
     assert.deepEqual(decisionsIn(text), { decided: true, round: 2, items: ['A4'] });
+  });
+});
+
+// The critic's brief lists every round's rejections and the last round's
+// acceptances. Read wrong, a rejected item is raised again in the next round —
+// and the person spends it rejecting the same thing twice.
+describe('reviewIn', () => {
+  const REVIEW = [
+    '# PLAN REVIEW: DESKTOP-1 — round 2',
+    '',
+    '## A — must change before approval',
+    '### A1. The fixture is not loadable',
+    '## B — worth discussing',
+    '### B1. A second helper does the same',
+    '### B2. Names of two tests mislead',
+    '',
+    '## Operator decisions (round 2)',
+    '- A1: accepted, variant (a) — add the missing field',
+    '- B1: accepted as recommended',
+    '- B2: rejected — keep as is',
+    '- C1: no decision',
+    '- A1 (amended during revision): the field goes in the manifest instead',
+    '',
+  ].join('\n');
+
+  test('each line with its verdict, its text and the heading of its item', () => {
+    const { round, decisions } = reviewIn(REVIEW);
+    assert.equal(round, 2);
+    assert.deepEqual(
+      decisions.map((decision) => [decision.id, decision.verdict, decision.title]),
+      [
+        ['A1', 'accepted', 'The fixture is not loadable'],
+        ['B1', 'accepted', 'A second helper does the same'],
+        ['B2', 'rejected', 'Names of two tests mislead'],
+        ['C1', 'undecided', null],
+        // An amendment written as a second line is kept, and not guessed at.
+        ['A1', 'other', 'The fixture is not loadable'],
+      ],
+    );
+    assert.equal(decisions[2].text, 'rejected — keep as is');
+  });
+
+  test('the form the earlier reviews were written in', () => {
+    const text = '# PLAN REVIEW: DESKTOP-1 — раунд 3\n\n### B4. Лишний модуль\n\n## Решения оператора\n- **A1.** принято\n- **B4.** отклонено — не сейчас\n';
+    const { round, decisions } = reviewIn(text);
+    assert.equal(round, 3);
+    assert.deepEqual(
+      decisions.map((decision) => [decision.id, decision.verdict, decision.title]),
+      [
+        ['A1', 'accepted', null],
+        ['B4', 'rejected', 'Лишний модуль'],
+      ],
+    );
+  });
+
+  test('no decision section: the title round, nothing decided', () => {
+    assert.deepEqual(reviewIn('# PLAN REVIEW: DESKTOP-1 — round 4\n\n## A\n### A1. x\n'), { round: 4, decisions: [] });
   });
 });
 

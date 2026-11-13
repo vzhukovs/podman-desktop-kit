@@ -40,11 +40,21 @@ commands nobody had run; the critic reads, and does not run.
 
 ## 2. The question nothing else asks
 
-Give `pd-plan-critic` the plan **and the report from step 1** — the probe
-warnings with their last lines included — so it does not spend its context
-rediscovering what a grep already found. Each red probe is a question for it:
-does this command fail because the code is not written yet, or would it fail
-anyway?
+```
+pdkit plan brief <n>
+```
+
+Its output is the critic's prompt, **passed as it is**: where the plan, the
+research and the code are, the report from step 1 with every probe warning
+and its last line, what the last round accepted and every round rejected, and
+the shape of the report. Fill in its `Language:` line with the language the
+person reads, and change nothing else.
+
+You may append one section, `## Orchestrator facts`: facts you verified in
+this session, each with `file:line`. Nothing on where to look or what to focus
+on, and nothing asking the critic to converge or not to pad. What a critic
+finds follows what its prompt mentions, so a hint is a choice of findings made
+before the review; its checklist is in its own definition.
 
 What it is for: **is this task necessary at all, and does something already do
 it?** podman-desktop is large, utilities get duplicated between `packages/main`

@@ -9,6 +9,31 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- `pdkit plan brief <n> [--mode full|delta]`: the brief `/pd:plan-review`
+  hands `pd-plan-critic`, rendered from `templates/critic-brief.md` — where the
+  plan, the research, the worktree and the base commit are, the `plan check`
+  report with every probe warning and its last line, what the last round
+  accepted (to check it reached the plan) and what every earlier round
+  rejected (not to be raised again), and the shape of the report. Written by
+  hand each round, the critic's prompt varied in what it hinted at, and what
+  the critic found followed the hints. The skill now passes the brief as it is;
+  the orchestrator fills in the report's language and may append verified
+  facts under `## Orchestrator facts`, never a hint on where to look. `--area`
+  is refused until something defines an area, and a delta round with no diff
+  recorded reviews the last round's accepted decisions.
+
+### Changed
+
+- `pd-plan-critic` checks three things a plan inherits from where it lands:
+  the `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`/`README.md` rules of the
+  directories it touches ("update X in the same change"), every mode the
+  touched component runs in (OS, packaged and development builds, more than one
+  runner) against how its neighbors handle each, and whether an artifact a task
+  creates — a fixture, a manifest, a config — is accepted by what loads it,
+  rather than only parsing.
+
 ## [0.14.1] - 2026-11-12
 
 ### Upgrading

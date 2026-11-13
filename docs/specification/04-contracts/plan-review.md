@@ -16,10 +16,14 @@ content: machine first, then model.**
    branch), it also warns about every live task whose `Done when` was never
    run, ran as another command, or did not exit 0 — with the last line it
    printed.
-2. `pd-plan-critic` receives the plan **and that report**, and spends itself on
-   the questions code cannot check: is this task needed at all, does a utility
-   for it already exist, and does each red probe fail because the code is not
-   written yet or because the command can never pass.
+2. `pd-plan-critic` receives `pdkit plan brief <n>` **as it prints it**: where
+   the plan, the research and the code are, that report, what the last round
+   accepted and every round rejected, and the shape of the report. The
+   orchestrator fills in the report's language and may append verified facts,
+   never hints on where to look. The critic spends itself on the questions code
+   cannot check: is this task needed at all, does a utility for it already
+   exist, and does each red probe fail because the code is not written yet or
+   because the command can never pass.
 
 The split rests on the same argument as the API-surface grep in [section 7](../07-preflight.md): this
 is not a heuristic for an agent, it is a grep. An Opus looking for an overlap
