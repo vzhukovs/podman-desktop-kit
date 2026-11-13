@@ -166,6 +166,30 @@ describe('reportIn', () => {
     );
   });
 
+  // The person's yes to a knowledge candidate is written on the decision. Read
+  // too widely, a decision's own words ("update the knowledge: …") would become
+  // a fact nobody agreed to put in the base.
+  test('a knowledge mark on the line or a line continuing it, and not in the decision\'s own words', () => {
+    const text = [
+      '## Operator decisions (round 1)',
+      '- A1: accepted — knowledge: the loader drops a manifest without `description` (`a.ts:12`)',
+      '- A2: accepted',
+      '  - knowledge: a fact on the next line',
+      '- A3: accepted — update the knowledge: not a mark',
+      '- B1: rejected',
+      '',
+    ].join('\n');
+    assert.deepEqual(
+      reportIn(text).decisions.map(({ id, candidate }) => [id, candidate]),
+      [
+        ['A1', 'the loader drops a manifest without `description` (`a.ts:12`)'],
+        ['A2', 'a fact on the next line'],
+        ['A3', null],
+        ['B1', null],
+      ],
+    );
+  });
+
   test('the round is the title\'s', () => {
     assert.equal(reportIn(CURRENT).round, 2);
     assert.equal(reportIn(EARLIER).round, null);

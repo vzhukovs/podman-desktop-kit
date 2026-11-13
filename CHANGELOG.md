@@ -92,7 +92,13 @@ fixes — see [RELEASING.md](RELEASING.md).
   `pd-plan-critic` reads the entries for the areas in its scope. Neither read
   `pitfalls.md` before.
 - `/pd:plan-review` proposes, after the decisions, each accepted A item that
-  states a fact about the repository as a one-line knowledge candidate.
+  states a fact about the repository as a one-line knowledge candidate. The
+  person's yes is written on the item's decision line as
+  `— knowledge: <fact>`, and `pdkit knowledge check` lists every line marked
+  that way, from the issue's reviews and from archived attempts, for
+  `/pd:knowledge` (`reviewCandidates` in `--json`). Its candidates came only
+  from journal events before, and a fact a review established reached the
+  base only if the issue reached `/pd:close`, which a reset issue never does.
 - A decision line that opens with a plural or negated Russian verdict
   ("приняты", "не принято") is read as accepted or rejected; it was read as no
   verdict, so a rejection written that way was in no list of the critic's

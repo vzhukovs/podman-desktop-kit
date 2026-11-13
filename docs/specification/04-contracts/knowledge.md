@@ -15,6 +15,7 @@ The mechanical half, `pdkit knowledge check [--json]`:
 | the shape of `pitfalls.md` entries (Looks like / Actually / Why it matters / Caught by) | a template, not a judgment |
 | a `## What to add here` section in every file | the acceptance criterion for new entries is part of the base itself |
 | issues closed since the last revision carrying `conflict-semantic` or `slice-regressed` events | a list of harvest candidates, not the harvest |
+| plan-review decision lines marked `knowledge: <fact>`, in `issues/` and in the archives of reset attempts | the human's yes is already written down; finding it is a grep |
 
 Left to the model: an entry that was wrong from the start; a lesson worth
 rephrasing; a finding that will change nothing in a future run and is therefore

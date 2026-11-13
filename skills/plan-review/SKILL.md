@@ -190,8 +190,16 @@ directory's `AGENTS.md` obliges — not "T4 runs before T6". Propose each to the
 person as a knowledge candidate, in one line: the fact as an entry would state
 it, with its `file:line`, and the file of `${CLAUDE_PLUGIN_ROOT}/knowledge/`
 whose `## What to add here` it meets. Check the line against the code first: an
-item accepted for this plan is not yet a verified fact. Nothing records a
-candidate; the ones the person wants are theirs to take to `/pd:knowledge`.
+item accepted for this plan is not yet a verified fact. For each one the person
+says yes to, add the line to that item's decision, after what is already there:
+
+```
+- A2: accepted — knowledge: <the fact, with its file:line>
+```
+
+`pdkit knowledge check` lists every decision marked `knowledge:`, from the
+issue's reviews and from the archive of a reset attempt, for `/pd:knowledge`.
+A candidate the person declines leaves the decision line as it was.
 
 When the report has no A item, or the person rejects every one, tell them
 before they decide the B items: the ones they accept will be applied and go to

@@ -22,7 +22,9 @@ pdkit knowledge check --json
 Paths and `file:line` citations that no longer resolve in the fork, a layer
 chain that has drifted from `slicing.layer_order`, `pitfalls.md` entries that
 stopped following the shape that file declares, a file with no
-`## What to add here`, and the issues whose journal recorded something notable.
+`## What to add here`, the issues whose journal recorded something notable, and
+the facts a plan review marked as knowledge candidates — a person agreed to
+each, on its decision line, and it still has to meet the bar below.
 
 Do not re-derive any of it by reading the four files. That is the arithmetic
 this command exists to do — and it is also the part a re-read is worst at, since

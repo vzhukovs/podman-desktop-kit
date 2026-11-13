@@ -248,6 +248,44 @@ describe('the boundary', () => {
   });
 });
 
+// A fact a plan review established, and the person agreed belongs in the base,
+// used to reach /pd:knowledge only if somebody remembered it: the issue could
+// be reset, and only /pd:close proposes lessons.
+describe('candidates a plan review marked', () => {
+  test('from the issue and its archives, each fact once, newest issue first', async () => {
+    const own = await mkdtemp(join(tmpdir(), 'pdkit-knowledge-marks-'));
+    try {
+      const marked = '## Operator decisions (round 2)\n- A1: accepted — knowledge: the fact (`a.ts:3`)\n- A2: accepted\n';
+      await writeFiles(own, {
+        'issues/4242/plan-review.md': marked,
+        // The same review a rollback archived, and one an earlier attempt marked.
+        'archive/4242/rollback-C1-2026-01-01T00-00-00-000Z/plan-review.r2.md': marked,
+        'archive/4242/2026-01-01-000000/plan-review.r1.md': '## Operator decisions (round 1)\n- B2: accepted — knowledge: another fact\n',
+        'archive/4241/2026-01-01-000000/plan-review.md': '## Operator decisions (round 1)\n- A1: accepted\n',
+        'issues/4243/plan-review.r1.md': '## Operator decisions (round 1)\n- A3: rejected — knowledge: kept, with its verdict\n',
+      });
+
+      const report = await collect({ home: own });
+      assert.deepEqual(
+        report.reviewCandidates.map(({ issue, item, verdict, fact, file }) => [issue, item, verdict, fact, file]),
+        [
+          [4243, 'A3', 'rejected', 'kept, with its verdict', 'issues/4243/plan-review.r1.md'],
+          [4242, 'A1', 'accepted', 'the fact (`a.ts:3`)', 'issues/4242/plan-review.md'],
+          [4242, 'B2', 'accepted', 'another fact', 'archive/4242/2026-01-01-000000/plan-review.r1.md'],
+        ],
+      );
+      assert.match(knowledge.format(report), /#4242 A1: the fact/);
+    } finally {
+      await rm(own, { recursive: true, force: true });
+    }
+  });
+
+  test('none marked, no section', async () => {
+    assert.deepEqual((await collect()).reviewCandidates, []);
+    assert.doesNotMatch(knowledge.format(await collect()), /marked as knowledge candidates/);
+  });
+});
+
 describe('the shipped base', () => {
   test('checks clean against the plugin\'s own knowledge/ and the fork\'s layer order', async () => {
     const report = await knowledge.collect({
