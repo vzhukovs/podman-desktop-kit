@@ -37,6 +37,7 @@ import * as gate from '../lib/gate.js';
 import * as pr from '../lib/pr.js';
 import { openPullRequest, pullRequestBase } from '../lib/publishing.js';
 import { read as readState, transition } from '../lib/state.js';
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const POSIX = { skip: process.platform === 'win32' ? 'the gh stub is a shell script' : false };
@@ -187,6 +188,7 @@ describe('the base a pull request opens against', () => {
 describe('opening a pull request', () => {
   test('it opens through the gate, registers the record, and moves the issue to pr-open', POSIX, async () => {
     await preflightGreen(ISSUE, { home });
+    await approvablePlan(ISSUE, { home });
     for (const to of ['triaged', 'planned', 'plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved', 'preflight-green']) {
       const moved = await transition(ISSUE, to, { home });
       assert.ok(moved.ok, moved.error);

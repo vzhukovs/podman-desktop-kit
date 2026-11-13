@@ -30,6 +30,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { cleanup, commitAll, git, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
 import { issueDir } from '../lib/config.js';
 import { validateReceipt } from '../lib/evidence.js';
@@ -955,6 +956,7 @@ describe('materialize', () => {
   });
 
   test('refuses a commit subject upstream would reject', async () => {
+    await approvablePlan(ISSUE, { home });
     await state.transition(ISSUE, 'plan-approved', { home });
     await state.transition(ISSUE, 'implemented', { home });
     await state.transition(ISSUE, 'validated', { home });

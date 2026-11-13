@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { cleanup, commitAll, git as gitIn, initRepo, packageMap, seedWorkspace, writeFiles, writeTask } from './helpers/repo-fixture.js';
 import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
@@ -1277,6 +1278,9 @@ describe('a sliced issue', () => {
     assert.equal(stored.ok, true, JSON.stringify(stored.problems));
 
     await slice.verifyAll({ issue: ISSUE, repoRoot: sliced, home: slicedHome, config: config(), packageMap: packageMap(sliced) });
+    // The approval reads a plan; written once the graph is set, which this
+    // suite cuts from the diff rather than from a plan.
+    await approvablePlan(ISSUE, { home: slicedHome, slices: 2 });
 
     for (const [index, subject] of [[1, 'feat(extension-api): add RunOptions'], [2, 'feat(main): thread RunOptions']]) {
       for (const to of ['plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved']) {

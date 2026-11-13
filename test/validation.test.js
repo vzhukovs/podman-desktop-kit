@@ -35,6 +35,7 @@ import { createServer } from 'node:http';
 import { platform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { emits, exits } from './helpers/commands.js';
 import { capture } from '../lib/evidence.js';
 import { read as readJournal } from '../lib/journal.js';
@@ -420,6 +421,7 @@ describe('setting a step aside', () => {
   });
 
   test('finish moves an issue whose only failure was set aside', async () => {
+    await approvablePlan(ISSUE, { home, allocate: false });
     await transition(ISSUE, 'triaged', { home });
     await transition(ISSUE, 'planned', { home });
     await transition(ISSUE, 'plan-approved', { home });
@@ -814,6 +816,7 @@ describe('outcomes', () => {
 describe('finishing', () => {
   test('a passing validation moves the issue and writes the document', async () => {
     const issue = 8804;
+    await approvablePlan(issue, { home, allocate: false });
     await transition(issue, 'triaged', { home });
     await transition(issue, 'planned', { home });
     await transition(issue, 'plan-approved', { home });
@@ -830,6 +833,7 @@ describe('finishing', () => {
 
   test('unverified still moves the issue — the gap is carried, not used as a wall', async () => {
     const issue = 8805;
+    await approvablePlan(issue, { home, allocate: false });
     await transition(issue, 'triaged', { home });
     await transition(issue, 'planned', { home });
     await transition(issue, 'plan-approved', { home });
@@ -847,6 +851,7 @@ describe('finishing', () => {
 
   test('a failed step does not move the issue', async () => {
     const issue = 8806;
+    await approvablePlan(issue, { home, allocate: false });
     await transition(issue, 'triaged', { home });
     await transition(issue, 'planned', { home });
     await transition(issue, 'plan-approved', { home });

@@ -40,6 +40,7 @@ import { handle } from '../lib/hooks/dispatch.js';
 import * as journal from '../lib/journal.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const run = promisify(execFile);
@@ -58,6 +59,7 @@ async function readyIssue(issue) {
   // The move to preflight-green is earned from what preflight wrote, so a
   // fixture standing there has to have produced it like anything else.
   await preflightGreen(issue, { home });
+  await approvablePlan(issue, { home });
 
   for (const to of [
     'triaged',

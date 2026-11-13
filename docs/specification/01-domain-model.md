@@ -167,6 +167,25 @@ Two states answer with a sentence rather than a command, and deliberately.
 `sliced` and `planned`-after-review wait on an approval that is a person's to
 give, and naming a skill there would name one that must not run yet.
 
+## The approval is read, not typed
+
+`plan-approved` is what exec runs on and what the pull requests trace, and the
+move to it read nothing. A plan `pdkit plan check` refuses could be approved,
+and the requirement set was frozen only by the `&&` in the approval line,
+`pdkit ids freeze <n> && pdkit state <n> --to plan-approved`.
+
+The move now reads `plan.md` at the moment it is made and refuses one the
+checks refuse, then an open set. `pdkit ids freeze`, first in that line, refuses
+the same plan: a set frozen on a plan that cannot be approved could not take
+the requirement its fix may need, and nothing unfreezes it short of a rework.
+Both read one answer, `lib/plan-approval.js`.
+
+The other side of the approval is `pdkit task start`, which refuses an issue
+whose plan was not approved, or that has settled: `EXEC_ELIGIBLE` in
+`lib/state/machine.js`, `plan-approved` and every state after it up to review,
+where an amendment's tasks run. Until then a sentence in `/pd:exec` was all
+that kept exec off a `planned` issue.
+
 ## The hard rule
 
 **`pdkit gate` lets `git push` and `gh pr create` through only from

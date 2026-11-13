@@ -14,11 +14,13 @@ third attempt, and that is where drift starts.
 ## Preconditions
 
 `pdkit state <issue>` says `plan-approved`. Implementing an unapproved plan
-means the requirements can still move under the code.
+means the requirements can still move under the code, and `pdkit task start`
+refuses an issue whose plan was not approved.
 
-The one exception is `implemented`, for the tasks of an amendment approved
-after validation found the plan wrong: the state has no way back, and
-`pdkit task start` does not read it. Run those tasks only, by ID.
+The one exception is a later state, for the tasks of an amendment approved
+after validation or review found the plan wrong: those states have no way
+back, and `pdkit task start` accepts them up to review. Run those tasks only,
+by ID.
 
 ## Once, before the first task
 

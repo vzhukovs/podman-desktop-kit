@@ -52,6 +52,7 @@ import {
 } from '../lib/gh.js';
 import * as gate from '../lib/gate.js';
 import { transition } from '../lib/state.js';
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { preflightGreen } from './helpers/preflight-evidence.js';
 
 const CONFIG = {
@@ -83,6 +84,7 @@ before(async () => {
   home = await mkdtemp(join(tmpdir(), 'pdkit-gh-'));
 
   await preflightGreen(6001, { home });
+  await approvablePlan(6001, { home });
 
   for (const to of [
     'triaged',

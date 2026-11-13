@@ -151,6 +151,31 @@ async function propose() {
   return JSON.parse(out.stdout).id;
 }
 
+/**
+ * Approve an amendment, then the plan it leaves: a task starts only on an
+ * approved plan, and this fixture's plan passes its checks once the amendment
+ * is applied.
+ */
+async function approvedPlan() {
+  await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
+  const at = (await read(ISSUE, { home })).state;
+  for (const to of at === 'planned' ? ['plan-approved'] : ['planned', 'plan-approved']) {
+    const moved = await transition(ISSUE, to, { home });
+    assert.ok(moved.ok, moved.error);
+  }
+}
+
+/** A linked worktree on the issue's branch: a task runs in the issue's own tree and nowhere else. */
+async function issueTree() {
+  const main = join(home, 'repo');
+  const repo = join(home, `DESKTOP-${ISSUE}`);
+  await mkdir(main);
+  await exec('git', ['init', '-q', '-b', 'main'], { cwd: main });
+  await exec('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: main });
+  await exec('git', ['worktree', 'add', '-q', '-b', `DESKTOP-${ISSUE}/close-handler`, repo], { cwd: main });
+  return repo;
+}
+
 const requirements = async () => (await read(ISSUE, { home })).requirements;
 const amended = async () => readJournal({ issue: ISSUE, event: 'requirements-amended' }, { home });
 
@@ -423,15 +448,8 @@ describe('the tasks an amendment writes', () => {
   });
 
   test('task start on the withdrawn task is refused, and says what replaced it', async () => {
-    await pdkit('amendment', 'approve', await propose(), '--issue', String(ISSUE));
-    // A linked worktree on the issue's branch: a task runs in the issue's own
-    // tree and nowhere else.
-    const main = join(home, 'repo');
-    const repo = join(home, `DESKTOP-${ISSUE}`);
-    await mkdir(main);
-    await exec('git', ['init', '-q', '-b', 'main'], { cwd: main });
-    await exec('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: main });
-    await exec('git', ['worktree', 'add', '-q', '-b', `DESKTOP-${ISSUE}/close-handler`, repo], { cwd: main });
+    await approvedPlan();
+    const repo = await issueTree();
 
     const out = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T2', '--repo', repo);
 
@@ -442,8 +460,28 @@ describe('the tasks an amendment writes', () => {
     assert.equal(live.code, 0, live.stderr);
   });
 
+  // Exec on a plan nobody approved was held back by a sentence in the skill.
+  test('task start refuses an issue whose plan is not approved, before anything about trees', async () => {
+    const repo = await issueTree();
+    await transition(ISSUE, 'planned', { home });
+
+    const out = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T1', '--repo', repo);
+
+    assert.notEqual(out.code, 0);
+    assert.match(out.stderr, /issue 18915 is planned, and a task runs from plan-approved, implemented, .*review-in-progress\./);
+    assert.match(out.stderr, /pdkit next 18915 names what comes first/);
+    assert.equal((await pdkit('task', 'show')).stdout, 'no task is running in any working tree\n');
+
+    // An amendment's tasks run after the approval as well, up to review.
+    await approvedPlan();
+    for (const to of ['implemented', 'validated']) await transition(ISSUE, to, { home });
+    const later = await pdkit('task', 'start', '--issue', String(ISSUE), '--task', 'T3', '--repo', repo);
+    assert.equal(later.code, 0, later.stderr);
+  });
+
   // DESKTOP-19818: exec started in the main checkout and committed there.
   test('task start refuses the main checkout, and says how to make the issue\'s tree', async () => {
+    await approvedPlan();
     const main = join(home, 'clone');
     await mkdir(main);
     await exec('git', ['init', '-q', '-b', 'main'], { cwd: main });

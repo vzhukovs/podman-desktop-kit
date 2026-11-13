@@ -9,6 +9,13 @@ fixes — see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Upgrading
+
+An issue is approved only on a plan that passes `pdkit plan check`: on one
+standing at `planned`, run `pdkit plan check <n>` before
+`pdkit ids freeze <n> && pdkit state <n> --to plan-approved`, and fix what it
+names first.
+
 ### Added
 
 - `pdkit plan brief <n> [--mode full|delta]`: the brief `/pd:plan-review`
@@ -197,6 +204,16 @@ fixes — see [RELEASING.md](RELEASING.md).
 - `pdkit plan check` states the size of `plan.md`, of the files under
   `tasks/` and of `research.md`, and `--json` carries them as `sizes`. Facts
   with no threshold: the check passes or fails as it did.
+- **The move to `plan-approved` reads the plan.** It refuses a plan that fails
+  the checks `pdkit plan check` makes, and then a requirement set that is not
+  frozen; it used to read neither, and the freeze was held only by the `&&` in
+  the approval line. `pdkit ids freeze`, first in that line, refuses the same
+  plan, so a set is never frozen on a plan that cannot be approved — frozen, it
+  could not take the requirement a fix may need.
+- `pdkit task start` refuses an issue whose plan is not approved, or that has
+  settled. It accepts `plan-approved` and every state after it up to review,
+  where an amendment's tasks run; until now a sentence in `/pd:exec` was all
+  that kept exec off a `planned` issue.
 
 ## [0.14.1] - 2026-11-12
 

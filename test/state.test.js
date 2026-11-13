@@ -54,6 +54,7 @@ import { read as readJournal } from '../lib/journal.js';
 import { BODY_DEPENDENT, CHECK_IDS } from '../lib/preflight/index.js';
 import { write } from '../lib/preflight/record.js';
 import { ENTRY_RULES } from '../lib/state/entry.js';
+import { approvablePlan } from './helpers/approvable-plan.js';
 import { preflightGreen } from './helpers/preflight-evidence.js';
 
 let home;
@@ -118,10 +119,10 @@ describe('transition table integrity', () => {
 
 // The conditions for entering a state are a list, in the order their refusals
 // are reported. What each one refuses is covered where the rule is exercised;
-// this only holds the shape a sixth rule has to take.
+// this only holds the shape a seventh rule has to take.
 describe('the conditions for entering a state', () => {
-  test('are five rules, each saying when it applies and what it refuses', () => {
-    assert.equal(ENTRY_RULES.length, 5);
+  test('are six rules, each saying when it applies and what it refuses', () => {
+    assert.equal(ENTRY_RULES.length, 6);
     for (const rule of ENTRY_RULES) {
       assert.equal(typeof rule.applies, 'function');
       assert.equal(typeof rule.refuse, 'function');
@@ -216,6 +217,7 @@ describe('persistence', () => {
   });
 
   test('approvals are recorded with who gave them', async () => {
+    await approvablePlan(101, { home });
     await transition(101, 'planned', { home });
     await transition(101, 'plan-approved', { home, approvedBy: 'human' });
 
@@ -543,6 +545,7 @@ describe('adopting work that predates the plugin', () => {
 describe('preflight-green has to be earned', () => {
   /** Walk to the state just before it, without producing any evidence. */
   async function atSlicesApproved(issue) {
+    await approvablePlan(issue, { home });
     for (const to of ['triaged', 'planned', 'plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved']) {
       const result = await transition(issue, to, { home });
       assert.ok(result.ok, `${to}: ${result.error}`);
@@ -692,6 +695,7 @@ describe('the review rejected the approach', () => {
     await allocateRequirement(issue, { home });
     await allocateRequirement(issue, { home });
     await freezeRequirements(issue, { home });
+    await approvablePlan(issue, { home });
     for (const to of ['plan-approved', 'implemented', 'validated', 'audited', 'sliced', 'slices-approved', 'preflight-green', 'pr-open']) {
       await transition(issue, to, { home });
     }
