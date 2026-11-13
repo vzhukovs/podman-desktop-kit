@@ -20,8 +20,11 @@
 
 ## Scope
 
-<!-- The tasks this critic reviews. Today always the whole plan; a scope
-     narrower than that fills in its name and its task list here. -->
+<!-- The tasks this critic reviews: the whole plan; the tasks of some of its
+     areas (`pdkit plan areas`), each with its Owns and the edges that leave
+     the scope; or one axis across the whole plan. A large plan is split
+     because one critic's context does not hold it, and a critic that read
+     part of a plan without knowing which part reports a sample as a review. -->
 {{scope}}
 
 ## Where things are
@@ -79,3 +82,12 @@ heading, and every claim in it carries a `file:line`.
   code is not written yet, or red regardless, and why.
 - `## Checked, no findings`: what you checked that held, each with `file:line`,
   so the next round does not read it again.
+- `## Outside my scope`: when the scope above is an area or an axis, what you
+  saw outside it, three lines at most, each with `file:line`. They are not
+  items: no A, B or C. Left out when the scope is the whole plan.
+- `## Coverage map`, last: the table below, a row per task in your scope. Turn
+  a cell into `✓` for a check you made on that task and `—` for one that does
+  not apply to it; leave `?` where you did not check. A `?` is an answer; a `✓`
+  over something you did not read is the one wrong answer.
+
+{{coverage}}

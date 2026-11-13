@@ -26,20 +26,21 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { parsePlan } from '../lib/artefacts.js';
-import { brief } from '../lib/critic-brief.js';
+import { AXES, COVERAGE_CHECKS, brief } from '../lib/critic-brief.js';
 import { allocateRequirement, freezeRequirements } from '../lib/ids.js';
 import * as probe from '../lib/probe.js';
 import { transition } from '../lib/state.js';
 
 const exec = promisify(execFile);
-const BIN = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'pdkit');
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const BIN = join(ROOT, 'bin', 'pdkit');
 const ISSUE = 17002;
 
 /** Three tasks; T2 replaced by T3, so T2 is no longer work anybody will do. */
@@ -100,6 +101,36 @@ const ROUND_2 = [
   '- B3: deferred to the slice',
   '',
 ].join('\n');
+
+/** Two packages, tests and a gate: T1 spans both packages, everything else waits on it. */
+const SPLIT = [
+  `# PLAN: DESKTOP-${ISSUE}`,
+  '',
+  '- Requirements: R1',
+  '',
+  '## Tasks',
+  '### T1: api and registry',
+  '- Owns: packages/extension-api/src/api.d.ts, packages/main/src/registry.ts',
+  '- Done when: `npx vitest run packages/main/src/registry.spec.ts`',
+  '### T2: wiring',
+  '- Owns: packages/main/src/index.ts',
+  '- After: T1',
+  '- Done when: `npx vitest run packages/main/src/index.spec.ts`',
+  '### T3: spec',
+  '- Owns: tests/playwright/src/specs/registry.spec.ts',
+  '- After: T1',
+  '- Done when: `npx eslint tests/playwright/src/specs/registry.spec.ts`',
+  '### T4: gate',
+  '- Owns: (none — verification only, writes no files)',
+  '- After: T1, T2, T3',
+  '- Done when: `pnpm typecheck`',
+  '',
+].join('\n');
+
+/** The task IDs of the coverage map's rows, in order. */
+function coverageRows(text) {
+  return [...text.matchAll(/^\| (T\d+) \|/gm)].map((row) => row[1]);
+}
 
 describe('brief', () => {
   let home;
@@ -189,21 +220,70 @@ describe('brief', () => {
     assert.match(full.ok ? full.text : '', /## Changes since the last round\n\nNone: a full round reviews the whole scope\./);
   });
 
-  test('with no area, the scope is the whole plan, its live tasks named; an area is refused', async () => {
+  test('with no area, the scope is the whole plan, its live tasks named, each a row of the coverage map', async () => {
     const result = await render({ record: { withdrawn: {} } });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.match(result.text, /## Scope\n\nThe whole plan: T1, T3\.\n/);
+    assert.deepEqual(coverageRows(result.text), ['T1', 'T3']);
 
     const withdrawn = await render({ record: { withdrawn: { T1: { by: 'A1' } } } });
     assert.match(withdrawn.ok ? withdrawn.text : '', /The whole plan: T3\.\n/);
+  });
 
-    // Nothing defines an area yet; a brief headed "e2e" over the whole plan
-    // would claim a scope nothing measured.
-    const area = await render({ area: 'e2e' });
-    assert.equal(area.ok, false);
-    if (area.ok) return;
-    assert.match(area.error, /no area is defined yet/);
+  // A plan split between critics: each sees its own tasks whole, and every
+  // edge that leaves its scope with where it goes — the dependency the other
+  // side's critic would not mention.
+  test('an area narrows the scope to its tasks, with the edges that leave it', async () => {
+    const result = await render({ plan: parsePlan(SPLIT), area: ['packages/main', 'packages/extension-api'] });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    const [, scope] = /## Scope\n\n([\s\S]*?)\n## /.exec(result.text) ?? [];
+
+    assert.match(scope, /^The areas `packages\/main`, `packages\/extension-api`: T1, T2 — 2 of 4 live task\(s\)\.$/m);
+    assert.match(scope, /^Outside it: T3, T4\.$/m);
+    // Every file a task owns, those in another area too: a task is one change.
+    assert.match(scope, /^ {2}Owns: `packages\/extension-api\/src\/api\.d\.ts`, `packages\/main\/src\/registry\.ts`$/m);
+    assert.match(scope, /^ {2}After: none\. Waited on by: T2, T3 \(tests — outside\), T4 \(gate — outside\)\.$/m);
+    assert.deepEqual(coverageRows(result.text), ['T1', 'T2']);
+
+    const gate = await render({ plan: parsePlan(SPLIT), area: ['gate'] });
+    assert.match(gate.ok ? gate.text : '', /^ {2}Owns: nothing — a verification$/m);
+    assert.match(gate.ok ? gate.text : '', /^ {2}After: T1 \(packages\/extension-api, packages\/main — outside\), T2 \(packages\/main — outside\), T3 \(tests — outside\)\. Waited on by: none\.$/m);
+  });
+
+  test('an axis runs across the whole plan, every live task a row of its map', async () => {
+    const result = await render({ plan: parsePlan(SPLIT), axis: 'duplication' });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.match(result.text, /## Scope\n\nThe axis `duplication` — duplication and maintainer rules — across the whole plan: T1, T2, T3, T4\.\n/);
+    assert.deepEqual(coverageRows(result.text), ['T1', 'T2', 'T3', 'T4']);
+  });
+
+  // A brief headed "e2e" over a plan with no task there would claim a scope
+  // nothing measured; an axis over an area would be neither.
+  test('refuses an area the plan has none of, an axis it does not know, and both together', async () => {
+    const plan = parsePlan(SPLIT);
+    const unknown = await render({ plan, area: ['e2e'] });
+    assert.match(unknown.ok ? '' : unknown.error, /the plan has no area e2e; its areas are packages\/extension-api, packages\/main, tests, gate/);
+    const empty = await render({ plan, area: [] });
+    assert.match(empty.ok ? '' : empty.error, /--area needs the name of an area/);
+    const axis = await render({ plan, axis: 'naming' });
+    assert.match(axis.ok ? '' : axis.error, /--axis is one of duplication, not "naming"/);
+    const both = await render({ plan, area: ['tests'], axis: 'duplication' });
+    assert.match(both.ok ? '' : both.error, /an area or an axis, not both/);
+  });
+
+  // The brief prints the columns; the critic's definition says what each one
+  // is. A column renamed in one and not the other is a check nobody makes.
+  test('the critic\'s definition names every coverage check and every axis', async () => {
+    const agent = await readFile(join(ROOT, 'agents', 'pd-plan-critic.md'), 'utf8');
+    for (const check of COVERAGE_CHECKS) assert.ok(agent.includes(`**${check}**`), `agents/pd-plan-critic.md does not define the check "${check}"`);
+    for (const axis of Object.keys(AXES)) assert.ok(agent.includes(`\`${axis}\``), `agents/pd-plan-critic.md does not define the axis "${axis}"`);
+
+    const result = await render();
+    const header = `| Task | ${COVERAGE_CHECKS.join(' | ')} |`;
+    assert.ok(result.ok && result.text.includes(header));
   });
 
   test('says which of the paths it names are absent', async () => {
@@ -284,8 +364,8 @@ describe('pdkit plan brief', () => {
     assert.doesNotMatch(out.stdout, /What is left is the question no grep answers/);
   });
 
-  test('refuses an area, a mode it does not know, and an issue with no plan', async () => {
-    assert.match((await pdkit('plan', 'brief', String(ISSUE), '--area', 'e2e')).stderr, /no area is defined yet/);
+  test('refuses an area the plan has none of, a mode it does not know, and an issue with no plan', async () => {
+    assert.match((await pdkit('plan', 'brief', String(ISSUE), '--area', 'e2e')).stderr, /the plan has no area e2e; its areas are src/);
     assert.match((await pdkit('plan', 'brief', String(ISSUE), '--mode', 'partial')).stderr, /--mode is one of full, delta/);
     const none = await pdkit('plan', 'brief', '17003');
     assert.notEqual(none.code, 0);

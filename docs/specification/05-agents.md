@@ -7,7 +7,7 @@
 | `pd-scout` | sonnet | Read, Grep, Glob, Bash (ro) | reconnaissance, ≤ 40 lines, every claim `file:line`, proposes nothing |
 | `pd-implementer` | sonnet | everything except push/gh | one task, only files from `Owns`, a receipt with real output |
 | `pd-auditor` | opus | Read, Grep, Glob, Bash (ro) | diff against plan, fresh context |
-| `pd-plan-critic` | opus | Read, Grep, Glob | adversarial review of the **plan**, before code |
+| `pd-plan-critic` | opus | Read, Grep, Glob | adversarial review of the **plan**, before code: the whole plan, some of its areas, or one axis across it |
 | `pd-slicer` | sonnet | Read, Grep, Bash | the slice graph, from the finished diff |
 | `pd-validator` | sonnet | Bash + Playwright MCP tools | drives the built application, collects evidence |
 | `pd-archaeologist` | sonnet | Read, Bash (git log/blame) | history: reverts, regressions, who and why |

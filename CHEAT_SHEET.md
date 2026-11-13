@@ -177,7 +177,9 @@ pdkit task stop
 pdkit task stop --finding <values.json>    # the plan is wrong: write stops/<T>-<k>.md, then stop
 pdkit plan check <n>                       # the mechanical half of plan review
 pdkit plan probe <n> [--except T10]        # run every Done when on the base, before any code
+pdkit plan areas <n>                       # live tasks by area, with what each waits on across areas
 pdkit plan brief <n>                       # the critic's brief: paths, check report, earlier decisions
+pdkit plan brief <n> --area <a>,<b>        # ... narrowed to those areas; --axis duplication: across the plan
 pdkit plan revised <n>                     # the review's decisions are in plan.md; next is review
 pdkit checkpoint <n> --phase exec          # before a phase that changes things;
                                            # exec, slice, pr-sync or resume

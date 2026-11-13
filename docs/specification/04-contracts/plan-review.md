@@ -24,8 +24,33 @@ content: machine first, then model.**
    cannot check: is this task needed at all, does a utility for it already
    exist, and does each red probe fail because the code is not written yet or
    because the command can never pass.
+3. A full round of a plan with more than four live tasks in more than one area
+   is split between critics. `pdkit plan areas <n>` groups the live tasks by the
+   part of the repository their `Owns` names — `packages/<x>`, `extensions/<x>`,
+   else the first directory, `root` for a file at the top, `gate` for a task
+   that owns nothing — with what each task waits on and what waits on it. The
+   skill joins areas that share a task, then the smallest, into three groups at
+   most, and launches in one message a critic per group (`--area <a>,<b>`) and
+   one across the whole plan on duplication and the maintainer's rules
+   (`--axis duplication`). A scoped brief lists its tasks whole, with each edge
+   that leaves the scope; what a critic sees outside its scope is a line for
+   the critic whose scope it is, not an item.
+4. The orchestrator merges the reports: one item per defect, a disagreement
+   shown with both positions and left to the person, and a `## Coverage map` —
+   every live task against seven checks (order, `Done when` runs on the base,
+   `Done when` fails while the requirement is unmet, the neighbor's pattern,
+   local directory rules, environment modes, duplication), each cell `✓`, `—`
+   or `?`. Every `?` is a C item.
 
-The split rests on the same argument as the API-surface grep in [section 7](../07-preflight.md): this
+Why several critics, and why a map: one critic on a plan of a dozen tasks
+reached the ceiling of its context every round and read a different part of
+the plan each time, so findings that had been in it from the first round
+surfaced one round at a time, and no report said what had been read. Which
+task is in which area is a fact `lib/plan-areas.js` computes; how areas are
+grouped among critics, and how their reports are merged, is the skill's
+judgment.
+
+The machine-first split rests on the same argument as the API-surface grep in [section 7](../07-preflight.md): this
 is not a heuristic for an agent, it is a grep. An Opus looking for an overlap
 between `Owns` lists is an Opus that may not find it; `pdkit plan check` cannot
 fail to.

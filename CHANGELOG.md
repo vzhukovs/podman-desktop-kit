@@ -20,9 +20,31 @@ fixes — see [RELEASING.md](RELEASING.md).
   hand each round, the critic's prompt varied in what it hinted at, and what
   the critic found followed the hints. The skill now passes the brief as it is;
   the orchestrator fills in the report's language and may append verified
-  facts under `## Orchestrator facts`, never a hint on where to look. `--area`
-  is refused until something defines an area, and a delta round with no diff
-  recorded reviews the last round's accepted decisions.
+  facts under `## Orchestrator facts`, never a hint on where to look. A delta
+  round with no diff recorded reviews the last round's accepted decisions.
+- `pdkit plan areas <n> [--json]`: the plan's live tasks by area, from the
+  paths in their `Owns` — `packages/<x>` and `extensions/<x>`, else the first
+  directory, `root` for a file at the top, `gate` for a task that owns nothing —
+  each task with what it waits on and what waits on it. A task in several
+  areas is in each.
+- A full round of `/pd:plan-review` on a plan of more than four tasks in more
+  than one area runs several `pd-plan-critic` at once: one per group of areas,
+  three groups at most (`pdkit plan brief <n> --area <a>,<b>`), and one across
+  the whole plan on duplication and the maintainer's rules (`--axis
+  duplication`). On a large plan a single critic reached the ceiling of its
+  context every round and read a different part of the plan each time, so
+  findings that had been in it from the first round surfaced one round at a
+  time. A scoped brief lists its tasks with the edges that leave the scope;
+  what a critic sees outside its scope is a line for the critic whose scope it
+  is, not an item. The orchestrator merges the reports — one item per defect,
+  a disagreement shown with both positions rather than settled.
+- Every plan review ends with `## Coverage map`: each live task against seven
+  checks (order, `Done when` runs on the base, `Done when` fails while the
+  requirement is unmet, the neighbor's pattern, local directory rules,
+  environment modes, duplication), `✓` checked, `—` does not apply, `?` not
+  checked. The brief prints the table for the critic to fill in, and every `?`
+  left after the merge is a C item: what nobody read is in the report, not in
+  a later round.
 
 ### Changed
 
